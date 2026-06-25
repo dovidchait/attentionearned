@@ -1,0 +1,153 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  entry: CollectionEntry<'work'>;
+  variant?: 'default' | 'featured';
+}
+
+const { entry, variant = 'default' } = Astro.props;
+const { title, client, sector, summary, video } = entry.data;
+const url = `/work/${entry.id}`;
+
+const sectorLabels: Record<string, string> = {
+  corporate:  'Corporate',
+  healthcare: 'Healthcare',
+  nonprofit:  'Nonprofit',
+  film:       'Film',
+  brand:      'Brand',
+};
+---
+
+<article class:list={['work-card', `work-card--${variant}`]}>
+  {video?.poster ? (
+    <a href={url} class="work-card__thumb" tabindex="-1" aria-hidden="true">
+      <img src={video.poster} alt="" loading="lazy" />
+      <span class="play-icon" aria-hidden="true">&#9654;</span>
+    </a>
+  ) : (
+    <a href={url} class="work-card__thumb work-card__thumb--empty" tabindex="-1" aria-hidden="true">
+      <span class="thumb-placeholder"></span>
+    </a>
+  )}
+
+  <div class="work-card__body">
+    <span class="work-card__sector">{sectorLabels[sector]}</span>
+    <h3 class="work-card__title">
+      <a href={url}>{title}</a>
+    </h3>
+    {client && <p class="work-card__client">{client}</p>}
+    <p class="work-card__summary">{summary}</p>
+    <a href={url} class="work-card__cta">View project</a>
+  </div>
+</article>
+
+<style>
+  .work-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+  }
+
+  .work-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+
+  .work-card__thumb {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--color-surface-alt);
+  }
+
+  .work-card__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-normal);
+  }
+
+  .work-card:hover .work-card__thumb img { transform: scale(1.03); }
+
+  .play-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: var(--color-white);
+    text-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .work-card:hover .play-icon { opacity: 1; }
+
+  .thumb-placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--color-surface-alt);
+  }
+
+  .work-card__body {
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex: 1;
+  }
+
+  .work-card__sector {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+  }
+
+  .work-card__title {
+    font-size: var(--text-xl);
+    margin-top: var(--space-1);
+  }
+
+  .work-card__title a:hover { color: var(--color-accent); }
+
+  .work-card__client {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    font-style: italic;
+  }
+
+  .work-card__summary {
+    font-size: var(--text-base);
+    color: var(--color-ink-muted);
+    line-height: var(--leading-normal);
+    margin-top: var(--space-2);
+    flex: 1;
+  }
+
+  .work-card__cta {
+    display: inline-block;
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--transition-fast);
+  }
+
+  .work-card__cta:hover { border-color: var(--color-accent); }
+
+  .work-card--featured {
+    border-top: 3px solid var(--color-accent);
+  }
+</style>

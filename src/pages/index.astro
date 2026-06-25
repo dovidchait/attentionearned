@@ -1,0 +1,144 @@
+---
+import Base from '../layouts/Base.astro';
+import WorkCard from '../components/WorkCard.astro';
+import { getCollection } from 'astro:content';
+
+const allWork = await getCollection('work');
+const featuredWork = allWork
+  .filter(e => e.data.featured)
+  .sort((a, b) => a.data.order - b.data.order);
+---
+
+<Base title="Video Production for Organizations That Have Something to Say">
+  <section class="hero">
+    <div class="container">
+      <p class="hero-eyebrow">B2B Video Production</p>
+      <h1 class="hero-headline">Video that earns<br />the attention it gets.</h1>
+      <p class="hero-sub">
+        We make corporate, healthcare, and nonprofit video that audiences
+        finish watching.
+      </p>
+      <div class="hero-actions">
+        <a href="/work" class="btn btn-primary">See our work</a>
+        <a href="/contact" class="btn btn-ghost">Start a project</a>
+      </div>
+    </div>
+  </section>
+
+  {featuredWork.length > 0 && (
+    <section class="featured-section">
+      <div class="container">
+        <h2 class="section-heading">Selected Work</h2>
+        <div class="featured-grid">
+          {featuredWork.map((entry, i) => (
+            <div class:list={['featured-grid__item', { 'featured-grid__item--wide': i === 0 }]}>
+              <WorkCard entry={entry} variant="featured" />
+            </div>
+          ))}
+        </div>
+        <div class="work-link-row">
+          <a href="/work" class="btn btn-outline">View all work</a>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="services-teaser">
+    <div class="container">
+      <h2 class="section-heading">What we do</h2>
+      <p class="services-teaser__sub">
+        From concept to delivery, we handle everything. Or we step in
+        wherever you need us most.
+      </p>
+      <a href="/services" class="btn btn-primary">Explore services</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    background: var(--color-dark);
+    color: var(--color-white);
+    padding-block: var(--space-32) var(--space-24);
+  }
+  .hero-eyebrow {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-accent);
+    margin-bottom: var(--space-4);
+  }
+  .hero-headline {
+    font-size: clamp(var(--text-4xl), 6vw, var(--text-6xl));
+    color: var(--color-white);
+    max-width: 14ch;
+    margin-bottom: var(--space-6);
+  }
+  .hero-sub {
+    font-size: var(--text-lg);
+    color: var(--color-surface-alt);
+    max-width: 52ch;
+    line-height: var(--leading-loose);
+    margin-bottom: var(--space-10);
+  }
+  .hero-actions {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-block;
+    padding: var(--space-3) var(--space-8);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  }
+  .btn-primary { background: var(--color-accent); color: var(--color-white); }
+  .btn-primary:hover { background: var(--color-accent-hover); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-white);
+    border: 1px solid rgb(255 255 255 / 0.3);
+  }
+  .btn-ghost:hover { background: rgb(255 255 255 / 0.08); }
+  .btn-outline {
+    background: transparent;
+    color: var(--color-ink);
+    border: 1px solid var(--color-border);
+  }
+  .btn-outline:hover { background: var(--color-surface-alt); }
+  .featured-section { padding-block: var(--space-20); }
+  .section-heading { font-size: var(--text-3xl); margin-bottom: var(--space-10); }
+  .featured-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-6);
+  }
+  .featured-grid__item--wide { grid-column: span 2; }
+  @media (max-width: 900px) {
+    .featured-grid { grid-template-columns: repeat(2, 1fr); }
+    .featured-grid__item--wide { grid-column: span 2; }
+  }
+  @media (max-width: 600px) {
+    .featured-grid { grid-template-columns: 1fr; }
+    .featured-grid__item--wide { grid-column: span 1; }
+  }
+  .work-link-row {
+    margin-top: var(--space-10);
+    display: flex;
+    justify-content: center;
+  }
+  .services-teaser {
+    background: var(--color-surface-alt);
+    padding-block: var(--space-20);
+  }
+  .services-teaser__sub {
+    font-size: var(--text-lg);
+    color: var(--color-ink-muted);
+    max-width: 52ch;
+    margin-bottom: var(--space-8);
+    line-height: var(--leading-loose);
+  }
+</style>

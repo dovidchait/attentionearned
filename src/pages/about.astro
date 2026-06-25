@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+
+const pagesCollection = await getCollection('pages');
+const about = pagesCollection.find(p => p.id === 'about');
+if (!about) throw new Error('pages/about.mdx not found');
+const { Content } = await render(about);
+---
+
+<Base title="About" description={about.data.description}>
+  <article class="about-article container prose">
+    <Content />
+  </article>
+</Base>
+
+<style>
+  .about-article {
+    max-width: var(--max-width-prose);
+    padding-block: var(--space-16) var(--space-24);
+  }
+  .about-article :global(h2) { font-size: var(--text-4xl); margin-bottom: var(--space-6); }
+  .about-article :global(h3) { font-size: var(--text-2xl); margin-top: var(--space-10); margin-bottom: var(--space-4); }
+  .about-article :global(p) {
+    margin-bottom: var(--space-5);
+    line-height: var(--leading-loose);
+    color: var(--color-ink-muted);
+  }
+  .about-article :global(p:first-of-type) { font-size: var(--text-lg); color: var(--color-ink); }
+</style>
