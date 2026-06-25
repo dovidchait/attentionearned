@@ -1,0 +1,44 @@
+---
+import Base from '../../layouts/Base.astro';
+import WorkCard from '../../components/WorkCard.astro';
+import { getCollection } from 'astro:content';
+
+const allWork = await getCollection('work');
+const sorted = allWork.sort((a, b) => a.data.order - b.data.order);
+---
+
+<Base title="Our Work" description="Corporate, healthcare, nonprofit, and brand video production.">
+  <section class="page-hero container">
+    <h1>Our Work</h1>
+    <p class="page-intro">
+      Every project here started with a conversation about what the audience
+      needed to feel or decide. Here is what came next.
+    </p>
+  </section>
+
+  <section class="container work-grid-section">
+    <div class="work-grid">
+      {sorted.map(entry => (
+        <WorkCard entry={entry} />
+      ))}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero { padding-block: var(--space-16) var(--space-12); }
+  .page-hero h1 { font-size: var(--text-5xl); }
+  .page-intro {
+    max-width: 60ch;
+    color: var(--color-ink-muted);
+    font-size: var(--text-lg);
+    line-height: var(--leading-loose);
+    margin-top: var(--space-4);
+  }
+  .work-grid-section { padding-bottom: var(--space-24); }
+  .work-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-6);
+  }
+</style>

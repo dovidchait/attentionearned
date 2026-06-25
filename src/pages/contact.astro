@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import ContactForm from '../components/ContactForm.astro';
+---
+
+<Base title="Contact" description="Start a video production project with AttentionEarned.">
+  <section class="contact-section container">
+    <header class="contact-header">
+      <h1>Start a project</h1>
+      <p class="contact-intro">
+        Tell us what you are making and who needs to watch it. We will
+        respond within one business day.
+      </p>
+    </header>
+
+    <ContactForm />
+  </section>
+</Base>
+
+<style>
+  .contact-section { padding-block: var(--space-16) var(--space-24); }
+  .contact-header { margin-bottom: var(--space-12); }
+  .contact-header h1 { font-size: var(--text-5xl); }
+  .contact-intro {
+    max-width: 52ch;
+    color: var(--color-ink-muted);
+    font-size: var(--text-lg);
+    line-height: var(--leading-loose);
+    margin-top: var(--space-4);
+  }
+</style>
