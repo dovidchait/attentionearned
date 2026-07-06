@@ -9,18 +9,20 @@ const featuredWork = allWork
   .sort((a, b) => a.data.order - b.data.order);
 ---
 
-<Base title="Video Production for Organizations That Have Something to Say">
+<Base title="Video That Makes People Buy, Know You, or Cry">
   <section class="hero">
     <div class="container">
-      <p class="hero-eyebrow">B2B Video Production</p>
-      <h1 class="hero-headline">Video that earns<br />the attention it gets.</h1>
+      <p class="hero-eyebrow">Video Production</p>
+      <h1 class="hero-headline">We don't make video.<br />We make people buy.</h1>
       <p class="hero-sub">
-        We make corporate, healthcare, and nonprofit video that audiences
-        finish watching.
+        For B2B teams and service brands who want to turn watchers into
+        buyers. For founders who want to build trust, not just awareness.
+        For nonprofits and missions that deserve more than applause &mdash;
+        they deserve action.
       </p>
       <div class="hero-actions">
-        <a href="/work" class="btn btn-primary">See our work</a>
-        <a href="/contact" class="btn btn-ghost">Start a project</a>
+        <a href="/contact" class="btn btn-primary">Let's make them feel something</a>
+        <a href="/work" class="btn btn-ghost">See our work</a>
       </div>
     </div>
   </section>
@@ -51,6 +53,20 @@ const featuredWork = allWork
         wherever you need us most.
       </p>
       <a href="/services" class="btn btn-primary">Explore services</a>
+    </div>
+  </section>
+
+  <section class="bottom-cta">
+    <div class="container">
+      <h2 class="bottom-cta__heading">Ready to make people feel something?</h2>
+      <p class="bottom-cta__sub">
+        Whether you're launching a campaign, building your brand, or raising
+        funds for your mission, we create videos that move people to action.
+      </p>
+      <div class="hero-actions bottom-cta__actions">
+        <a href="/contact" class="btn btn-primary">Start your project</a>
+        <a href="/work" class="btn btn-outline-dark">See all work</a>
+      </div>
     </div>
   </section>
 </Base>
@@ -141,4 +157,30 @@ const featuredWork = allWork
     margin-bottom: var(--space-8);
     line-height: var(--leading-loose);
   }
+  .bottom-cta {
+    background: var(--color-dark);
+    color: var(--color-white);
+    padding-block: var(--space-20);
+    text-align: center;
+  }
+  .bottom-cta__heading {
+    font-size: var(--text-4xl);
+    color: var(--color-white);
+    margin-bottom: var(--space-5);
+  }
+  .bottom-cta__sub {
+    font-size: var(--text-lg);
+    color: var(--color-surface-alt);
+    max-width: 56ch;
+    margin-inline: auto;
+    line-height: var(--leading-loose);
+    margin-bottom: var(--space-8);
+  }
+  .bottom-cta__actions { justify-content: center; }
+  .btn-outline-dark {
+    background: transparent;
+    color: var(--color-white);
+    border: 1px solid rgb(255 255 255 / 0.3);
+  }
+  .btn-outline-dark:hover { background: rgb(255 255 255 / 0.08); }
 </style>

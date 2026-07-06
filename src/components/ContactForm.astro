@@ -39,16 +39,56 @@ const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xrbnvoqj';
     </div>
   </div>
 
-  <div class="form-group">
-    <label for="company" class="form-label">Company</label>
-    <input
-      type="text"
-      id="company"
-      name="company"
-      class="form-input"
-      autocomplete="organization"
-      placeholder="Acme Corp"
-    />
+  <div class="form-row">
+    <div class="form-group">
+      <label for="company" class="form-label">Company / organization</label>
+      <input
+        type="text"
+        id="company"
+        name="company"
+        class="form-input"
+        autocomplete="organization"
+        placeholder="Acme Corp"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="phone" class="form-label">Phone</label>
+      <input
+        type="tel"
+        id="phone"
+        name="phone"
+        class="form-input"
+        autocomplete="tel"
+        placeholder="Optional"
+      />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="projectType" class="form-label">What kind of video do you need?</label>
+      <select id="projectType" name="projectType" class="form-input" required>
+        <option value="">Select project type&hellip;</option>
+        <option value="fundraising">Fundraising / campaign video</option>
+        <option value="testimonial">Testimonial / case study</option>
+        <option value="promotional">Promotional / brand video</option>
+        <option value="event">Event coverage</option>
+        <option value="documentary">Documentary / story</option>
+        <option value="social">Social media content</option>
+        <option value="other">Something else</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="timeline" class="form-label">Timeline</label>
+      <select id="timeline" name="timeline" class="form-input">
+        <option value="">How soon do you need this?</option>
+        <option value="urgent">ASAP (1&ndash;2 weeks)</option>
+        <option value="soon">Within a month</option>
+        <option value="flexible">Flexible / planning ahead</option>
+      </select>
+    </div>
   </div>
 
   <div class="form-group">

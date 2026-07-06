@@ -27,4 +27,18 @@ const { Content } = await render(about);
     color: var(--color-ink-muted);
   }
   .about-article :global(p:first-of-type) { font-size: var(--text-lg); color: var(--color-ink); }
+  .about-article :global(blockquote) {
+    border-left: 3px solid var(--color-accent);
+    padding-left: var(--space-6);
+    margin-block: var(--space-8);
+    font-size: var(--text-xl);
+    font-style: italic;
+    color: var(--color-ink);
+  }
+  .about-article :global(h4) {
+    font-size: var(--text-lg);
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-2);
+  }
+  .about-article :global(a) { text-decoration: underline; text-underline-offset: 2px; }
 </style>

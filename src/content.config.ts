@@ -6,13 +6,24 @@ const work = defineCollection({
   schema: z.object({
     title: z.string(),
     client: z.string().optional(),
-    sector: z.enum(['corporate', 'healthcare', 'nonprofit', 'film', 'brand']),
+    sector: z.enum([
+      'corporate',
+      'healthcare',
+      'nonprofit',
+      'film',
+      'music-video',
+      'commercial',
+      'fashion',
+      'behind-the-scenes',
+    ]),
     summary: z.string(),
     video: z.object({
       provider: z.enum(['swarmify', 'youtube', 'vimeo']),
       src: z.string(),
       poster: z.string().optional(),
     }).optional(),
+    credits: z.array(z.string()).optional(),
+    date: z.coerce.date().optional(),
     featured: z.boolean().default(false),
     order: z.number().default(0),
   }),
@@ -33,6 +44,7 @@ const pages = defineCollection({
   schema: z.object({
     title: z.string(),
     description: z.string().optional(),
+    unlisted: z.boolean().default(false),
   }),
 });
 

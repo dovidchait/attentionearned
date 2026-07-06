@@ -7,12 +7,14 @@ interface Props {
   title: string;
   description?: string;
   ogImage?: string;
+  noindex?: boolean;
 }
 
 const {
   title,
   description = 'AttentionEarned. Video production for organizations that have something to say.',
   ogImage,
+  noindex = false,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -28,6 +30,7 @@ const fullTitle = `${title} | AttentionEarned`;
   <link rel="canonical" href={canonicalURL} />
   <title>{fullTitle}</title>
   <meta name="description" content={description} />
+  {noindex && <meta name="robots" content="noindex, nofollow" />}
 
   <meta property="og:type" content="website" />
   <meta property="og:url" content={canonicalURL} />

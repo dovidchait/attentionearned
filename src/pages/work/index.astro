@@ -4,7 +4,7 @@ import WorkCard from '../../components/WorkCard.astro';
 import { getCollection } from 'astro:content';
 
 const allWork = await getCollection('work');
-const sorted = allWork.sort((a, b) => a.data.order - b.data.order);
+const sorted = allWork.sort((a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0));
 ---
 
 <Base title="Our Work" description="Corporate, healthcare, nonprofit, and brand video production.">
