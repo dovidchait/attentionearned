@@ -14,14 +14,17 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
-const { title, client, sector, summary, video } = entry.data;
+const { title, client, sector, summary, video, credits } = entry.data;
 
 const sectorLabels: Record<string, string> = {
-  corporate:  'Corporate',
-  healthcare: 'Healthcare',
-  nonprofit:  'Nonprofit',
-  film:       'Film',
-  brand:      'Brand',
+  corporate:          'Corporate',
+  healthcare:         'Healthcare',
+  nonprofit:          'Nonprofit',
+  film:               'Film',
+  'music-video':      'Music Video',
+  commercial:         'Commercial',
+  fashion:            'Fashion',
+  'behind-the-scenes': 'Behind the Scenes',
 };
 ---
 
@@ -48,6 +51,15 @@ const sectorLabels: Record<string, string> = {
     <div class="work-article__body prose">
       <Content />
     </div>
+
+    {credits && credits.length > 0 && (
+      <div class="work-article__credits">
+        <h2>Credits</h2>
+        <ul>
+          {credits.map(c => <li>{c}</li>)}
+        </ul>
+      </div>
+    )}
   </article>
 </Base>
 
@@ -91,4 +103,17 @@ const sectorLabels: Record<string, string> = {
   .prose :global(ul), .prose :global(ol) { padding-left: var(--space-6); margin-bottom: var(--space-4); }
   .prose :global(li) { margin-bottom: var(--space-2); }
   .prose :global(strong) { font-weight: var(--weight-semibold); }
+  .work-article__credits {
+    margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+    max-width: var(--max-width-prose);
+  }
+  .work-article__credits h2 { font-size: var(--text-lg); margin-bottom: var(--space-3); }
+  .work-article__credits ul { list-style: none; }
+  .work-article__credits li {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    padding-block: var(--space-1);
+  }
 </style>

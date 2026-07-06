@@ -1,0 +1,61 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+import type { GetStaticPaths } from 'astro';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const entries = await getCollection('pages');
+  return entries
+    .filter(entry => entry.id !== 'about')
+    .map(entry => ({
+      params: { slug: entry.id },
+      props: { entry },
+    }));
+};
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const { title, description, unlisted } = entry.data;
+---
+
+<Base title={title} description={description} noindex={unlisted}>
+  <article class="page-article container prose">
+    <h1>{title}</h1>
+    <Content />
+  </article>
+</Base>
+
+<style>
+  .page-article {
+    max-width: var(--max-width-prose);
+    padding-block: var(--space-16) var(--space-24);
+  }
+  .page-article h1 { font-size: var(--text-4xl); margin-bottom: var(--space-8); }
+  .page-article :global(h2) { font-size: var(--text-3xl); margin-top: var(--space-10); margin-bottom: var(--space-5); }
+  .page-article :global(h3) { font-size: var(--text-xl); margin-top: var(--space-8); margin-bottom: var(--space-3); }
+  .page-article :global(h4), .page-article :global(h5) {
+    font-size: var(--text-lg);
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-2);
+  }
+  .page-article :global(p) { margin-bottom: var(--space-4); line-height: var(--leading-loose); color: var(--color-ink-muted); }
+  .page-article :global(strong) { font-weight: var(--weight-semibold); color: var(--color-ink); }
+  .page-article :global(a) { text-decoration: underline; text-underline-offset: 2px; }
+  .page-article :global(.embed-video) {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--color-dark);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-block: var(--space-6);
+  }
+  .page-article :global(.embed-video iframe),
+  .page-article :global(.embed-video video) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+</style>
