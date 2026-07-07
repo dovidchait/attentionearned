@@ -1,0 +1,102 @@
+name: Pay Employee
+
+# Manually triggered from the Actions tab (Run workflow) since payments are
+# irregular -- there's no fixed schedule to cron. Secrets are read from
+# repository secrets, never committed. See payroll/README.md for setup.
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "Period start date (YYYY-MM-DD)"
+        required: true
+      end:
+        description: "Period end date (YYYY-MM-DD)"
+        required: true
+      mode:
+        description: "preview = compute only, skip-wise = log to ledger only, pay-now = log + prep Wise transfer"
+        required: true
+        type: choice
+        default: preview
+        options:
+          - preview
+          - skip-wise
+          - pay-now
+      rate:
+        description: "Override hourly rate for this run (blank = use HOURLY_RATE secret)"
+        required: false
+      amount_paid:
+        description: "Override amount actually paid (blank = pay the full amount due)"
+        required: false
+
+# Real transfers are never funded by this workflow -- pay-now only creates a
+# Wise quote + transfer that still needs manual login to confirm/fund.
+permissions:
+  contents: write
+
+concurrency:
+  group: pay-employee-ledger
+  cancel-in-progress: false
+
+jobs:
+  pay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: payroll
+        run: pip install -r requirements.txt
+
+      - name: Run pay_employee.py
+        working-directory: payroll
+        env:
+          JIBBLE_CLIENT_ID: ${{ secrets.JIBBLE_CLIENT_ID }}
+          JIBBLE_CLIENT_SECRET: ${{ secrets.JIBBLE_CLIENT_SECRET }}
+          JIBBLE_PERSON_ID: ${{ secrets.JIBBLE_PERSON_ID }}
+          WISE_API_TOKEN: ${{ secrets.WISE_API_TOKEN }}
+          WISE_PROFILE_ID: ${{ secrets.WISE_PROFILE_ID }}
+          WISE_RECIPIENT_ID: ${{ secrets.WISE_RECIPIENT_ID }}
+          WISE_ENV: ${{ secrets.WISE_ENV }}
+          HOURLY_RATE: ${{ secrets.HOURLY_RATE }}
+          RATE_CURRENCY: ${{ secrets.RATE_CURRENCY }}
+          PAYOUT_CURRENCY: ${{ secrets.PAYOUT_CURRENCY }}
+          LEDGER_PATH: ledger.csv
+          MODE: ${{ inputs.mode }}
+          RATE_OVERRIDE: ${{ inputs.rate }}
+          AMOUNT_PAID_OVERRIDE: ${{ inputs.amount_paid }}
+        run: |
+          set -e
+          args=(--start "${{ inputs.start }}" --end "${{ inputs.end }}")
+          if [ -n "$RATE_OVERRIDE" ]; then
+            args+=(--rate "$RATE_OVERRIDE")
+          fi
+          if [ -n "$AMOUNT_PAID_OVERRIDE" ]; then
+            args+=(--amount-paid "$AMOUNT_PAID_OVERRIDE")
+          fi
+          case "$MODE" in
+            pay-now) args+=(--pay-now) ;;
+            skip-wise) args+=(--skip-wise) ;;
+            preview) ;;
+          esac
+          python pay_employee.py "${args[@]}"
+
+      - name: Commit updated ledger
+        if: inputs.mode != 'preview'
+        working-directory: payroll
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ledger.csv
+          if git diff --cached --quiet; then
+            echo "No ledger changes to commit."
+          else
+            git commit -m "payroll: ${{ inputs.start }} to ${{ inputs.end }} (${{ inputs.mode }})"
+            git push
+          fi
