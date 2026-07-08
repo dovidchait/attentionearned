@@ -64,7 +64,48 @@ range. If the numbers don't match, the raw output will show the actual
 field names -- adjust `CANDIDATE_LIST_KEYS` / `CANDIDATE_DURATION_KEYS` /
 `extract_hours()` in `pay_employee.py` accordingly.
 
-## Usage
+## Running via GitHub Actions (no local setup)
+
+Instead of running this on your own machine, you can trigger it from the
+GitHub UI (including from your phone) via the **Pay Employee** workflow
+(`.github/workflows/pay-employee.yml`).
+
+**One-time setup:**
+
+1. In the repo, go to **Settings > Secrets and variables > Actions** and add
+   these repository secrets (same values as `.env.example`, never committed
+   as a file): `JIBBLE_CLIENT_ID`, `JIBBLE_CLIENT_SECRET`, `JIBBLE_PERSON_ID`,
+   `WISE_API_TOKEN`, `WISE_PROFILE_ID`, `WISE_RECIPIENT_ID`, `HOURLY_RATE`.
+   Optional: `WISE_ENV`, `RATE_CURRENCY`, `PAYOUT_CURRENCY` (default to
+   `production`, `USD`, `PHP` if omitted).
+2. Merge this branch so the workflow file lives on the default branch --
+   `workflow_dispatch` workflows only show up in the Actions tab once
+   they're on it.
+
+**To run a payment:** go to the **Actions** tab > **Pay Employee** > **Run
+workflow**, fill in `start`, `end`, pick a `mode`, and run:
+
+- `preview` -- computes and logs the numbers in the run output, writes nothing.
+- `skip-wise` -- computes and **commits the ledger row**, no Wise call.
+- `pay-now` -- commits the ledger row **and** preps a Wise quote + transfer
+  (still not funded -- log in to Wise afterward as usual).
+
+The workflow commits the updated `payroll/ledger.csv` straight back to the
+branch it ran on after a `skip-wise`/`pay-now` run, so the running balance
+persists across runs without needing a separate database. That means the
+ledger (dates, hours, dollar amounts, running balance -- no bank details)
+lives in your repo's git history; keep this repo private if you don't want
+that visible to anyone with read access.
+
+`--dry-run` and `--jibble-raw` aren't wired into the workflow (they're local
+debugging aids) -- use them from a local checkout when you need them.
+
+If branch protection on that branch requires PRs/reviews, the workflow's
+push-back step will fail (the default `GITHUB_TOKEN` can't bypass required
+reviews) -- either exempt `github-actions[bot]` or run this against an
+unprotected branch.
+
+## Usage (running locally)
 
 Preview only (hits Jibble, computes the numbers, writes nothing):
 
@@ -135,9 +176,10 @@ the previous row's `new_balance` as this run's `prior_balance`, so the
 running total always carries forward correctly regardless of how irregular
 the pay periods are.
 
-The ledger CSV is gitignored by default (`payroll/*.csv`) since it's
-financial data about a real person -- if you want it version-controlled,
-remove that line from the repo's `.gitignore`.
+The ledger CSV (`payroll/ledger.csv`) is tracked in git by default so the
+GitHub Actions workflow can commit balance updates -- see "Running via
+GitHub Actions" above. If you only ever run this locally and don't want the
+ledger in git history, add `payroll/*.csv` back to the repo's `.gitignore`.
 
 ## Error handling
 
