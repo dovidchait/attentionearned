@@ -1,0 +1,48 @@
+name: Auto-post new content to Late.dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/content/work/**/*.mdx'
+      - 'src/content/services/**/*.mdx'
+      - 'src/content/pages/**/*.mdx'
+
+jobs:
+  post-to-social:
+    name: Post new content to social media
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # need parent commit to diff against
+
+      - name: Detect newly added content files
+        id: new-files
+        run: |
+          # Find MDX files added (A) in this push — not modified, not deleted
+          ADDED=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- \
+            'src/content/work/*.mdx' \
+            'src/content/services/*.mdx' \
+            'src/content/pages/*.mdx' \
+            2>/dev/null || true)
+
+          echo "Added files:"
+          echo "$ADDED"
+
+          # Collapse to a single space-separated line for the next step
+          FILES=$(echo "$ADDED" | tr '\n' ' ' | xargs)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Post to Late.dev
+        if: steps.new-files.outputs.files != ''
+        env:
+          LATE_DEV_API_KEY: ${{ secrets.LATE_DEV_API_KEY }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://attentionearned.com' }}
+          # Optional: pin specific profile IDs instead of fetching all
+          # LATE_DEV_PROFILE_IDS: ${{ vars.LATE_DEV_PROFILE_IDS }}
+        run: |
+          node scripts/post-to-late.mjs ${{ steps.new-files.outputs.files }}
