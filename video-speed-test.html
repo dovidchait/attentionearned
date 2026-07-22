@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Speed Test — Swarmify vs Direct Embed</title>
+<style>
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --bg:        #0D0F14;
+  --bg2:       #161A24;
+  --bg3:       #1E2436;
+  --border:    #242A38;
+  --text:      #E8EAF0;
+  --muted:     #6B7A99;
+  --dim:       #3D4861;
+  --accent:    #4EE8A0;
+  --accent-bg: rgba(78,232,160,.10);
+  --warn:      #F5A623;
+  --warn-bg:   rgba(245,166,35,.10);
+  --err:       #EF4444;
+  --err-bg:    rgba(239,68,68,.10);
+  --bar-sw:    #7C8FD8;
+  --bar-dr:    #4EE8A0;
+  --radius:    6px;
+  --mono:      'Menlo','Monaco','Cascadia Code','Courier New',monospace;
+  --sans:      -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: light) { :root {
+  --bg:        #EEF0F6;
+  --bg2:       #FFFFFF;
+  --bg3:       #E4E7F2;
+  --border:    #CDD1E0;
+  --text:      #111827;
+  --muted:     #5B6780;
+  --dim:       #B0B8CC;
+  --accent:    #0B8A57;
+  --accent-bg: rgba(11,138,87,.08);
+  --warn:      #C2610A;
+  --warn-bg:   rgba(194,97,10,.08);
+  --err:       #C41A1A;
+  --err-bg:    rgba(196,26,26,.08);
+  --bar-sw:    #4B5DB0;
+  --bar-dr:    #0B8A57;
+}}
+:root[data-theme="dark"]  { --bg:#0D0F14;--bg2:#161A24;--bg3:#1E2436;--border:#242A38;--text:#E8EAF0;--muted:#6B7A99;--dim:#3D4861;--accent:#4EE8A0;--accent-bg:rgba(78,232,160,.10);--warn:#F5A623;--warn-bg:rgba(245,166,35,.10);--err:#EF4444;--err-bg:rgba(239,68,68,.10);--bar-sw:#7C8FD8;--bar-dr:#4EE8A0; }
+:root[data-theme="light"] { --bg:#EEF0F6;--bg2:#FFFFFF;--bg3:#E4E7F2;--border:#CDD1E0;--text:#111827;--muted:#5B6780;--dim:#B0B8CC;--accent:#0B8A57;--accent-bg:rgba(11,138,87,.08);--warn:#C2610A;--warn-bg:rgba(194,97,10,.08);--err:#C41A1A;--err-bg:rgba(196,26,26,.08);--bar-sw:#4B5DB0;--bar-dr:#0B8A57; }
+
+/* ── Reset & base ──────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { color-scheme: dark light; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; font-family: inherit; font-size: inherit; }
+select, input { font-family: var(--sans); font-size: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, ::before, ::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+/* ── Layout shell ──────────────────────────────────────────────── */
+.wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+
+/* ── Header ────────────────────────────────────────────────────── */
+.header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.header-left h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+.eyebrow {
+  font-size: .7rem;
+  font-family: var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: .35rem;
+}
+.header-left p { color: var(--muted); font-size: .85rem; margin-top: .2rem; }
+
+/* Theme toggle */
+.theme-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  padding: .4rem .75rem;
+  font-size: .75rem;
+  font-family: var(--mono);
+  transition: color .15s, border-color .15s;
+}
+.theme-btn:hover { color: var(--text); border-color: var(--muted); }
+
+/* ── Controls card ─────────────────────────────────────────────── */
+.controls {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.controls-row { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: .35rem; flex: 1; min-width: 180px; }
+.label {
+  font-size: .7rem;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+}
+select, input[type="url"] {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: .5rem .75rem;
+  width: 100%;
+  transition: border-color .15s;
+}
+select:focus, input[type="url"]:focus { border-color: var(--accent); outline: none; }
+.runs-field { flex: 0 0 100px; min-width: unset; }
+
+.run-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #0D0F14;
+  font-weight: 600;
+  font-size: .9rem;
+  padding: .55rem 1.5rem;
+  white-space: nowrap;
+  transition: opacity .15s, transform .1s;
+  flex-shrink: 0;
+}
+.run-btn:hover { opacity: .9; }
+.run-btn:active { transform: scale(.97); }
+.run-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.url-preview {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: .4rem .6rem;
+  background: var(--bg3);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.url-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .68rem;
+  font-family: var(--mono);
+  padding: .2rem .5rem;
+  border-radius: 3px;
+  margin-left: .5rem;
+}
+.url-flag.warn { background: var(--warn-bg); color: var(--warn); }
+.url-flag.err  { background: var(--err-bg);  color: var(--err);  }
+.url-flag.ok   { background: var(--accent-bg); color: var(--accent); }
+
+/* ── Status bar ────────────────────────────────────────────────── */
+.status-bar {
+  font-family: var(--mono);
+  font-size: .75rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 1.4rem;
+}
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.dot.running { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
+.dot.done    { background: var(--accent); animation: none; }
+.dot.err     { background: var(--err); animation: none; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+
+/* ── Results section ────────────────────────────────────────────── */
+.results {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+}
+.results.visible { display: flex; }
+
+.section-heading {
+  font-size: .7rem;
+  font-family: var(--mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Summary pills */
+.summary-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+.summary-pill {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  flex: 1;
+  min-width: 140px;
+}
+.pill-label { font-size: .68rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .3rem; }
+.pill-value { font-size: 1.5rem; font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.pill-value.sw   { color: var(--bar-sw); }
+.pill-value.dr   { color: var(--bar-dr); }
+.pill-value.diff { color: var(--text); }
+.pill-sub { font-size: .68rem; color: var(--muted); font-family: var(--mono); margin-top: .15rem; }
+.pill-sub.faster { color: var(--accent); }
+.pill-sub.slower { color: var(--warn); }
+
+/* Results table with bar chart */
+.results-table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+}
+thead th {
+  font-family: var(--mono);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  padding: .5rem .75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:last-child { border-bottom: none; }
+tbody td { padding: .6rem .75rem; vertical-align: middle; }
+.milestone-name { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+.time-val { font-family: var(--mono); font-weight: 600; font-size: .88rem; }
+.time-val.sw-val { color: var(--bar-sw); }
+.time-val.dr-val { color: var(--bar-dr); }
+.delta-val { font-family: var(--mono); font-size: .82rem; }
+.delta-val.pos { color: var(--warn); }
+.delta-val.neg { color: var(--accent); }
+.bar-cell { width: 160px; }
+.bar-wrap { display: flex; flex-direction: column; gap: 3px; }
+.bar-row { display: flex; align-items: center; gap: 5px; }
+.bar-track { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; width: 0%; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.bar-fill.sw-fill { background: var(--bar-sw); }
+.bar-fill.dr-fill { background: var(--bar-dr); }
+.bar-legend { font-family: var(--mono); font-size: .6rem; color: var(--dim); flex-shrink: 0; width: 14px; }
+
+/* SDK overhead row */
+.sdk-row td { background: var(--bg3); }
+
+/* ── Player grid ───────────────────────────────────────────────── */
+.player-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 640px) { .player-grid { grid-template-columns: 1fr; } }
+
+.player-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.player-label {
+  font-size: .72rem;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 600;
+}
+.player-label.sw { color: var(--bar-sw); }
+.player-label.dr { color: var(--bar-dr); }
+.player-badge {
+  font-size: .65rem;
+  font-family: var(--mono);
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: .15rem .4rem;
+}
+.player-area {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #000;
+}
+.player-area-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.player-area-inner video,
+.player-area-inner smartvideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.player-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  color: var(--dim);
+  font-size: .75rem;
+  font-family: var(--mono);
+  text-align: center;
+}
+.player-placeholder svg { opacity: .3; }
+.player-status {
+  padding: .65rem 1rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  min-height: 4rem;
+  border-top: 1px solid var(--border);
+}
+.player-status-row { display: flex; justify-content: space-between; }
+.player-status-key { color: var(--dim); }
+.player-status-val { font-weight: 600; }
+.player-status-val.ok  { color: var(--accent); }
+.player-status-val.err { color: var(--err); }
+.player-status-val.run { color: var(--warn); }
+
+/* ── URL audit ─────────────────────────────────────────────────── */
+details {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+summary {
+  padding: .85rem 1rem;
+  font-size: .78rem;
+  font-family: var(--mono);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--muted);
+  user-select: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary::before {
+  content: '▶';
+  font-size: .6rem;
+  transition: transform .2s;
+}
+details[open] summary::before { transform: rotate(90deg); }
+.audit-table {
+  border-top: 1px solid var(--border);
+  overflow-x: auto;
+}
+.audit-table table { font-size: .75rem; }
+.audit-table thead th { background: var(--bg3); }
+.audit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  padding: .15rem .4rem;
+  border-radius: 3px;
+}
+.badge-ok   { background: var(--accent-bg); color: var(--accent); }
+.badge-warn { background: var(--warn-bg);   color: var(--warn);   }
+.badge-err  { background: var(--err-bg);    color: var(--err);    }
+.audit-url { font-family: var(--mono); font-size: .65rem; color: var(--muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.footer { font-size: .72rem; color: var(--dim); font-family: var(--mono); padding-top: .5rem; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="eyebrow">AttentionEarned · Video Infrastructure</div>
+      <h1>Speed Test: Swarmify vs Direct Embed</h1>
+      <p>Measures time from navigation to playable video for each approach using your actual Dropbox sources.</p>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">◑ theme</button>
+  </header>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="controls-row">
+      <div class="field">
+        <label class="label" for="videoSel">Video</label>
+        <select id="videoSel" onchange="onVideoChange()">
+          <option value="" disabled selected>— select a video —</option>
+          <optgroup label="MP4 (recommended for testing)">
+            <option value="training-videos|https://www.dropbox.com/scl/fi/z30x451ca87sb3lae8ms0/nypd-720p.mp4?rlkey=1t68meyorkjy6vala2l0nptg8&dl=1|mp4|dl1">Training Videos (NYPD 720p)</option>
+            <option value="devorahs-hope|https://www.dropbox.com/s/mpjfa3n66bc6llq/FULL%20CUT%20of%20Devorahs%20Hope%203.0-.mp4?dl=1|mp4|dl1">Devorah's Hope</option>
+            <option value="50-year-documentary|https://www.dropbox.com/s/o0uu34keldv1f8z/Final%20Yovel%20Documentary_Darchei.mp4?dl=1|mp4|dl1">50-Year Darchai Torah Documentary</option>
+            <option value="shulem|https://dl.dropboxusercontent.com/scl/fi/41lm31lp53uibm0irx6zu/Kol-Zman-Shulem-Lemmer-ft.-Hershy-Rottenberg.mp4?rlkey=nqiwz5eoz27l32uotj6ol8a9u&st=9z1g7h42&dl=0|mp4|dl0_warn">Shulem (⚠ dl=0)</option>
+            <option value="elijah-deiz|https://dl.dropboxusercontent.com/scl/fi/32hqqnsnlavsslrdg5egh/Michal-Hartman-2025-11-12-16.43.34.mp4?rlkey=ovkgqzzpe5evmtfeqqsuidnb8|mp4|nodl_warn">Elijah Deiz (⚠ no dl param)</option>
+            <option value="covid-epicenter|https://www.dropbox.com/s/f97pwa89bxigoq2/Ezra_v15%20BLUR%20Patient.mp4?d=1|mp4|d1_err">Covid Epicenter (✕ d=1 typo)</option>
+            <option value="turo-university|https://www.dropbox.com/s/maf40l07ginmxva/Joe%20Weisberg%20April%205th%20v3.mp4?dl=5|mp4|dl5_err">Turo University (✕ dl=5)</option>
+          </optgroup>
+          <optgroup label="MOV (Chromium may reject)">
+            <option value="here-to-eternity|https://dl.dropboxusercontent.com/scl/fi/f1kfv427kfd9f76w80r4s/main-video-6.21.24-with-out-subs.mov?rlkey=8392crpsaw2jevh2t0petoknk&st=pvx81u4s&dl=1|mov|st_warn">Here to Eternity Home Vet (st= token)</option>
+            <option value="chabad-cheder|https://dl.dropboxusercontent.com/scl/fi/7ye355lunjmt4v3yovmqb/cv-4.6-1.27-pm-6.5.25-dc.mov?rlkey=7fzsmdnfxdcul4tb2cgtncmq7&st=c7ef76aw&dl=1|mov|st_warn">Chabad Cheder Campaign (st= token)</option>
+            <option value="rabbi-oelbaum|https://dl.dropboxusercontent.com/scl/fi/41a1c5cmr2m0aa8jbjm4z/Rabbi-Oelbaim-main-video-v3.5-12.7-11.26-am-dc.mov?rlkey=yxlia7e0jp21x9i6ekcrlh76k&st=1opvr5jc&dl=1|mov|st_warn">Rabbi Oelbaum 50-Year Dinner (st= token)</option>
+            <option value="imagine-future|https://www.dropbox.com/s/tw9ss2ncet1asva/7.1%20for%20aproval%201055%20am%20.mov?dl=1|mov|dl1">Imagine the Future</option>
+            <option value="gebor|https://www.dropbox.com/scl/fi/lrk9cr2qxu4oo1eccv9nj/Gibor-final-short-video-v3_v4.mov?rlkey=tvt7gd9ox50sly7ymmvjhjs9o&dl=1|mov|dl1">Gebor</option>
+            <option value="tagqueens|https://www.dropbox.com/scl/fi/bx2h5lolwxdztib6ppab3/Tag-Chardy-v2.3-for-website.mov?rlkey=tevb463i3a96mxnehz114d1im&dl=1|mov|dl1">TagQueens</option>
+            <option value="homecare-miami|https://dl.dropboxusercontent.com/scl/fi/csc4efaqn78aajex6c1ol/Imperial-Advisory-Homecare-State-of-the-Union-v2.2.mov?rlkey=tg4brd0033en3g3fhgjf06qye&dl=1|mov|dl1">Homecare Miami State of the Union</option>
+            <option value="meoros-orlando|https://dl.dropboxusercontent.com/scl/fi/s64kwfqv7706armqhdueh/Meoros-Orlando-how-far-we-come-v5-5-pm-10.27-dc.mov?rlkey=2h4o0nn1ghea5lako05atgecm&dl=1|mov|dl1">Meoros Girls High School Orlando</option>
+            <option value="orlando-kollel|https://www.dl.dropboxusercontent.com/scl/fi/6w1aiym31b18bm0luruxl/v4.8-orlando-Kollel-Causematch-2.10-1050-am-dc-with-subs.mov?rlkey=9bmwip04wcxld47a42cwn0im3&st=4r0brt84&dl=0|mov|dl0_warn">Orlando Kollel (⚠ dl=0 + st= token)</option>
+          </optgroup>
+          <optgroup label="Custom">
+            <option value="custom|custom|mp4|dl1">— paste custom URL below —</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field runs-field">
+        <label class="label" for="runCount">Runs</label>
+        <select id="runCount">
+          <option value="1">1×</option>
+          <option value="2">2× avg</option>
+          <option value="3" selected>3× avg</option>
+        </select>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="startTest()" disabled>Run Test</button>
+    </div>
+
+    <!-- Custom URL input -->
+    <div id="customUrlRow" style="display:none" class="field">
+      <label class="label" for="customUrl">Custom Dropbox URL</label>
+      <input type="url" id="customUrl" placeholder="https://dl.dropboxusercontent.com/…" oninput="onCustomUrl()">
+    </div>
+
+    <!-- URL preview + health flag -->
+    <div id="urlPreviewRow" style="display:none">
+      <div class="url-preview" id="urlPreview"></div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Select a video to begin</span>
+    </div>
+  </div>
+
+  <!-- Results (hidden until first test) -->
+  <div class="results" id="resultsSection">
+    <div class="section-heading">Results</div>
+
+    <!-- Summary pills -->
+    <div class="summary-row" id="summaryRow">
+      <div class="summary-pill">
+        <div class="pill-label">Swarmify · loadedmetadata</div>
+        <div class="pill-value sw" id="sw-lm-val">—</div>
+        <div class="pill-sub" id="sw-lm-sub"></div>
+      </div>
+      <div class="summary-pill">
+        <div class="pill-label">Direct · loadedmetadata</div>
+        <div class="pill-value dr" id="dr-lm-val">—</div>
+        <div class="pill-sub" id="dr-lm-sub"></div>
+      </div>
+      <div class="summary-pill">
+        <div class="pill-label">Difference (loadedmetadata)</div>
+        <div class="pill-value diff" id="diff-lm-val">—</div>
+        <div class="pill-sub" id="diff-lm-sub"></div>
+      </div>
+      <div class="summary-pill">
+        <div class="pill-label">Swarmify SDK Load</div>
+        <div class="pill-value sw" id="sdk-val">—</div>
+        <div class="pill-sub">time blocked before video can start</div>
+      </div>
+    </div>
+
+    <!-- Detailed table -->
+    <div class="results-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Milestone</th>
+            <th style="color:var(--bar-sw)">Swarmify</th>
+            <th style="color:var(--bar-dr)">Direct &lt;video&gt;</th>
+            <th>Δ Delta</th>
+            <th class="bar-cell">Visual</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+          <!-- populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Players -->
+  <div class="player-grid">
+    <!-- Swarmify -->
+    <div class="player-card">
+      <div class="player-header">
+        <span class="player-label sw">Swarmify</span>
+        <span class="player-badge">&lt;smartvideo&gt; + SDK</span>
+      </div>
+      <div class="player-area">
+        <div class="player-area-inner" id="sw-player">
+          <div class="player-placeholder">
+            <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="10,8 17,12 10,16"/></svg>
+            <span>Swarmify player</span>
+            <span>will load here</span>
+          </div>
+        </div>
+      </div>
+      <div class="player-status" id="sw-status">
+        <div class="player-status-row"><span class="player-status-key">sdk</span><span class="player-status-val" id="sw-sdk-time">—</span></div>
+        <div class="player-status-row"><span class="player-status-key">loadedmetadata</span><span class="player-status-val" id="sw-lm-time">—</span></div>
+        <div class="player-status-row"><span class="player-status-key">canplay</span><span class="player-status-val" id="sw-cp-time">—</span></div>
+      </div>
+    </div>
+
+    <!-- Direct -->
+    <div class="player-card">
+      <div class="player-header">
+        <span class="player-label dr">Direct</span>
+        <span class="player-badge">&lt;video src="…"&gt;</span>
+      </div>
+      <div class="player-area">
+        <div class="player-area-inner" id="dr-player">
+          <div class="player-placeholder">
+            <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="10,8 17,12 10,16"/></svg>
+            <span>Direct &lt;video&gt; element</span>
+            <span>will load here</span>
+          </div>
+        </div>
+      </div>
+      <div class="player-status" id="dr-status">
+        <div class="player-status-row"><span class="player-status-key">loadedmetadata</span><span class="player-status-val" id="dr-lm-time">—</span></div>
+        <div class="player-status-row"><span class="player-status-key">canplay</span><span class="player-status-val" id="dr-cp-time">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- URL Audit -->
+  <details>
+    <summary>URL Health Audit — 16 Swarmify videos</summary>
+    <div class="audit-table">
+      <table>
+        <thead>
+          <tr><th>Slug</th><th>Format</th><th>Status</th><th>Issue</th><th>URL (truncated)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>training-videos</td><td>MP4</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>—</td><td><span class="audit-url">dropbox.com/scl/fi/z30x451…nypd-720p.mp4</span></td></tr>
+          <tr><td>devorahs-hope</td><td>MP4</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>—</td><td><span class="audit-url">dropbox.com/s/mpjfa…FULL CUT Devorahs Hope.mp4</span></td></tr>
+          <tr><td>50-year-darchai-torah</td><td>MP4</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>—</td><td><span class="audit-url">dropbox.com/s/o0uu…Final Yovel Documentary.mp4</span></td></tr>
+          <tr><td>shulem</td><td>MP4</td><td><span class="audit-badge badge-warn">⚠ dl=0</span></td><td>dl=0 serves Dropbox preview page, not video file. Change to dl=1.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/41lm31lp…Shulem.mp4</span></td></tr>
+          <tr><td>elijah-deiz</td><td>MP4</td><td><span class="audit-badge badge-warn">⚠ no dl</span></td><td>Missing dl parameter. May serve download page instead of stream.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/32hqqn…Michal-Hartman.mp4</span></td></tr>
+          <tr><td>covid-epicenter-lifesavers</td><td>MP4</td><td><span class="audit-badge badge-err">✕ d=1</span></td><td>Typo: "d=1" instead of "dl=1". Likely returns 404 or preview page.</td><td><span class="audit-url">dropbox.com/s/f97pwa…Ezra_v15 BLUR Patient.mp4</span></td></tr>
+          <tr><td>turo-university-weisberg</td><td>MP4</td><td><span class="audit-badge badge-err">✕ dl=5</span></td><td>Non-standard dl=5. Valid values are dl=0 (preview) and dl=1 (download).</td><td><span class="audit-url">dropbox.com/s/maf40…Joe Weisberg April 5th v3.mp4</span></td></tr>
+          <tr><td>here-to-eternity-home-vet</td><td>MOV</td><td><span class="audit-badge badge-warn">⚠ st= token</span></td><td>Short-lived session token (st=) will expire. Also MOV may not play in all browsers.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/f1kfv427…main-video.mov</span></td></tr>
+          <tr><td>chabad-cheder-building</td><td>MOV</td><td><span class="audit-badge badge-warn">⚠ st= token</span></td><td>Short-lived session token (st=) will expire. Also MOV.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/7ye355…cv-4.6.mov</span></td></tr>
+          <tr><td>rabbi-oelbaum-50yr</td><td>MOV</td><td><span class="audit-badge badge-warn">⚠ st= token</span></td><td>Short-lived session token (st=) will expire. Also MOV.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/41a1c5…Rabbi-Oelbaim.mov</span></td></tr>
+          <tr><td>imagine-the-future</td><td>MOV</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>MOV format — may not play in Firefox or older Safari.</td><td><span class="audit-url">dropbox.com/s/tw9ss…7.1 for aproval.mov</span></td></tr>
+          <tr><td>gebor</td><td>MOV</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>MOV format.</td><td><span class="audit-url">dropbox.com/scl/fi/lrk9cr…Gibor-final.mov</span></td></tr>
+          <tr><td>tagqueens</td><td>MOV</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>MOV format.</td><td><span class="audit-url">dropbox.com/scl/fi/bx2h5…Tag-Chardy.mov</span></td></tr>
+          <tr><td>homecare-miami-sotu</td><td>MOV</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>MOV format.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/csc4ef…Homecare-SOTU.mov</span></td></tr>
+          <tr><td>meoros-girls-orlando</td><td>MOV</td><td><span class="audit-badge badge-ok">✓ dl=1</span></td><td>MOV format.</td><td><span class="audit-url">dl.dropboxusercontent.com/scl/fi/s64kwf…Meoros-Orlando.mov</span></td></tr>
+          <tr><td>orlando-community-kollel</td><td>MOV</td><td><span class="audit-badge badge-err">✕ dl=0 + st=</span></td><td>dl=0 serves preview page AND expired st= session token AND unusual www.dl. subdomain.</td><td><span class="audit-url">www.dl.dropboxusercontent.com/scl/fi/6w1aiy…orlando-Kollel.mov</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <div class="footer">
+    Open this file in your browser. Run each test multiple times for reliable averages. Swarmify SDK loads once per session (cached after first test).
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────
+const SWARMIFY_KEY = '6d594846-2bde-402b-887e-b830a14569f1';
+const POLL_INTERVAL = 50;
+const TEST_TIMEOUT  = 30_000;
+
+let currentUrl  = '';
+let sdkInjected = false;
+let sdkReady    = false;
+let testing     = false;
+
+// Accumulated results across runs for averaging
+let swResults = [];
+let drResults = [];
+
+// ── Theme ──────────────────────────────────────────────────────────
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = (cur === 'dark') ? 'light' : (cur === 'light') ? null : 'dark';
+  if (next) document.documentElement.setAttribute('data-theme', next);
+  else document.documentElement.removeAttribute('data-theme');
+}
+
+// ── Video selector ─────────────────────────────────────────────────
+function onVideoChange() {
+  const sel = document.getElementById('videoSel');
+  const val = sel.value;
+  const isCustom = val.startsWith('custom|');
+  document.getElementById('customUrlRow').style.display = isCustom ? '' : 'none';
+
+  if (!isCustom && val) {
+    const [, url] = val.split('|');
+    setCurrentUrl(url, val);
+  } else if (!isCustom) {
+    currentUrl = '';
+    document.getElementById('runBtn').disabled = true;
+  }
+}
+
+function onCustomUrl() {
+  const u = document.getElementById('customUrl').value.trim();
+  if (u) setCurrentUrl(u, 'custom|' + u + '|mp4|dl1');
+  else {
+    currentUrl = '';
+    document.getElementById('runBtn').disabled = true;
+  }
+}
+
+function setCurrentUrl(url, meta) {
+  currentUrl = url;
+  const parts = meta.split('|');
+  const flags = parts[3] || '';
+
+  const preview = document.getElementById('urlPreview');
+  preview.textContent = url;
+  document.getElementById('urlPreviewRow').style.display = '';
+
+  let statusMsg = 'Ready to test';
+  let dotCls    = '';
+  if (flags.includes('dl0_warn'))  statusMsg = '⚠ dl=0: Dropbox preview URL — change to dl=1 for correct results';
+  if (flags.includes('nodl_warn')) statusMsg = '⚠ No dl param: may serve download page instead of stream';
+  if (flags.includes('d1_err'))    statusMsg = '✕ Typo "d=1" instead of "dl=1" — video will likely fail';
+  if (flags.includes('dl5_err'))   statusMsg = '✕ Invalid dl=5 — video will likely fail';
+  if (flags.includes('st_warn'))   statusMsg = '⚠ Short-lived st= token may be expired — refresh the Dropbox share link if it fails';
+  if (url.includes('.mov'))        statusMsg += (statusMsg === 'Ready to test' ? '' : ' · ') + 'MOV: may fail in Firefox';
+
+  setStatus(statusMsg, dotCls);
+  document.getElementById('runBtn').disabled = testing;
+}
+
+// ── Status helpers ─────────────────────────────────────────────────
+function setStatus(msg, cls = '') {
+  document.getElementById('statusText').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot' + (cls ? ' ' + cls : '');
+}
+
+function setPlayerStatus(side, key, val, cls = '') {
+  const el = document.getElementById(side + '-' + key + '-time');
+  if (el) { el.textContent = val; el.className = 'player-status-val' + (cls ? ' ' + cls : ''); }
+}
+
+// ── SDK injection ──────────────────────────────────────────────────
+function ensureSdk() {
+  return new Promise((resolve, reject) => {
+    if (sdkReady) { resolve(0); return; }
+    if (sdkInjected) {
+      // Wait for already-in-progress injection
+      const wait = setInterval(() => {
+        if (sdkReady) { clearInterval(wait); resolve(0); }
+      }, 100);
+      setTimeout(() => { clearInterval(wait); reject(new Error('SDK load timeout')); }, TEST_TIMEOUT);
+      return;
+    }
+    sdkInjected = true;
+    const t = performance.now();
+    const s = document.createElement('script');
+    s.src = `https://assets.swarmify.com/swarmify.js?key=${SWARMIFY_KEY}`;
+    s.async = true;
+    s.onload  = () => { sdkReady = true; resolve(Math.round(performance.now() - t)); };
+    s.onerror = () => reject(new Error('SDK failed to load — check network access to assets.swarmify.com'));
+    document.head.appendChild(s);
+  });
+}
+
+// ── Swarmify test ──────────────────────────────────────────────────
+async function testSwarmify(videoUrl, t0) {
+  const m = { sdk_loaded: null, player_found: null, loadedmetadata: null, canplay: null, error: null };
+
+  // 1. Load SDK (measured from shared t0)
+  let sdkLoadTime;
+  const sdkT = performance.now();
+  try {
+    const sdkDur = await ensureSdk();
+    sdkLoadTime = Math.round(performance.now() - t0);
+    m.sdk_loaded = sdkLoadTime;
+  } catch (e) {
+    m.error = e.message;
+    return m;
+  }
+
+  // 2. Create player
+  const container = document.getElementById('sw-player');
+  container.innerHTML = '';
+  const sv = document.createElement('smartvideo');
+  sv.setAttribute('src', videoUrl);
+  sv.setAttribute('fluid', '');
+  sv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+  container.appendChild(sv);
+
+  // 3. Poll for the <video> Swarmify creates
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => { settled = true; resolve(m); };
+
+    const poller = setInterval(() => {
+      if (settled) { clearInterval(poller); return; }
+      const vid = container.querySelector('video');
+      if (vid && !vid._sw_bound) {
+        vid._sw_bound = true;
+        clearInterval(poller);
+        m.player_found = Math.round(performance.now() - t0);
+        setPlayerStatus('sw', 'sdk', fmt(m.sdk_loaded), 'ok');
+
+        vid.addEventListener('loadedmetadata', () => {
+          m.loadedmetadata = Math.round(performance.now() - t0);
+          setPlayerStatus('sw', 'lm', fmt(m.loadedmetadata), 'ok');
+          updateResults();
+          if (m.canplay !== null) done();
+        }, { once: true });
+
+        vid.addEventListener('canplay', () => {
+          m.canplay = Math.round(performance.now() - t0);
+          setPlayerStatus('sw', 'cp', fmt(m.canplay), 'ok');
+          updateResults();
+          if (m.loadedmetadata !== null) done();
+        }, { once: true });
+
+        vid.addEventListener('error', () => {
+          m.error = vid.error ? vid.error.message : 'Media error';
+          setPlayerStatus('sw', 'lm', 'error', 'err');
+          done();
+        }, { once: true });
+      }
+    }, POLL_INTERVAL);
+
+    setTimeout(() => {
+      if (!settled) {
+        clearInterval(poller);
+        if (!m.loadedmetadata) setPlayerStatus('sw', 'lm', 'timeout', 'err');
+        done();
+      }
+    }, TEST_TIMEOUT);
+  });
+}
+
+// ── Direct test ────────────────────────────────────────────────────
+function testDirect(videoUrl, t0) {
+  const m = { loadedmetadata: null, canplay: null, error: null };
+
+  const container = document.getElementById('dr-player');
+  container.innerHTML = '';
+  const vid = document.createElement('video');
+  vid.src = videoUrl;
+  vid.controls = true;
+  vid.preload = 'metadata';
+  vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;';
+  container.appendChild(vid);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => { if (!settled) { settled = true; resolve(m); } };
+
+    vid.addEventListener('loadedmetadata', () => {
+      m.loadedmetadata = Math.round(performance.now() - t0);
+      setPlayerStatus('dr', 'lm', fmt(m.loadedmetadata), 'ok');
+      updateResults();
+      if (m.canplay !== null) done();
+    }, { once: true });
+
+    vid.addEventListener('canplay', () => {
+      m.canplay = Math.round(performance.now() - t0);
+      setPlayerStatus('dr', 'cp', fmt(m.canplay), 'ok');
+      updateResults();
+      if (m.loadedmetadata !== null) done();
+    }, { once: true });
+
+    vid.addEventListener('error', () => {
+      m.error = vid.error ? vid.error.message : 'Media error';
+      setPlayerStatus('dr', 'lm', 'error', 'err');
+      done();
+    }, { once: true });
+
+    setTimeout(() => {
+      if (!settled) {
+        if (!m.loadedmetadata) setPlayerStatus('dr', 'lm', 'timeout', 'err');
+        done();
+      }
+    }, TEST_TIMEOUT);
+  });
+}
+
+// ── Main test runner ───────────────────────────────────────────────
+async function startTest() {
+  if (!currentUrl || testing) return;
+  testing = true;
+
+  const runs = parseInt(document.getElementById('runCount').value, 10);
+  swResults = [];
+  drResults = [];
+
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('resultsSection').classList.add('visible');
+  resetPlayerStatus();
+
+  for (let i = 0; i < runs; i++) {
+    setStatus(`Run ${i + 1} of ${runs} — loading both players…`, 'running');
+
+    // Reset player areas for fresh run
+    if (i > 0) {
+      document.getElementById('sw-player').innerHTML = '';
+      document.getElementById('dr-player').innerHTML = '';
+      resetPlayerStatus();
+    }
+
+    const t0 = performance.now();
+    const [sw, dr] = await Promise.all([
+      testSwarmify(currentUrl, t0),
+      testDirect(currentUrl, t0),
+    ]);
+
+    swResults.push(sw);
+    drResults.push(dr);
+
+    updateResults();
+
+    // Brief pause between runs
+    if (i < runs - 1) await sleep(1500);
+  }
+
+  const totalRuns = swResults.length;
+  setStatus(
+    `${totalRuns} run${totalRuns > 1 ? 's' : ''} complete${totalRuns > 1 ? ' — showing averages' : ''}`,
+    'done'
+  );
+  testing = false;
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('runBtn').textContent = 'Run Again';
+}
+
+function resetPlayerStatus() {
+  ['sw-sdk-time','sw-lm-time','sw-cp-time','dr-lm-time','dr-cp-time'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '…'; el.className = 'player-status-val run'; }
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Results rendering ──────────────────────────────────────────────
+function avg(results, key) {
+  const vals = results.map(r => r[key]).filter(v => typeof v === 'number');
+  if (!vals.length) return null;
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+function fmt(ms) {
+  if (ms === null || ms === undefined) return '—';
+  return ms + 'ms';
+}
+
+function updateResults() {
+  const swLm = avg(swResults, 'loadedmetadata');
+  const drLm = avg(drResults, 'loadedmetadata');
+  const swCp = avg(swResults, 'canplay');
+  const drCp = avg(drResults, 'canplay');
+  const swSdk = avg(swResults, 'sdk_loaded');
+  const swPf = avg(swResults, 'player_found');
+
+  // Summary pills
+  document.getElementById('sw-lm-val').textContent = fmt(swLm);
+  document.getElementById('dr-lm-val').textContent = fmt(drLm);
+  document.getElementById('sdk-val').textContent   = fmt(swSdk);
+
+  if (swLm !== null && drLm !== null) {
+    const d = swLm - drLm;
+    document.getElementById('diff-lm-val').textContent = (d > 0 ? '+' : '') + d + 'ms';
+    const sub = d > 0
+      ? `Swarmify is ${d}ms slower`
+      : d < 0
+        ? `Swarmify is ${Math.abs(d)}ms faster`
+        : 'Same speed';
+    const subEl = document.getElementById('diff-lm-sub');
+    subEl.textContent = sub;
+    subEl.className = 'pill-sub ' + (d > 0 ? 'slower' : d < 0 ? 'faster' : '');
+  }
+
+  if (swLm !== null) {
+    const subEl = document.getElementById('sw-lm-sub');
+    const err = swResults.some(r => r.error);
+    if (err) {
+      subEl.textContent = swResults.map(r => r.error).filter(Boolean).join(', ');
+      subEl.className = 'pill-sub slower';
+    } else {
+      subEl.textContent = swResults.length > 1 ? `avg of ${swResults.length} runs` : '';
+      subEl.className = 'pill-sub';
+    }
+  }
+
+  if (drLm !== null) {
+    const subEl = document.getElementById('dr-lm-sub');
+    const err = drResults.some(r => r.error);
+    if (err) {
+      subEl.textContent = drResults.map(r => r.error).filter(Boolean).join(', ');
+      subEl.className = 'pill-sub slower';
+    } else {
+      subEl.textContent = drResults.length > 1 ? `avg of ${drResults.length} runs` : '';
+      subEl.className = 'pill-sub';
+    }
+  }
+
+  // Table
+  const maxTime = Math.max(swLm || 0, drLm || 0, swCp || 0, drCp || 0, swSdk || 0, 1);
+
+  const rows = [
+    { key: 'sdk_loaded',    label: 'SDK loaded',        sw: swSdk, dr: null,  sdk: true },
+    { key: 'player_found',  label: 'player_found',      sw: swPf,  dr: null,  sdk: true },
+    { key: 'loadedmetadata',label: 'loadedmetadata',    sw: swLm,  dr: drLm,  sdk: false },
+    { key: 'canplay',       label: 'canplay',           sw: swCp,  dr: drCp,  sdk: false },
+  ];
+
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '';
+  rows.forEach(row => {
+    const delta = (row.sw !== null && row.dr !== null) ? row.sw - row.dr : null;
+    const swBar = row.sw !== null ? Math.round((row.sw / maxTime) * 100) : 0;
+    const drBar = row.dr !== null ? Math.round((row.dr / maxTime) * 100) : 0;
+
+    const tr = document.createElement('tr');
+    if (row.sdk) tr.className = 'sdk-row';
+    tr.innerHTML = `
+      <td class="milestone-name">${row.label}</td>
+      <td class="time-val sw-val">${fmt(row.sw)}</td>
+      <td class="time-val dr-val">${fmt(row.dr)}</td>
+      <td class="delta-val ${delta === null ? '' : delta > 0 ? 'pos' : delta < 0 ? 'neg' : ''}">${delta === null ? '—' : (delta > 0 ? '+' : '') + delta + 'ms'}</td>
+      <td class="bar-cell">
+        <div class="bar-wrap">
+          <div class="bar-row"><span class="bar-legend">sw</span><div class="bar-track"><div class="bar-fill sw-fill" style="width:${swBar}%"></div></div></div>
+          <div class="bar-row"><span class="bar-legend">dr</span><div class="bar-track"><div class="bar-fill dr-fill" style="width:${drBar}%"></div></div></div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // Errors
+    const swErr = swResults.map(r => r.error).filter(Boolean)[0];
+    const drErr = drResults.map(r => r.error).filter(Boolean)[0];
+    if (swErr && row.key === 'loadedmetadata') {
+      const errRow = document.createElement('tr');
+      errRow.innerHTML = `<td colspan="5" style="color:var(--err);font-family:var(--mono);font-size:.72rem;padding:.4rem .75rem .8rem">Swarmify error: ${swErr}</td>`;
+      tbody.appendChild(errRow);
+    }
+    if (drErr && row.key === 'loadedmetadata') {
+      const errRow = document.createElement('tr');
+      errRow.innerHTML = `<td colspan="5" style="color:var(--err);font-family:var(--mono);font-size:.72rem;padding:.4rem .75rem .8rem">Direct error: ${drErr}</td>`;
+      tbody.appendChild(errRow);
+    }
+  });
+}
+</script>
+</body>
+</html>
