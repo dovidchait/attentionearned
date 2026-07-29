@@ -1,0 +1,39 @@
+---
+interface Props {
+  bullet?: boolean;
+  as?: 'span' | 'div' | 'p';
+  color?: string;
+  class?: string;
+}
+
+const { bullet = true, as: Tag = 'div', color, class: className } = Astro.props;
+const colorStyle = color ? `color: ${color}` : '';
+---
+
+<Tag class:list={['ae-kicker', className]} style={colorStyle}>
+  {bullet && (
+    <svg class="ae-kicker__mark" width="8" height="8" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <path d="M48 40 L48 80 L84 60 Z" fill="currentColor" stroke="currentColor" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+  )}
+  <slot />
+</Tag>
+
+<style>
+  .ae-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    line-height: 1;
+  }
+
+  .ae-kicker__mark {
+    flex-shrink: 0;
+  }
+</style>

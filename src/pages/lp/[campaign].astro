@@ -1,0 +1,486 @@
+---
+import Base from '../../layouts/Base.astro';
+import Kicker from '../../components/Kicker.astro';
+import Badge from '../../components/Badge.astro';
+import Card from '../../components/Card.astro';
+import { CAMPAIGNS, LP_FEATURED_WORK } from '../../data/campaigns';
+import type { GetStaticPaths } from 'astro';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  return Object.keys(CAMPAIGNS).map(campaign => ({
+    params: { campaign },
+  }));
+};
+
+const { campaign } = Astro.params;
+const data = CAMPAIGNS[campaign] ?? CAMPAIGNS['founders'];
+const featuredWork = LP_FEATURED_WORK;
+const headlineParts = data.headline.split('\n');
+---
+
+<Base title={`Attention Earned — ${data.kicker}`} noNav noFooter>
+  <div class="lp-wrap">
+
+    <!-- NAV (landing-page only, no links to other site sections) -->
+    <header class="lp-nav">
+      <div class="lp-nav__inner">
+        <a href="/" aria-label="Attention Earned home">
+          <img src="/wordmark-light.svg" alt="Attention Earned" height="20" width="164" />
+        </a>
+        <nav class="lp-nav__links">
+          <a href="#work">Work</a>
+          <a href="#process">Process</a>
+        </nav>
+        <a href="/contact" class="lp-nav__cta">Book a call</a>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="lp-hero">
+      <div class="lp-hero__inner">
+        <Kicker>{data.kicker}</Kicker>
+        <h1 class="lp-hero__h1">
+          {headlineParts.map((line, i) => (
+            <>
+              {i > 0 && <br />}
+              {line}
+            </>
+          ))}
+          {' '}<span class="lp-hero__accent">{data.headlineAccent}</span>
+        </h1>
+        <p class="lp-hero__sub">{data.sub}</p>
+        <div class="lp-hero__actions">
+          <a href="/contact" class="btn-primary btn-lg">{data.ctaLabel}</a>
+          <a href="#work" class="btn-secondary btn-lg">See the work</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK STRIP -->
+    <section class="lp-work" id="work">
+      <div class="lp-work__header">
+        <div>
+          <Kicker>Selected work</Kicker>
+          <h2 class="lp-work__heading">Films that earned it</h2>
+        </div>
+        <Badge tone="accent" dot>Now booking · Q3</Badge>
+      </div>
+
+      <div class="lp-work__grid">
+        {featuredWork.map(w => (
+          <div class="lp-work__item">
+            <a href={w.href} class="lp-tile">
+              <video
+                src={w.video}
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                class="lp-tile__vid"
+              />
+              <div class="lp-tile__overlay" />
+              <span class="lp-tile__title">{w.title}</span>
+            </a>
+            <div class="lp-work__meta">
+              <span class="lp-work__client">{w.client}</span>
+              <a href={w.href} class="lp-work__case">Case study →</a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- PROCESS -->
+    <section class="lp-process" id="process">
+      <div class="lp-process__inner">
+        <Kicker>How we work</Kicker>
+        <h2 class="lp-process__heading">Three honest moves</h2>
+        <div class="lp-process__grid">
+          <Card>
+            <div class="process-card">
+              <span class="process-card__num">01</span>
+              <h3>Dig deep</h3>
+              <p>We sit with you until we find the thing that actually needs saying.</p>
+            </div>
+          </Card>
+          <Card>
+            <div class="process-card">
+              <span class="process-card__num">02</span>
+              <h3>Say it strong</h3>
+              <p>No filler, no fluff. We shape it into a story with a spine.</p>
+            </div>
+          </Card>
+          <Card variant="ember">
+            <div class="process-card">
+              <span class="process-card__num process-card__num--accent">03</span>
+              <h3>Make them feel it</h3>
+              <p>The goal isn't views. It's the moment a stranger decides they trust you.</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA FOOTER -->
+    <section class="lp-cta">
+      <div class="lp-cta__inner">
+        <h2 class="lp-cta__heading">
+          Tell us what people <span class="lp-cta__accent">should know</span>.
+        </h2>
+        <a href="/contact" class="btn-primary btn-lg">{data.ctaLabel}</a>
+      </div>
+    </section>
+
+  </div>
+</Base>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.lp-tile').forEach(tile => {
+    const vid = tile.querySelector<HTMLVideoElement>('.lp-tile__vid');
+    if (!vid) return;
+    tile.addEventListener('mouseenter', () => {
+      const p = vid.play();
+      if (p) p.catch(() => {});
+    });
+    tile.addEventListener('mouseleave', () => {
+      vid.pause();
+      try { vid.currentTime = 0; } catch (_) {}
+    });
+  });
+</script>
+
+<style>
+  .lp-wrap {
+    min-height: 100vh;
+    background: var(--ink-900);
+    color: var(--text-body);
+  }
+
+  .lp-nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(14,14,12,0.72);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .lp-nav__inner {
+    max-width: var(--container);
+    margin-inline: auto;
+    padding: 16px var(--gutter);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .lp-nav__inner img { height: 20px; width: auto; }
+
+  .lp-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 1.875rem;
+    margin-left: auto;
+  }
+
+  .lp-nav__links a {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-300);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .lp-nav__links a:hover { color: var(--text-muted); }
+
+  .lp-nav__cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    color: var(--text-on-accent);
+    background: var(--grad-cta);
+    border-radius: var(--radius-pill);
+    text-decoration: none;
+    box-shadow: var(--glow-cta);
+    white-space: nowrap;
+    transition: transform var(--dur-base), box-shadow var(--dur-base);
+  }
+
+  .lp-nav__cta:hover { transform: translateY(-1px); }
+
+  .lp-hero {
+    background-image: var(--grad-hero);
+    padding: 120px var(--gutter) 96px;
+    text-align: center;
+  }
+
+  .lp-hero__inner {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.75rem;
+  }
+
+  .lp-hero__h1 {
+    font-size: var(--fs-display-2xl);
+    line-height: var(--lh-display);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .lp-hero__accent { color: var(--ae-coral); }
+
+  .lp-hero__sub {
+    max-width: 560px;
+    font-size: var(--fs-body-lg);
+    line-height: 1.5;
+    color: var(--stone-300);
+    font-weight: var(--fw-medium);
+    margin: 0;
+  }
+
+  .lp-hero__actions {
+    display: flex;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.375rem;
+  }
+
+  .lp-work {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 96px var(--gutter);
+  }
+
+  .lp-work__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 2.25rem;
+    flex-wrap: wrap;
+  }
+
+  .lp-work__heading {
+    font-size: var(--fs-display-lg);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin-top: 0.875rem;
+  }
+
+  .lp-work__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  @media (max-width: 900px) { .lp-work__grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .lp-work__grid { grid-template-columns: 1fr; } }
+
+  .lp-work__item { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .lp-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: radial-gradient(120% 120% at 30% 20%, hsl(16 50% 18%) 0%, hsl(16 40% 10%) 45%, #0B0A09 100%);
+    text-decoration: none;
+    transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .lp-tile:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252,44,48,0.45);
+    box-shadow: 0 24px 60px -24px rgba(0,0,0,.8), 0 0 46px -16px rgba(252,44,48,.3);
+  }
+
+  .lp-tile__vid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 280ms ease;
+  }
+
+  .lp-tile:hover .lp-tile__vid { opacity: 0.85; }
+
+  .lp-tile__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(8,7,6,.82) 0%, rgba(8,7,6,0) 54%);
+  }
+
+  .lp-tile__title {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    font-weight: var(--fw-black);
+    font-size: 17px;
+    line-height: var(--lh-snug);
+    letter-spacing: -0.01em;
+    color: var(--paper);
+    text-shadow: 0 2px 16px rgba(0,0,0,.6);
+  }
+
+  .lp-work__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.625rem;
+  }
+
+  .lp-work__client {
+    font-weight: var(--fw-bold);
+    font-size: 15px;
+    color: var(--text-strong);
+  }
+
+  .lp-work__case {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-300);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--dur-fast);
+  }
+
+  .lp-work__case:hover { color: var(--accent-soft); }
+
+  .lp-process {
+    background: var(--surface-raised);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .lp-process__inner {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 96px var(--gutter);
+  }
+
+  .lp-process__heading {
+    font-size: var(--fs-display-lg);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin-top: 0.875rem;
+    margin-bottom: 2.75rem;
+    max-width: 640px;
+  }
+
+  .lp-process__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  @media (max-width: 700px) { .lp-process__grid { grid-template-columns: 1fr; } }
+
+  .process-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .process-card__num {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: var(--tracking-label);
+    color: var(--stone-400);
+  }
+
+  .process-card__num--accent { color: var(--ae-red); }
+
+  .process-card h3 {
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .process-card p {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--stone-300);
+    margin: 0;
+  }
+
+  .lp-cta {
+    background-image: var(--grad-hero);
+    text-align: center;
+    padding: 96px var(--gutter);
+  }
+
+  .lp-cta__inner {
+    max-width: 640px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .lp-cta__heading {
+    font-size: var(--fs-display-lg);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .lp-cta__accent { color: var(--ae-coral); }
+
+  .btn-primary, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+
+  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; letter-spacing: 0.04em; }
+
+  .btn-primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,.7), 0 0 0 1px rgba(252,44,48,.4);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-strong);
+    border: 1px solid var(--border-strong);
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent-soft); transform: translateY(-1px); }
+</style>

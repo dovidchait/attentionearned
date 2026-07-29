@@ -3,82 +3,87 @@ const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
-  <div class="container footer-inner">
-    <div class="footer-brand">
-      <a href="/" class="logo-text">AttentionEarned</a>
-      <p class="footer-tagline">Video that earns attention.</p>
+  <div class="site-footer__inner container">
+    <div class="site-footer__brand">
+      <a href="/" aria-label="Attention Earned home">
+        <img src="/wordmark-light.svg" alt="Attention Earned" height="18" width="148" />
+      </a>
+      <p class="site-footer__tagline">Video that earns attention.</p>
     </div>
 
-    <nav aria-label="Footer navigation" class="footer-nav">
-      <ul role="list">
-        <li><a href="/work">Work</a></li>
-        <li><a href="/services">Services</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/contact">Contact</a></li>
-        <li><a href="/privacy">Privacy</a></li>
-      </ul>
+    <nav aria-label="Footer navigation" class="site-footer__nav">
+      <a href="/work">Work</a>
+      <a href="/services">Services</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
     </nav>
+  </div>
 
-    <p class="footer-copy">
-      &copy; {year} AttentionEarned. All rights reserved.
-    </p>
+  <div class="site-footer__bottom container">
+    <p class="site-footer__copy">&copy; {year} Attention Earned. All rights reserved.</p>
   </div>
 </footer>
 
 <style>
   .site-footer {
-    background: var(--color-dark);
-    color: var(--color-surface-alt);
-    padding-block: var(--space-16);
-    margin-top: var(--space-24);
+    background: var(--ink-950);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 3rem;
   }
 
-  .footer-inner {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-8);
-    align-items: start;
-  }
-
-  .logo-text {
-    font-family: var(--font-serif);
-    font-size: var(--text-lg);
-    color: var(--color-white);
-  }
-
-  .footer-tagline {
-    margin-top: var(--space-2);
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-
-  .footer-nav ul {
-    list-style: none;
+  .site-footer__inner {
     display: flex;
-    gap: var(--space-6);
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
     flex-wrap: wrap;
+    padding-bottom: 2.5rem;
   }
 
-  .footer-nav a {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--color-surface-alt);
-    letter-spacing: 0.02em;
+  .site-footer__brand {}
+
+  .site-footer__brand img {
+    height: 18px;
+    width: auto;
+    opacity: 0.7;
+    transition: opacity var(--dur-fast);
+  }
+
+  .site-footer__brand img:hover { opacity: 1; }
+
+  .site-footer__tagline {
+    margin-top: 0.5rem;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    font-family: var(--font-mono);
     text-transform: uppercase;
-    transition: color var(--transition-fast);
+    letter-spacing: var(--tracking-wide);
   }
 
-  .footer-nav a:hover { color: var(--color-white); }
-
-  .footer-copy {
-    grid-column: 1 / -1;
-    font-size: var(--text-xs);
-    color: var(--color-dark-muted);
-    padding-top: var(--space-8);
-    border-top: 1px solid var(--color-dark-muted);
+  .site-footer__nav {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
-  @media (max-width: 640px) {
-    .footer-inner { grid-template-columns: 1fr; }
+  .site-footer__nav a {
+    font-size: var(--fs-sm);
+    color: var(--text-faint);
+    transition: color var(--dur-fast);
+  }
+
+  .site-footer__nav a:hover { color: var(--text-muted); }
+
+  .site-footer__bottom {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .site-footer__copy {
+    font-size: var(--fs-xs);
+    color: var(--stone-400);
+    font-family: var(--font-mono);
   }
 </style>
