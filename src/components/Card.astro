@@ -1,0 +1,67 @@
+---
+interface Props {
+  variant?: 'raised' | 'inset' | 'outline' | 'ember';
+  interactive?: boolean;
+  as?: string;
+  class?: string;
+  [key: string]: unknown;
+}
+
+const {
+  variant = 'raised',
+  interactive = false,
+  as: Tag = 'div',
+  class: className,
+  ...rest
+} = Astro.props;
+---
+
+<Tag
+  class:list={[
+    'ae-card',
+    `ae-card--${variant}`,
+    { 'ae-card--interactive': interactive },
+    className,
+  ]}
+  {...rest}
+>
+  <slot />
+</Tag>
+
+<style>
+  .ae-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-6);
+  }
+
+  .ae-card--raised { background: var(--surface-card); }
+  .ae-card--inset  { background: var(--surface-inset); }
+
+  .ae-card--outline {
+    background: transparent;
+    border-color: var(--border-mid);
+  }
+
+  .ae-card--ember {
+    background: var(--surface-card);
+    border-color: rgba(252, 44, 48, 0.3);
+    box-shadow: var(--shadow-card), 0 0 30px -10px rgba(252, 44, 48, 0.2);
+  }
+
+  .ae-card--interactive {
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+    cursor: pointer;
+  }
+
+  .ae-card--interactive:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252, 44, 48, 0.35);
+    box-shadow: var(--shadow-pop), 0 0 40px -16px rgba(252, 44, 48, 0.25);
+  }
+</style>

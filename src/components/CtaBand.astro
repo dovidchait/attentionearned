@@ -1,0 +1,120 @@
+---
+interface Props {
+  heading: string;
+  accentPhrase?: string;
+  body?: string;
+  primaryLabel?: string;
+  primaryHref?: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+}
+
+const {
+  heading,
+  accentPhrase,
+  body,
+  primaryLabel = 'Start your project',
+  primaryHref = '/contact',
+  secondaryLabel,
+  secondaryHref = '/work',
+} = Astro.props;
+---
+
+<section class="cta-band">
+  <div class="cta-band__inner">
+    <h2 class="cta-band__heading">
+      {heading}{accentPhrase && <> <span class="cta-band__accent">{accentPhrase}</span></>}
+    </h2>
+    {body && <p class="cta-band__body">{body}</p>}
+    <div class="cta-band__actions">
+      <a href={primaryHref} class="ae-btn ae-btn--primary ae-btn--lg">{primaryLabel}</a>
+      {secondaryLabel && (
+        <a href={secondaryHref} class="ae-btn ae-btn--ghost ae-btn--lg">{secondaryLabel}</a>
+      )}
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta-band {
+    background-image: var(--grad-hero);
+    text-align: center;
+    padding: clamp(4rem, 8vw, 6rem) var(--gutter);
+  }
+
+  .cta-band__inner {
+    max-width: 640px;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .cta-band__heading {
+    font-size: var(--fs-display-lg);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    text-wrap: balance;
+  }
+
+  .cta-band__accent { color: var(--ae-coral); }
+
+  .cta-band__body {
+    max-width: 52ch;
+    color: var(--text-muted);
+    font-size: var(--fs-body-lg);
+    line-height: var(--lh-body);
+  }
+
+  .cta-band__actions {
+    display: flex;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* inline button styles for ae-btn (tokens already loaded in Base) */
+  .ae-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+  }
+
+  .ae-btn--lg {
+    font-size: var(--fs-body);
+    padding: 0.85rem 1.8rem;
+    letter-spacing: 0.04em;
+  }
+
+  .ae-btn--primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .ae-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252, 44, 48, 0.7), 0 0 0 1px rgba(252, 44, 48, 0.4);
+  }
+
+  .ae-btn--ghost {
+    background: transparent;
+    color: var(--text-body);
+    border: 1px solid var(--border-strong);
+  }
+
+  .ae-btn--ghost:hover {
+    background: var(--surface-hover);
+    color: var(--text-strong);
+  }
+</style>

@@ -1,44 +1,266 @@
 ---
 import Base from '../../layouts/Base.astro';
-import WorkCard from '../../components/WorkCard.astro';
-import { getCollection } from 'astro:content';
+import CtaBand from '../../components/CtaBand.astro';
+import { AE_WORK, AE_SECTORS, getYoutubeThumbnail, getPlatformLabel } from '../../data/work';
 
-const allWork = await getCollection('work');
-const sorted = allWork.sort((a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0));
+const work = AE_WORK.map(w => ({
+  ...w,
+  isVideo: w.kind === 'dropbox-direct',
+  thumb: getYoutubeThumbnail(w),
+  platform: getPlatformLabel(w),
+}));
 ---
 
-<Base title="Our Work" description="Corporate, healthcare, nonprofit, and brand video production.">
-  <section class="page-hero container">
+<Base
+  title="Our Work"
+  description="Corporate, healthcare, nonprofit, and brand video production — 28 real projects."
+>
+  <section class="work-index container">
     <h1>Our Work</h1>
-    <p class="page-intro">
-      Every project here started with a conversation about what the audience
-      needed to feel or decide. Here is what came next.
+    <p class="work-index__intro">
+      Every project here started with a conversation about what the audience needed to feel or decide.
     </p>
-  </section>
+    <p class="work-index__count">
+      <span id="work-count">{work.length}</span> projects
+    </p>
 
-  <section class="container work-grid-section">
-    <div class="work-grid">
-      {sorted.map(entry => (
-        <WorkCard entry={entry} />
+    <div class="filter-pills" id="filter-pills" role="group" aria-label="Filter by sector">
+      {AE_SECTORS.map(sector => (
+        <button
+          class="filter-pill"
+          data-sector={sector}
+          aria-pressed={sector === 'All' ? 'true' : 'false'}
+        >
+          {sector}
+        </button>
+      ))}
+    </div>
+
+    <div class="work-grid" id="work-grid">
+      {work.map(w => (
+        <a
+          href={`/work/${w.slug}`}
+          class="work-tile"
+          data-sector={w.sector}
+        >
+          {w.isVideo && (
+            <video
+              src={w.video}
+              muted
+              loop
+              autoplay
+              playsinline
+              preload="metadata"
+              class="work-tile__media"
+            />
+          )}
+          {w.thumb && <img src={w.thumb} alt="" class="work-tile__media" loading="lazy" />}
+          {!w.isVideo && !w.thumb && (
+            <div class="work-tile__platform-badge">{w.platform}</div>
+          )}
+          <div class="work-tile__overlay" />
+          {(w.thumb || (!w.isVideo && !w.thumb)) && (
+            <span class="work-tile__tag">{w.platform}</span>
+          )}
+          <div class="work-tile__info">
+            <span class="work-tile__sector">{w.sector}</span>
+            <span class="work-tile__title">{w.title}</span>
+            {w.client && <span class="work-tile__client">{w.client}</span>}
+          </div>
+        </a>
       ))}
     </div>
   </section>
+
+  <CtaBand
+    heading="None of this is a template."
+    accentPhrase="Yours won't be either."
+    primaryLabel="Tell us about your project"
+    primaryHref="/contact"
+  />
 </Base>
 
+<script>
+  const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
+  const tiles = document.querySelectorAll<HTMLElement>('.work-tile');
+  const countEl = document.getElementById('work-count');
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const sector = pill.dataset.sector ?? 'All';
+
+      pills.forEach(p => p.setAttribute('aria-pressed', 'false'));
+      pill.setAttribute('aria-pressed', 'true');
+
+      let visible = 0;
+      tiles.forEach(tile => {
+        const show = sector === 'All' || tile.dataset.sector === sector;
+        tile.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+
+      if (countEl) countEl.textContent = String(visible);
+    });
+  });
+</script>
+
 <style>
-  .page-hero { padding-block: var(--space-16) var(--space-12); }
-  .page-hero h1 { font-size: var(--text-5xl); }
-  .page-intro {
-    max-width: 60ch;
-    color: var(--color-ink-muted);
-    font-size: var(--text-lg);
-    line-height: var(--leading-loose);
-    margin-top: var(--space-4);
+  .work-index {
+    padding-block: clamp(4rem, 8vw, 6rem) 3rem;
   }
-  .work-grid-section { padding-bottom: var(--space-24); }
+
+  .work-index h1 {
+    font-size: clamp(2.2rem, 4vw, 3.2rem);
+    color: var(--text-strong);
+    margin-bottom: 0.875rem;
+  }
+
+  .work-index__intro {
+    max-width: 56ch;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: var(--lh-body);
+    margin-bottom: 0.375rem;
+  }
+
+  .work-index__count {
+    font-size: var(--fs-sm);
+    color: var(--text-faint);
+    margin-bottom: 2rem;
+  }
+
+  /* Filter pills */
+  .filter-pills {
+    display: flex;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+    margin-bottom: 2.25rem;
+  }
+
+  .filter-pill {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 7px 16px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-muted);
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+
+  .filter-pill:hover {
+    border-color: var(--border-mid);
+    color: var(--text-body);
+  }
+
+  .filter-pill[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent-quiet);
+    color: var(--accent-soft);
+  }
+
+  /* Work grid */
   .work-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: var(--space-6);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  @media (max-width: 900px) { .work-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .work-grid { grid-template-columns: 1fr; } }
+
+  .work-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: radial-gradient(120% 120% at 30% 20%, hsl(16 50% 18%) 0%, hsl(16 40% 10%) 45%, #0B0A09 100%);
+    text-decoration: none;
+    transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .work-tile:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252, 44, 48, 0.45);
+    box-shadow: 0 24px 60px -24px rgba(0,0,0,.8), 0 0 46px -16px rgba(252,44,48,.3);
+  }
+
+  .work-tile__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+  }
+
+  .work-tile__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(11,10,9,.85) 0%, transparent 45%);
+  }
+
+  .work-tile__tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stone-300);
+    background: rgba(11,10,9,.65);
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+
+  .work-tile__platform-badge {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .work-tile__info {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .work-tile__sector {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--accent-soft);
+  }
+
+  .work-tile__title {
+    color: var(--paper);
+    font-weight: var(--fw-bold);
+    font-size: 15px;
+    line-height: var(--lh-snug);
+    margin-top: 2px;
+  }
+
+  .work-tile__client {
+    color: var(--stone-300);
+    font-size: 12px;
+    font-style: italic;
   }
 </style>

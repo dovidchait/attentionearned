@@ -1,73 +1,128 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Kicker from '../../components/Kicker.astro';
+import CtaBand from '../../components/CtaBand.astro';
 import { getCollection, render } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const entries = await getCollection('services');
-  return entries.map(entry => ({
+  return entries.map((entry, i) => ({
     params: { slug: entry.id },
-    props: { entry },
+    props: { entry, num: i + 1 },
   }));
 };
 
-const { entry } = Astro.props;
+const { entry, num } = Astro.props;
 const { Content } = await render(entry);
 const { title, summary } = entry.data;
+const numStr = String(num).padStart(2, '0');
 ---
 
 <Base title={title} description={summary}>
   <article class="service-article container">
-    <header>
-      <h1>{title}</h1>
-      <p class="service-article__summary">{summary}</p>
-    </header>
+    <Kicker>Service · {numStr}</Kicker>
+    <h1>{title}</h1>
+    <p class="service-article__lede">{summary}</p>
 
-    <div class="prose service-article__body">
+    <div class="service-article__body prose">
       <Content />
     </div>
 
     <div class="service-article__cta">
-      <a href="/contact" class="btn-cta">Start a project</a>
+      <a href="/contact" class="btn-primary btn-lg">Start your project</a>
     </div>
   </article>
+
+  <CtaBand
+    heading="Ready to talk through your project?"
+    primaryLabel="Start the conversation"
+    primaryHref="/contact"
+  />
 </Base>
 
 <style>
   .service-article {
-    max-width: 800px;
-    padding-block: var(--space-16) var(--space-24);
+    max-width: var(--container-text);
+    padding-block: clamp(4rem, 8vw, 6rem) 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
   }
-  .service-article h1 { font-size: var(--text-5xl); }
-  .service-article__summary {
-    font-size: var(--text-lg);
-    color: var(--color-ink-muted);
+
+  .service-article h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    color: var(--text-strong);
+    margin-top: 1rem;
+  }
+
+  .service-article__lede {
+    font-size: 1.2rem;
+    line-height: 1.65;
+    color: var(--text-body);
+    font-style: italic;
     max-width: 60ch;
-    line-height: var(--leading-loose);
-    margin-top: var(--space-4);
   }
+
   .service-article__body {
-    margin-top: var(--space-12);
-    max-width: var(--max-width-prose);
+    margin-top: 0.5rem;
   }
-  .prose :global(p) { margin-bottom: var(--space-4); line-height: var(--leading-loose); }
-  .prose :global(h2) { font-size: var(--text-2xl); margin-top: var(--space-10); margin-bottom: var(--space-4); }
-  .prose :global(ul) { padding-left: var(--space-6); margin-bottom: var(--space-4); }
-  .prose :global(li) { margin-bottom: var(--space-2); }
-  .prose :global(strong) { font-weight: var(--weight-semibold); }
+
+  .prose :global(h2), .prose :global(h3) {
+    color: var(--text-strong);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .prose :global(h2) { font-size: 1.1rem; }
+  .prose :global(h3) { font-size: 1rem; }
+
+  .prose :global(p) {
+    color: var(--text-body);
+    line-height: 1.7;
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+  }
+
+  .prose :global(ul) {
+    padding-left: 1.25rem;
+    color: var(--text-body);
+    line-height: 1.9;
+    margin-bottom: 1rem;
+  }
+
+  .prose :global(li) { margin-bottom: 0.25rem; }
+
+  .prose :global(strong) {
+    font-weight: var(--fw-bold);
+    color: var(--text-strong);
+  }
+
   .service-article__cta {
-    margin-top: var(--space-16);
-    padding-top: var(--space-10);
-    border-top: 1px solid var(--color-border);
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-subtle);
+    text-align: center;
   }
-  .btn-cta {
-    display: inline-block;
-    padding: var(--space-4) var(--space-10);
-    background: var(--color-ink);
-    color: var(--color-white);
-    font-weight: var(--weight-semibold);
-    border-radius: var(--radius-md);
-    transition: background var(--transition-fast);
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
   }
-  .btn-cta:hover { background: var(--color-accent); }
+
+  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
+  }
 </style>

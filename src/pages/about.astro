@@ -1,44 +1,266 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getCollection, render } from 'astro:content';
-
-const pagesCollection = await getCollection('pages');
-const about = pagesCollection.find(p => p.id === 'about');
-if (!about) throw new Error('pages/about.mdx not found');
-const { Content } = await render(about);
+import CtaBand from '../components/CtaBand.astro';
 ---
 
-<Base title="About" description={about.data.description}>
-  <article class="about-article container prose">
-    <Content />
+<Base
+  title="About"
+  description="Why most videos don't work — and how Attention Earned fixes that."
+>
+  <article class="about-article container">
+    <h1>Your video looks great. So why isn't it working?</h1>
+
+    <p class="lead">
+      You spent $10K on a video. It's beautifully shot. The lighting is perfect.
+      The color grade is gorgeous. And... nothing. 47 views. No leads. No
+      conversions. Just sitting there, expensive and useless.
+    </p>
+
+    <div class="questions">
+      <div class="question">
+        <div class="question__num">01</div>
+        <h3>Who's actually watching?</h3>
+      </div>
+      <div class="question">
+        <div class="question__num">02</div>
+        <h3>What do they need to hear to take action?</h3>
+      </div>
+      <div class="question">
+        <div class="question__num">03</div>
+        <h3>Where is this going to live?</h3>
+      </div>
+    </div>
+
+    <h2>What changes when you get this right</h2>
+    <div class="outcome-grid">
+      <div class="outcome-card"><p>Fundraising video raises money.</p></div>
+      <div class="outcome-card"><p>Paid ads convert.</p></div>
+      <div class="outcome-card"><p>Founder story positions.</p></div>
+      <div class="outcome-card"><p>Product video drives action.</p></div>
+    </div>
+
+    <blockquote>
+      "The difference between a video that works and one that doesn't isn't
+      production quality. It's whether you said the right thing to the right people."
+    </blockquote>
+
+    <h2>How this works</h2>
+    <ol class="process-list">
+      <li><span class="process-list__num">01</span><span>Figure out what to say.</span></li>
+      <li><span class="process-list__num">02</span><span>Make it work for the platform.</span></li>
+      <li><span class="process-list__num">03</span><span>Execute it right.</span></li>
+    </ol>
+
+    <h2>Who this is for</h2>
+    <div class="audience-badges">
+      <span class="ae-badge ae-badge--outline">B2B / Startups</span>
+      <span class="ae-badge ae-badge--outline">Founders raising capital</span>
+      <span class="ae-badge ae-badge--outline">Nonprofits</span>
+      <span class="ae-badge ae-badge--outline">Companies running paid campaigns</span>
+    </div>
+
+    <h2>Why this is different</h2>
+    <p>Most producers are order-takers. I push back. I think campaigns. No agency overhead.</p>
+
+    <h2>Quick credibility check</h2>
+    <p>Grew up around nonprofits. Went from 15-second social ads to 70-interview documentaries. Real film set and marketing experience.</p>
+
+    <div class="about-cta">
+      <h2>Let's figure out what you actually need</h2>
+      <a href="/contact" class="btn-primary btn-lg">Start the conversation</a>
+    </div>
   </article>
+
+  <CtaBand
+    heading="Now you know how I think."
+    accentPhrase="Let's see if it's a fit."
+    primaryLabel="Start the conversation"
+    primaryHref="/contact"
+  />
 </Base>
 
 <style>
   .about-article {
-    max-width: var(--max-width-prose);
-    padding-block: var(--space-16) var(--space-24);
+    max-width: var(--container-text);
+    padding-block: clamp(4rem, 8vw, 6rem) 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
   }
-  .about-article :global(h2) { font-size: var(--text-4xl); margin-bottom: var(--space-6); }
-  .about-article :global(h3) { font-size: var(--text-2xl); margin-top: var(--space-10); margin-bottom: var(--space-4); }
-  .about-article :global(p) {
-    margin-bottom: var(--space-5);
-    line-height: var(--leading-loose);
-    color: var(--color-ink-muted);
+
+  .about-article h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: var(--lh-tight);
+    color: var(--text-strong);
   }
-  .about-article :global(p:first-of-type) { font-size: var(--text-lg); color: var(--color-ink); }
-  .about-article :global(blockquote) {
-    border-left: 3px solid var(--color-accent);
-    padding-left: var(--space-6);
-    margin-block: var(--space-8);
-    font-size: var(--text-xl);
+
+  .about-article h2 {
+    font-size: 1.6rem;
+    color: var(--text-strong);
+    margin-bottom: -2rem;
+  }
+
+  .about-article h3 {
+    font-size: 1.3rem;
+    color: var(--text-strong);
+    font-weight: var(--fw-bold);
+    margin-top: 0.25rem;
+  }
+
+  .lead {
+    font-size: 1.15rem;
+    line-height: 1.75;
+    color: var(--text-body);
+    margin-top: -2rem;
+  }
+
+  .about-article p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-body);
+  }
+
+  /* Questions */
+  .questions {
+    display: flex;
+    flex-direction: column;
+    gap: 2.25rem;
+  }
+
+  .question {}
+
+  .question__num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent-soft);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Outcome grid */
+  .outcome-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: -2rem;
+  }
+
+  @media (max-width: 600px) { .outcome-grid { grid-template-columns: 1fr; } }
+
+  .outcome-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+  }
+
+  .outcome-card p {
+    font-weight: var(--fw-bold);
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  /* Blockquote */
+  blockquote {
+    border-left: 3px solid var(--accent);
+    background: var(--surface-card);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: 1.75rem 2rem;
+    font-size: 1.3rem;
+    line-height: 1.55;
     font-style: italic;
-    color: var(--color-ink);
+    color: var(--text-strong);
+    margin: 0;
   }
-  .about-article :global(h4) {
-    font-size: var(--text-lg);
-    margin-top: var(--space-6);
-    margin-bottom: var(--space-2);
+
+  /* Process list */
+  .process-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0;
+    margin-top: -2rem;
   }
-  .about-article :global(a) { text-decoration: underline; text-underline-offset: 2px; }
+
+  .process-list li {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    font-size: 1.05rem;
+    color: var(--text-body);
+  }
+
+  .process-list__num {
+    font-family: var(--font-mono);
+    color: var(--accent-soft);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* Audience badges */
+  .audience-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin-top: -2rem;
+  }
+
+  .ae-badge {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-pill);
+  }
+
+  .ae-badge--outline {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-mid);
+  }
+
+  /* Bottom CTA within article */
+  .about-cta {
+    text-align: center;
+    padding-top: 3rem;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .about-cta h2 { font-size: 1.6rem; margin: 0; }
+
+  /* Buttons */
+  .btn-primary, .btn-lg {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; }
+
+  .btn-primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
+  }
 </style>

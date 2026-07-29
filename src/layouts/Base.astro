@@ -8,17 +8,21 @@ interface Props {
   description?: string;
   ogImage?: string;
   noindex?: boolean;
+  noNav?: boolean;
+  noFooter?: boolean;
 }
 
 const {
   title,
-  description = 'AttentionEarned. Video production for organizations that have something to say.',
+  description = 'Attention Earned. Video production that makes people buy, know you, or act.',
   ogImage,
   noindex = false,
+  noNav = false,
+  noFooter = false,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
-const fullTitle = `${title} | AttentionEarned`;
+const fullTitle = title.includes('Attention Earned') ? title : `${title} | Attention Earned`;
 ---
 
 <!doctype html>
@@ -26,7 +30,7 @@ const fullTitle = `${title} | AttentionEarned`;
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/mark.svg" />
   <link rel="canonical" href={canonicalURL} />
   <title>{fullTitle}</title>
   <meta name="description" content={description} />
@@ -38,14 +42,7 @@ const fullTitle = `${title} | AttentionEarned`;
   <meta property="og:description" content={description} />
   {ogImage && <meta property="og:image" content={new URL(ogImage, Astro.site)} />}
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap"
-    rel="stylesheet"
-  />
-
-  <script is:inline src={`https://assets.swarmify.com/swarmify.js?key=6d594846-2bde-402b-887e-b830a14569f1`} async></script>
+  <script is:inline src="https://assets.swarmify.com/swarmify.js?key=6d594846-2bde-402b-887e-b830a14569f1" async></script>
 
   <script is:inline>
     (function(c,l,a,r,i,t,y){
@@ -60,40 +57,48 @@ const fullTitle = `${title} | AttentionEarned`;
 
     body {
       font-family: var(--font-sans);
-      font-size: var(--text-base);
-      line-height: var(--leading-normal);
-      color: var(--color-ink);
-      background-color: var(--color-surface);
+      font-size: var(--fs-body);
+      line-height: var(--lh-body);
+      color: var(--text-body);
+      background-color: var(--surface-base);
       -webkit-font-smoothing: antialiased;
     }
 
-    h1, h2, h3, h4 {
-      font-family: var(--font-serif);
-      line-height: var(--leading-tight);
-      color: var(--color-ink);
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-display);
+      font-weight: var(--fw-black);
+      line-height: var(--lh-tight);
+      color: var(--text-strong);
+      letter-spacing: var(--tracking-display);
     }
 
     a { color: inherit; text-decoration: none; }
     a:focus-visible {
-      outline: 2px solid var(--color-focus);
+      outline: 2px solid var(--focus-ring);
       outline-offset: 3px;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-xs);
     }
 
     img, video { max-width: 100%; display: block; }
 
     .container {
-      max-width: var(--max-width-content);
+      max-width: var(--container);
       margin-inline: auto;
-      padding-inline: var(--space-6);
+      padding-inline: var(--gutter);
     }
+
+    @keyframes aeRise {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .ae-reveal { animation: aeRise 0.7s cubic-bezier(.2,.8,.2,1) both; }
   </style>
 </head>
 <body>
-  <Nav />
+  {!noNav && <Nav />}
   <main id="main-content">
     <slot />
   </main>
-  <Footer />
+  {!noFooter && <Footer />}
 </body>
 </html>

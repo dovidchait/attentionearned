@@ -1,186 +1,293 @@
 ---
 import Base from '../layouts/Base.astro';
-import WorkCard from '../components/WorkCard.astro';
-import { getCollection } from 'astro:content';
+import Kicker from '../components/Kicker.astro';
+import CtaBand from '../components/CtaBand.astro';
+import { AE_WORK } from '../data/work';
 
-const allWork = await getCollection('work');
-const featuredWork = allWork
-  .filter(e => e.data.featured)
-  .sort((a, b) => a.data.order - b.data.order);
+const featuredWork = AE_WORK
+  .filter(w => w.featured != null)
+  .sort((a, b) => (a.featured ?? 99) - (b.featured ?? 99));
 ---
 
-<Base title="Video That Makes People Buy, Know You, or Cry">
+<Base title="Attention Earned — Video That Makes People Buy">
+  <!-- HERO -->
   <section class="hero">
-    <div class="container">
-      <p class="hero-eyebrow">Video Production</p>
-      <h1 class="hero-headline">We don't make video.<br />We make people buy.</h1>
-      <p class="hero-sub">
-        For B2B teams and service brands who want to turn watchers into
-        buyers. For founders who want to build trust, not just awareness.
-        For nonprofits and missions that deserve more than applause &mdash;
-        they deserve action.
+    <div class="hero__inner ae-reveal">
+      <Kicker>Video Production</Kicker>
+      <h1 class="hero__h1">We don't make video.<br />We make people buy.</h1>
+      <p class="hero__sub">
+        For B2B teams and service brands who want to turn watchers into buyers.
+        For founders who want to build trust, not just awareness. For nonprofits
+        and missions that deserve more than applause — they deserve action.
       </p>
-      <div class="hero-actions">
-        <a href="/contact" class="btn btn-primary">Let's make them feel something</a>
-        <a href="/work" class="btn btn-ghost">See our work</a>
+      <div class="hero__actions">
+        <a href="/contact" class="btn-primary btn-lg">Let's make them feel something</a>
+        <a href="/work" class="btn-ghost btn-lg">See our work</a>
       </div>
     </div>
   </section>
 
-  {featuredWork.length > 0 && (
-    <section class="featured-section">
-      <div class="container">
-        <h2 class="section-heading">Selected Work</h2>
-        <div class="featured-grid">
-          {featuredWork.map((entry, i) => (
-            <div class:list={['featured-grid__item', { 'featured-grid__item--wide': i === 0 }]}>
-              <WorkCard entry={entry} variant="featured" />
+  <!-- SELECTED WORK -->
+  <section class="work-section container">
+    <h2 class="section-heading">Selected Work</h2>
+    <div class="work-grid">
+      {featuredWork.map((entry, i) => {
+        const isVideo = entry.kind === 'dropbox-direct';
+        const isYoutube = entry.kind === 'youtube';
+        const thumb = isYoutube ? `https://img.youtube.com/vi/${entry.video}/hqdefault.jpg` : null;
+        return (
+          <a
+            href={`/work/${entry.slug}`}
+            class:list={['work-tile', { 'work-tile--wide': i === 0 }]}
+          >
+            {isVideo && (
+              <video
+                src={entry.video}
+                muted
+                loop
+                autoplay
+                playsinline
+                preload="metadata"
+                class="work-tile__media"
+              />
+            )}
+            {thumb && <img src={thumb} alt="" class="work-tile__media" loading="lazy" />}
+            <div class="work-tile__overlay" />
+            <div class="work-tile__info">
+              <span class="work-tile__sector">{entry.sector}</span>
+              <span class="work-tile__title">{entry.title}</span>
+              {entry.client && <span class="work-tile__client">{entry.client}</span>}
             </div>
-          ))}
-        </div>
-        <div class="work-link-row">
-          <a href="/work" class="btn btn-outline">View all work</a>
-        </div>
-      </div>
-    </section>
-  )}
+          </a>
+        );
+      })}
+    </div>
+    <div class="work-link-row">
+      <a href="/work" class="btn-secondary btn-md">View all work</a>
+    </div>
+  </section>
 
+  <!-- SERVICES TEASER -->
   <section class="services-teaser">
     <div class="container">
       <h2 class="section-heading">What we do</h2>
       <p class="services-teaser__sub">
-        From concept to delivery, we handle everything. Or we step in
-        wherever you need us most.
+        From concept to delivery, we handle everything. Or we step in wherever you need us most.
       </p>
-      <a href="/services" class="btn btn-primary">Explore services</a>
+      <a href="/services" class="btn-primary btn-md">Explore services</a>
     </div>
   </section>
 
-  <section class="bottom-cta">
-    <div class="container">
-      <h2 class="bottom-cta__heading">Ready to make people feel something?</h2>
-      <p class="bottom-cta__sub">
-        Whether you're launching a campaign, building your brand, or raising
-        funds for your mission, we create videos that move people to action.
-      </p>
-      <div class="hero-actions bottom-cta__actions">
-        <a href="/contact" class="btn btn-primary">Start your project</a>
-        <a href="/work" class="btn btn-outline-dark">See all work</a>
-      </div>
-    </div>
-  </section>
+  <!-- BOTTOM CTA -->
+  <CtaBand
+    heading="We've been there, done that."
+    accentPhrase=""
+    body="Whatever your industry or story, we've probably solved something like it before — and we'll build something unique for what you need, not a template of what we've already made."
+    primaryLabel="Start your project"
+    primaryHref="/contact"
+    secondaryLabel="See all work"
+    secondaryHref="/work"
+  />
 </Base>
 
 <style>
+  /* Hero */
   .hero {
-    background: var(--color-dark);
-    color: var(--color-white);
-    padding-block: var(--space-32) var(--space-24);
-  }
-  .hero-eyebrow {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--color-accent);
-    margin-bottom: var(--space-4);
-  }
-  .hero-headline {
-    font-size: clamp(var(--text-4xl), 6vw, var(--text-6xl));
-    color: var(--color-white);
-    max-width: 14ch;
-    margin-bottom: var(--space-6);
-  }
-  .hero-sub {
-    font-size: var(--text-lg);
-    color: var(--color-surface-alt);
-    max-width: 52ch;
-    line-height: var(--leading-loose);
-    margin-bottom: var(--space-10);
-  }
-  .hero-actions {
+    position: relative;
+    min-height: min(84vh, 720px);
     display: flex;
-    gap: var(--space-4);
+    align-items: center;
+    justify-content: center;
+    padding: clamp(5rem, 12vw, 9rem) var(--gutter) clamp(4rem, 8vw, 7rem);
+    text-align: center;
+    overflow: hidden;
+    background-image: var(--grad-hero);
+  }
+
+  .hero__inner {
+    max-width: 840px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .hero__h1 {
+    font-size: var(--fs-display-2xl);
+    line-height: var(--lh-display);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    text-wrap: balance;
+  }
+
+  .hero__sub {
+    max-width: 56ch;
+    font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+    line-height: var(--lh-body);
+    color: var(--text-muted);
+  }
+
+  .hero__actions {
+    display: flex;
+    gap: 0.875rem;
     flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.5rem;
   }
-  .btn {
-    display: inline-block;
-    padding: var(--space-3) var(--space-8);
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-    border-radius: var(--radius-md);
-    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+
+  /* Shared buttons (local scope — Base has global CtaBand, these pages need standalone too) */
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
   }
-  .btn-primary { background: var(--color-accent); color: var(--color-white); }
-  .btn-primary:hover { background: var(--color-accent-hover); }
+
+  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; letter-spacing: 0.04em; }
+  .btn-md { font-size: var(--fs-sm); padding: 0.65rem 1.3rem; letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+
+  .btn-primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-strong);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent-soft); transform: translateY(-1px); }
+
   .btn-ghost {
     background: transparent;
-    color: var(--color-white);
-    border: 1px solid rgb(255 255 255 / 0.3);
+    color: var(--text-body);
+    border: 1px solid var(--border-subtle);
   }
-  .btn-ghost:hover { background: rgb(255 255 255 / 0.08); }
-  .btn-outline {
-    background: transparent;
-    color: var(--color-ink);
-    border: 1px solid var(--color-border);
+  .btn-ghost:hover { background: var(--surface-hover); color: var(--text-strong); }
+
+  /* Work section */
+  .work-section { padding-block: clamp(4rem, 8vw, 7rem); }
+
+  .section-heading {
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    margin-bottom: 1.75rem;
+    color: var(--text-strong);
+    letter-spacing: var(--tracking-display);
   }
-  .btn-outline:hover { background: var(--color-surface-alt); }
-  .featured-section { padding-block: var(--space-20); }
-  .section-heading { font-size: var(--text-3xl); margin-bottom: var(--space-10); }
-  .featured-grid {
+
+  .work-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-6);
+    gap: 22px;
   }
-  .featured-grid__item--wide { grid-column: span 2; }
+
   @media (max-width: 900px) {
-    .featured-grid { grid-template-columns: repeat(2, 1fr); }
-    .featured-grid__item--wide { grid-column: span 2; }
+    .work-grid { grid-template-columns: repeat(2, 1fr); }
+    .work-tile--wide { grid-column: span 2; }
   }
+
   @media (max-width: 600px) {
-    .featured-grid { grid-template-columns: 1fr; }
-    .featured-grid__item--wide { grid-column: span 1; }
+    .work-grid { grid-template-columns: 1fr; }
+    .work-tile--wide { grid-column: span 1; }
   }
+
+  .work-tile--wide { grid-column: span 2; }
+
+  .work-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: radial-gradient(120% 120% at 30% 20%, hsl(16 50% 18%) 0%, hsl(16 40% 10%) 45%, #0B0A09 100%);
+    text-decoration: none;
+    transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .work-tile:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252, 44, 48, 0.45);
+    box-shadow: 0 24px 60px -24px rgba(0,0,0,.8), 0 0 46px -16px rgba(252,44,48,.3);
+  }
+
+  .work-tile__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.85;
+  }
+
+  .work-tile__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(11,10,9,.85) 0%, transparent 45%);
+  }
+
+  .work-tile__info {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .work-tile__sector {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--accent-soft);
+  }
+
+  .work-tile__title {
+    color: var(--paper);
+    font-weight: var(--fw-bold);
+    font-size: 17px;
+    line-height: var(--lh-snug);
+  }
+
+  .work-tile__client {
+    color: var(--stone-300);
+    font-size: 13px;
+    font-style: italic;
+  }
+
   .work-link-row {
-    margin-top: var(--space-10);
     display: flex;
     justify-content: center;
+    margin-top: 2.25rem;
   }
+
+  /* Services teaser */
   .services-teaser {
-    background: var(--color-surface-alt);
-    padding-block: var(--space-20);
-  }
-  .services-teaser__sub {
-    font-size: var(--text-lg);
-    color: var(--color-ink-muted);
-    max-width: 52ch;
-    margin-bottom: var(--space-8);
-    line-height: var(--leading-loose);
-  }
-  .bottom-cta {
-    background: var(--color-dark);
-    color: var(--color-white);
-    padding-block: var(--space-20);
+    background: var(--surface-card);
+    padding-block: clamp(4rem, 8vw, 7rem);
     text-align: center;
   }
-  .bottom-cta__heading {
-    font-size: var(--text-4xl);
-    color: var(--color-white);
-    margin-bottom: var(--space-5);
+
+  .services-teaser__sub {
+    max-width: 52ch;
+    margin: 0 auto 1.75rem;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: var(--lh-body);
   }
-  .bottom-cta__sub {
-    font-size: var(--text-lg);
-    color: var(--color-surface-alt);
-    max-width: 56ch;
-    margin-inline: auto;
-    line-height: var(--leading-loose);
-    margin-bottom: var(--space-8);
-  }
-  .bottom-cta__actions { justify-content: center; }
-  .btn-outline-dark {
-    background: transparent;
-    color: var(--color-white);
-    border: 1px solid rgb(255 255 255 / 0.3);
-  }
-  .btn-outline-dark:hover { background: rgb(255 255 255 / 0.08); }
 </style>

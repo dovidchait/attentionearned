@@ -1,76 +1,155 @@
+/* ============================================================
+   ATTENTION EARNED — DESIGN TOKENS
+   Fireside / cinematic. Dark-first, warm neutrals, signal red.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,500;1,700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
 :root {
-  /* Colors */
-  --color-ink:         #111318;
-  --color-ink-muted:   #5a5f6e;
-  --color-surface:     #f9f8f6;
-  --color-surface-alt: #f0ede8;
-  --color-border:      #e2ddd7;
-  --color-white:       #ffffff;
+  /* --- Brand reds --- */
+  --ae-red:        #FC2C30;
+  --ae-red-press:  #E0231F;
+  --ae-ember:      #C4361C;
+  --ae-coral:      #FC6A6A;
+  --ae-coral-soft: #FF8E7E;
 
-  --color-dark:        #0e1117;
-  --color-dark-muted:  #3a3f4a;
+  /* --- Warm neutrals --- */
+  --ink-950: #0B0A09;
+  --ink-900: #0E0E0C;
+  --ink-850: #141310;
+  --ink-800: #1A1815;
+  --ink-700: #24201B;
+  --ink-600: #322D26;
+  --ink-500: #4A443B;
+  --stone-400: #6F685C;
+  --stone-300: #968E80;
+  --stone-200: #C3BBAC;
+  --bone-100: #E8E2D6;
+  --bone-50:  #F6F2EA;
+  --paper:    #FBF8F1;
 
-  --color-accent:      #c8932a;
-  --color-accent-hover:#b07a1a;
+  /* --- Semantic surfaces --- */
+  --surface-base:    var(--ink-900);
+  --surface-raised:  var(--ink-850);
+  --surface-card:    var(--ink-800);
+  --surface-inset:   var(--ink-950);
+  --surface-hover:   var(--ink-700);
 
-  --color-focus:       #2b6cb0;
-  --color-error:       #c0392b;
+  /* --- Borders --- */
+  --border-subtle: rgba(247, 240, 228, 0.08);
+  --border-mid:    rgba(247, 240, 228, 0.13);
+  --border-strong: rgba(247, 240, 228, 0.22);
 
-  /* Typography */
-  --font-sans:   'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif:  'DM Serif Display', Georgia, serif;
+  /* --- Text --- */
+  --text-strong: var(--paper);
+  --text-body:   #D9D3C7;
+  --text-muted:  var(--stone-300);
+  --text-faint:  var(--stone-400);
+  --text-on-accent: #16070A;
 
-  --text-xs:   0.75rem;
-  --text-sm:   0.875rem;
-  --text-base: 1rem;
-  --text-lg:   1.125rem;
-  --text-xl:   1.25rem;
-  --text-2xl:  1.5rem;
-  --text-3xl:  1.875rem;
-  --text-4xl:  2.25rem;
-  --text-5xl:  3rem;
-  --text-6xl:  3.75rem;
+  /* --- Accent --- */
+  --accent:        var(--ae-red);
+  --accent-press:  var(--ae-red-press);
+  --accent-soft:   var(--ae-coral);
+  --accent-quiet:  rgba(252, 44, 48, 0.12);
+  --focus-ring:    var(--ae-coral);
 
-  --leading-tight:  1.2;
-  --leading-snug:   1.35;
-  --leading-normal: 1.6;
-  --leading-loose:  1.8;
+  /* --- Status --- */
+  --ok:    #4FBF8B;
+  --warn:  #E9B949;
+  --error: var(--ae-red);
 
-  --weight-normal:   400;
-  --weight-medium:   500;
-  --weight-semibold: 600;
+  /* --- Gradients & glows --- */
+  --grad-cta:  linear-gradient(100deg, #EF4A4A 0%, #C4361C 100%);
+  --grad-coral: linear-gradient(100deg, #FF8E7E 0%, #FC2C30 100%);
+  --grad-hero: radial-gradient(120% 90% at 50% 38%, rgba(252,44,48,0.16) 0%, rgba(196,54,28,0.05) 32%, rgba(14,14,12,0) 62%);
+  --glow-cta:  0 10px 40px -8px rgba(252, 44, 48, 0.55), 0 0 0 1px rgba(252, 44, 48, 0.30);
+  --glow-soft: 0 0 60px -10px rgba(252, 44, 48, 0.35);
 
-  /* Spacing */
+  /* --- Families --- */
+  --font-display: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:    'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* --- Weights --- */
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-black:    800;
+  --fw-ultra:    900;
+
+  /* --- Fluid display sizes --- */
+  --fs-display-2xl: clamp(3.5rem, 1.6rem + 7.6vw, 6.5rem);
+  --fs-display-xl:  clamp(2.75rem, 1.6rem + 4.8vw, 4.5rem);
+  --fs-display-lg:  clamp(2.25rem, 1.6rem + 2.7vw, 3.25rem);
+
+  /* --- Static UI sizes --- */
+  --fs-h1:       2.5rem;
+  --fs-h2:       1.875rem;
+  --fs-h3:       1.4375rem;
+  --fs-body-lg:  1.1875rem;
+  --fs-body:     1rem;
+  --fs-sm:       0.875rem;
+  --fs-xs:       0.78125rem;
+  --fs-label:    0.8125rem;
+
+  /* --- Line heights --- */
+  --lh-display: 1.02;
+  --lh-tight:   1.1;
+  --lh-snug:    1.25;
+  --lh-body:    1.6;
+
+  /* --- Tracking --- */
+  --tracking-display: -0.03em;
+  --tracking-tight:   -0.015em;
+  --tracking-normal:  0em;
+  --tracking-label:   0.2em;
+  --tracking-wide:    0.08em;
+
+  /* --- Spacing (4px base) --- */
+  --space-0:  0;
   --space-1:  0.25rem;
   --space-2:  0.5rem;
   --space-3:  0.75rem;
   --space-4:  1rem;
-  --space-5:  1.25rem;
-  --space-6:  1.5rem;
-  --space-8:  2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
-  --space-32: 8rem;
+  --space-5:  1.5rem;
+  --space-6:  2rem;
+  --space-7:  3rem;
+  --space-8:  4rem;
+  --space-9:  6rem;
+  --space-10: 8rem;
 
-  /* Layout */
-  --max-width-prose:   68ch;
-  --max-width-content: 1120px;
-  --max-width-wide:    1400px;
+  /* --- Layout --- */
+  --container:      1200px;
+  --container-wide: 1440px;
+  --container-text: 720px;
+  --gutter:         clamp(1.25rem, 5vw, 4rem);
 
-  /* Radius */
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 12px;
+  /* --- Radii --- */
+  --radius-xs:   6px;
+  --radius-sm:   10px;
+  --radius-md:   14px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08);
-  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.10);
-  --shadow-lg: 0 8px 32px 0 rgb(0 0 0 / 0.12);
+  /* --- Borders --- */
+  --border-width: 1px;
+  --border-hair:  1px solid var(--border-subtle);
 
-  /* Transitions */
-  --transition-fast:   150ms ease;
-  --transition-normal: 250ms ease;
+  /* --- Shadows --- */
+  --shadow-sm:      0 1px 2px rgba(0,0,0,0.4);
+  --shadow-card:    0 1px 0 rgba(247,240,228,0.04) inset, 0 22px 50px -24px rgba(0,0,0,0.72);
+  --shadow-pop:     0 30px 80px -28px rgba(0,0,0,0.82);
+  --shadow-overlay: 0 40px 120px -30px rgba(0,0,0,0.9);
+
+  /* --- Motion --- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ember: cubic-bezier(0.34, 1.4, 0.46, 1);
+  --dur-fast:   140ms;
+  --dur-base:   240ms;
+  --dur-slow:   420ms;
 }
