@@ -21,8 +21,8 @@ const featuredWork = AE_WORK
         and missions that deserve more than applause — they deserve action.
       </p>
       <div class="hero__actions">
-        <a href="/contact" class="btn-primary btn-lg">Let's make them feel something</a>
-        <a href="/work" class="btn-ghost btn-lg">See our work</a>
+        <a href="/contact" class="ae-btn ae-btn--primary ae-btn--lg">Let's make them feel something</a>
+        <a href="/work" class="ae-btn ae-btn--ghost ae-btn--lg">See our work</a>
       </div>
     </div>
   </section>
@@ -53,6 +53,9 @@ const featuredWork = AE_WORK
             )}
             {thumb && <img src={thumb} alt="" class="work-tile__media" loading="lazy" />}
             <div class="work-tile__overlay" />
+            <div class="work-tile__play" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </div>
             <div class="work-tile__info">
               <span class="work-tile__sector">{entry.sector}</span>
               <span class="work-tile__title">{entry.title}</span>
@@ -63,7 +66,7 @@ const featuredWork = AE_WORK
       })}
     </div>
     <div class="work-link-row">
-      <a href="/work" class="btn-secondary btn-md">View all work</a>
+      <a href="/work" class="ae-btn ae-btn--secondary ae-btn--md">View all work</a>
     </div>
   </section>
 
@@ -74,7 +77,7 @@ const featuredWork = AE_WORK
       <p class="services-teaser__sub">
         From concept to delivery, we handle everything. Or we step in wherever you need us most.
       </p>
-      <a href="/services" class="btn-primary btn-md">Explore services</a>
+      <a href="/services" class="ae-btn ae-btn--primary ae-btn--md">Explore services</a>
     </div>
   </section>
 
@@ -102,6 +105,18 @@ const featuredWork = AE_WORK
     text-align: center;
     overflow: hidden;
     background-image: var(--grad-hero);
+  }
+
+  /* Cinematic grain overlay */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 300px 300px;
+    opacity: 0.03;
+    mix-blend-mode: overlay;
   }
 
   .hero__inner {
@@ -134,49 +149,6 @@ const featuredWork = AE_WORK
     justify-content: center;
     margin-top: 0.5rem;
   }
-
-  /* Shared buttons (local scope — Base has global CtaBand, these pages need standalone too) */
-  .btn-primary,
-  .btn-secondary,
-  .btn-ghost {
-    display: inline-flex;
-    align-items: center;
-    font-family: var(--font-sans);
-    font-weight: var(--fw-bold);
-    border-radius: var(--radius-pill);
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
-  }
-
-  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; letter-spacing: 0.04em; }
-  .btn-md { font-size: var(--fs-sm); padding: 0.65rem 1.3rem; letter-spacing: var(--tracking-wide); text-transform: uppercase; }
-
-  .btn-primary {
-    background: var(--grad-cta);
-    color: var(--text-on-accent);
-    box-shadow: var(--glow-cta);
-  }
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
-  }
-
-  .btn-secondary {
-    background: transparent;
-    color: var(--text-strong);
-    border: 1px solid var(--border-strong);
-  }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent-soft); transform: translateY(-1px); }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--text-body);
-    border: 1px solid var(--border-subtle);
-  }
-  .btn-ghost:hover { background: var(--surface-hover); color: var(--text-strong); }
 
   /* Work section */
   .work-section { padding-block: clamp(4rem, 8vw, 7rem); }
@@ -237,6 +209,30 @@ const featuredWork = AE_WORK
     position: absolute;
     inset: 0;
     background: linear-gradient(to top, rgba(11,10,9,.85) 0%, transparent 45%);
+  }
+
+  .work-tile__play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(252, 44, 48, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    pointer-events: none;
+    box-shadow: 0 4px 24px rgba(252, 44, 48, 0.55);
+    color: #fff;
+  }
+
+  .work-tile:hover .work-tile__play {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 
   .work-tile__info {

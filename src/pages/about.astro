@@ -67,7 +67,7 @@ import CtaBand from '../components/CtaBand.astro';
 
     <div class="about-cta">
       <h2>Let's figure out what you actually need</h2>
-      <a href="/contact" class="btn-primary btn-lg">Start the conversation</a>
+      <a href="/contact" class="ae-btn ae-btn--primary ae-btn--lg">Start the conversation</a>
     </div>
   </article>
 
@@ -238,29 +238,4 @@ import CtaBand from '../components/CtaBand.astro';
 
   .about-cta h2 { font-size: 1.6rem; margin: 0; }
 
-  /* Buttons */
-  .btn-primary, .btn-lg {
-    display: inline-flex;
-    align-items: center;
-    font-family: var(--font-sans);
-    font-weight: var(--fw-bold);
-    border-radius: var(--radius-pill);
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
-  }
-
-  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; }
-
-  .btn-primary {
-    background: var(--grad-cta);
-    color: var(--text-on-accent);
-    box-shadow: var(--glow-cta);
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
-  }
 </style>
