@@ -1,114 +1,631 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Kicker from '../../components/Kicker.astro';
-import CtaBand from '../../components/CtaBand.astro';
-import { getCollection, render } from 'astro:content';
+import { getCollection } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const entries = await getCollection('services');
-  return entries.map((entry, i) => ({
+  const sorted = entries.sort((a, b) => a.data.order - b.data.order);
+  return sorted.map((entry, i) => ({
     params: { slug: entry.id },
     props: { entry, num: i + 1 },
   }));
 };
 
 const { entry, num } = Astro.props;
-const { Content } = await render(entry);
-const { title, summary } = entry.data;
+const { title, summary, problem, note, produces, specialties, sectors, heroType, heroSrc, heroLabel, beta } = entry.data;
 const numStr = String(num).padStart(2, '0');
+
+const allServices = await getCollection('services');
+const sortedServices = allServices.sort((a, b) => a.data.order - b.data.order);
+const otherServices = sortedServices.filter(s => s.id !== entry.id);
+
+const allWork = await getCollection('work');
+const relatedWork = sectors.length
+  ? allWork.filter(w => sectors.includes(w.data.sector)).slice(0, 3)
+  : [];
+
+const ctaHead = beta ? 'Want in on the beta?' : 'Ready to talk through your project?';
+const ctaSub = beta
+  ? 'We are running this with a small group of organizations first. Tell us about your donor base and we will see if it fits.'
+  : 'Tell us who is watching and what you need them to do. We will tell you whether video is even the right answer.';
+const ctaLabel = beta ? 'Ask about the beta' : 'Start the conversation';
 ---
 
 <Base title={title} description={summary}>
-  <article class="service-article container">
-    <Kicker>Service · {numStr}</Kicker>
-    <h1>{title}</h1>
-    <p class="service-article__lede">{summary}</p>
+  <!-- Hero -->
+  <section class="hero-section">
+    <div class="inner">
+      <div class="kicker-row">
+        <span class="kicker-label">Service · {numStr}</span>
+        {beta && <span class="beta-pill">Beta · Coming soon</span>}
+      </div>
+      <h1 class="hero-title">{title}</h1>
+      <p class="hero-desc">{summary}</p>
 
-    <div class="service-article__body prose">
-      <Content />
+      <div class="hero-media">
+        {heroType === 'video' && heroSrc && (
+          <video src={heroSrc} autoplay muted loop playsinline controls class="hero-video" />
+        )}
+        {heroType === 'iframe' && heroSrc && (
+          <iframe
+            src={heroSrc}
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowfullscreen
+            title="Service film"
+            class="hero-iframe"
+          />
+        )}
+        {(heroType === 'placeholder' || !heroSrc) && (
+          <div class="hero-placeholder">
+            <img src="/mark.svg" alt="" width="44" height="44" class="hero-mark" />
+            <div class="hero-placeholder-label">{heroLabel ?? 'Media coming'}</div>
+          </div>
+        )}
+      </div>
+      {heroType !== 'placeholder' && heroLabel && (
+        <div class="hero-caption">{heroLabel}</div>
+      )}
     </div>
+  </section>
 
-    <div class="service-article__cta">
-      <a href="/contact" class="btn-primary btn-lg">Start your project</a>
+  <!-- Problem + Produces -->
+  <section class="body-section">
+    <div class="inner">
+      <div class="two-col">
+        <div class="col-problem">
+          <div class="section-label">Why most of it fails</div>
+          <p class="problem-text">{problem}</p>
+          {note && (
+            <p class="note-text">{note}</p>
+          )}
+          <div class="section-label" style="margin-top: 2rem;">Specialties inside this</div>
+          <div class="specialties-row">
+            {specialties.map(sp => (
+              <span class="specialty-pill">{sp}</span>
+            ))}
+          </div>
+        </div>
+        <div class="col-produces">
+          <div class="section-label">What we produce</div>
+          <div class="produces-list">
+            {produces.map(p => (
+              <div class="produces-item">
+                <span class="produce-bullet" aria-hidden="true">▶</span>
+                <span>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
-  </article>
+  </section>
 
-  <CtaBand
-    heading="Ready to talk through your project?"
-    primaryLabel="Start the conversation"
-    primaryHref="/contact"
-  />
+  <!-- Related work -->
+  {relatedWork.length > 0 && (
+    <section class="body-section">
+      <div class="inner">
+        <div class="section-header">
+          <h2 class="section-heading">Work in this category</h2>
+          <a href="/work" class="see-all-link">See all work →</a>
+        </div>
+        <div class="work-grid">
+          {relatedWork.map(w => (
+            <a href={`/work/${w.id}`} class="work-card">
+              <div class="work-card__thumb">
+                {w.data.video?.poster ? (
+                  <img src={w.data.video.poster} alt="" loading="lazy" class="work-card__img" />
+                ) : (
+                  <div class="work-card__placeholder">
+                    <img src="/mark.svg" alt="" width="32" height="32" style="opacity:0.9" />
+                  </div>
+                )}
+              </div>
+              <div class="work-card__body">
+                <div class="work-card__client">{w.data.client ?? 'Attention Earned'}</div>
+                <h3 class="work-card__title">{w.data.title}</h3>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Other services -->
+  <section class="body-section">
+    <div class="inner">
+      <div class="section-header">
+        <h2 class="section-heading">The rest of what we do</h2>
+        <a href="/services" class="see-all-link">All services →</a>
+      </div>
+      <div class="others-grid">
+        {otherServices.map((s, i) => {
+          const otherNum = String(s.data.order).padStart(2, '0');
+          return (
+            <a href={`/services/${s.id}`} class="other-card">
+              <div class="other-card__top">
+                <span class="other-card__num">{otherNum}</span>
+                <span class="other-card__arrow" aria-hidden="true">→</span>
+              </div>
+              <h3 class="other-card__title">
+                {s.data.title}
+                {s.data.beta && <span class="other-beta-pill">Beta</span>}
+              </h3>
+              <p class="other-card__desc">{s.data.summary}</p>
+              <div class="other-card__produces">
+                {s.data.produces.slice(0, 3).map(p => (
+                  <div class="other-produce-item">
+                    <span class="produce-bullet" aria-hidden="true">▶</span>
+                    <span>{p}</span>
+                  </div>
+                ))}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="cta-band">
+    <div class="cta-inner">
+      <h2 class="cta-heading">{ctaHead}</h2>
+      <p class="cta-sub">{ctaSub}</p>
+      <a href="/contact" class="cta-btn">{ctaLabel}</a>
+    </div>
+  </section>
 </Base>
 
 <style>
-  .service-article {
-    max-width: var(--container-text);
-    padding-block: clamp(4rem, 8vw, 6rem) 4rem;
+  .hero-section {
+    background-image: radial-gradient(120% 90% at 50% 30%, rgba(252,44,48,.14) 0%, rgba(196,54,28,.04) 34%, rgba(14,14,12,0) 64%);
+    padding: clamp(3.5rem, 7vw, 5.5rem) var(--gutter) 0;
+  }
+
+  .inner {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .kicker-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+
+  .kicker-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+  }
+
+  .beta-pill {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    border: 1px solid rgba(252,44,48,.4);
+    background: rgba(252,44,48,.1);
+    border-radius: var(--radius-pill);
+    padding: 3px 9px;
+  }
+
+  .hero-title {
+    font-size: clamp(2.4rem, 1.7rem + 3.2vw, 3.7rem);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.04;
+    color: var(--text-strong);
+    margin: 0 0 20px;
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+
+  .hero-desc {
+    font-size: 1.18rem;
+    line-height: 1.6;
+    color: var(--text-body);
+    margin: 0 0 44px;
+    max-width: 54ch;
+  }
+
+  .hero-media {
+    position: relative;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-raised);
+    aspect-ratio: 16 / 9;
+    box-shadow: 0 24px 70px -20px rgba(0,0,0,.7);
+  }
+
+  .hero-video,
+  .hero-iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 0;
+    display: block;
+  }
+
+  .hero-placeholder {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: linear-gradient(160deg, var(--surface-card), var(--surface-base));
   }
 
-  .service-article h1 {
-    font-size: clamp(2rem, 4vw, 2.8rem);
+  .hero-mark { display: block; }
+
+  .hero-placeholder-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .hero-caption {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-top: 14px;
+  }
+
+  /* Body sections */
+  .body-section {
+    padding: clamp(4rem, 8vw, 6rem) var(--gutter) 0;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 20px;
+  }
+
+  /* Two-column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: clamp(2.5rem, 6vw, 5rem);
+    align-items: start;
+  }
+
+  @media (max-width: 680px) {
+    .two-col {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .problem-text {
+    font-size: 1.32rem;
+    line-height: 1.58;
     color: var(--text-strong);
-    margin-top: 1rem;
+    margin: 0 0 24px;
+    font-weight: var(--fw-medium);
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
   }
 
-  .service-article__lede {
-    font-size: 1.2rem;
-    line-height: 1.65;
+  .note-text {
+    margin: 0 0 30px;
+    padding: 16px 0 0 18px;
+    border-left: 2px solid rgba(252,44,48,.5);
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.62;
+  }
+
+  .specialties-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  .specialty-pill {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--text-body);
-    font-style: italic;
-    max-width: 60ch;
+    border: 1px solid var(--border-mid);
+    background: var(--surface-raised);
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
   }
 
-  .service-article__body {
-    margin-top: 0.5rem;
-  }
-
-  .prose :global(h2), .prose :global(h3) {
-    color: var(--text-strong);
-    margin-top: 2rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .prose :global(h2) { font-size: 1.1rem; }
-  .prose :global(h3) { font-size: 1rem; }
-
-  .prose :global(p) {
-    color: var(--text-body);
-    line-height: 1.7;
-    margin-bottom: 1rem;
-    font-size: 1.05rem;
-  }
-
-  .prose :global(ul) {
-    padding-left: 1.25rem;
-    color: var(--text-body);
-    line-height: 1.9;
-    margin-bottom: 1rem;
-  }
-
-  .prose :global(li) { margin-bottom: 0.25rem; }
-
-  .prose :global(strong) {
-    font-weight: var(--fw-bold);
-    color: var(--text-strong);
-  }
-
-  .service-article__cta {
-    padding-top: 2rem;
+  .produces-list {
+    display: flex;
+    flex-direction: column;
     border-top: 1px solid var(--border-subtle);
-    text-align: center;
   }
 
-  .btn-primary {
+  .produces-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-body);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .produce-bullet {
+    color: var(--accent);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  /* Section header row */
+  .section-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: baseline;
+    margin-bottom: 28px;
+  }
+
+  .section-heading {
+    margin: 0;
+    font-size: clamp(1.7rem, 1.3rem + 1.8vw, 2.3rem);
+    font-weight: var(--fw-black);
+    letter-spacing: -0.025em;
+    line-height: 1.14;
+    color: var(--text-strong);
+  }
+
+  .see-all-link {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .see-all-link:hover { text-decoration: underline; }
+
+  /* Work cards */
+  .work-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+
+  .work-card {
+    display: block;
+    text-decoration: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--surface-card);
+    transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
+  }
+
+  .work-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252,44,48,.42);
+    box-shadow: 0 10px 40px -8px rgba(252,44,48,.28);
+  }
+
+  .work-card__thumb {
+    aspect-ratio: 16 / 9;
+    background: var(--surface-base);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .work-card__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .work-card__placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, var(--surface-card), var(--surface-base));
+  }
+
+  .work-card__body {
+    padding: 18px 20px 20px;
+  }
+
+  .work-card__client {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 8px;
+  }
+
+  .work-card__title {
+    margin: 0;
+    font-size: 1.08rem;
+    font-weight: var(--fw-bold);
+    letter-spacing: -0.015em;
+    color: var(--text-strong);
+    line-height: 1.3;
+  }
+
+  /* Other services grid */
+  .others-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .other-card {
+    display: block;
+    text-decoration: none;
+    padding: 22px 24px 24px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    background: var(--surface-raised);
+    transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) ease, background var(--dur-base) ease, box-shadow var(--dur-base) ease;
+  }
+
+  .other-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252,44,48,.42);
+    background: var(--surface-card);
+    box-shadow: 0 10px 40px -8px rgba(252,44,48,.24);
+  }
+
+  .other-card:hover .other-card__title { color: var(--accent-soft); }
+  .other-card:hover .other-card__arrow { transform: translateX(4px); }
+
+  .other-card__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+
+  .other-card__num {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    color: var(--text-faint);
+  }
+
+  .other-card__arrow {
+    color: var(--accent);
+    font-size: 1.2rem;
+    line-height: 1;
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .other-card__title {
+    display: block;
+    margin: 0 0 10px;
+    font-size: 1.16rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.018em;
+    line-height: 1.26;
+    color: var(--text-strong);
+    transition: color var(--dur-base) ease;
+  }
+
+  .other-beta-pill {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    font-weight: var(--fw-regular);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    border: 1px solid rgba(252,44,48,.4);
+    background: rgba(252,44,48,.1);
+    border-radius: var(--radius-pill);
+    padding: 3px 8px;
+  }
+
+  .other-card__desc {
+    margin: 0 0 16px;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .other-card__produces {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 14px;
+  }
+
+  .other-produce-item {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    line-height: 1.45;
+  }
+
+  .other-produce-item .produce-bullet {
+    font-size: 0.55rem;
+  }
+
+  /* CTA band */
+  .cta-band {
+    background-image: radial-gradient(120% 90% at 50% 38%, rgba(252,44,48,.16) 0%, rgba(196,54,28,.05) 32%, rgba(14,14,12,0) 62%);
+    text-align: center;
+    padding: 96px var(--gutter);
+    margin-top: clamp(4rem, 8vw, 6rem);
+  }
+
+  .cta-inner {
+    max-width: 620px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .cta-heading {
+    margin: 0;
+    font-weight: var(--fw-black);
+    font-size: clamp(1.9rem, 1.4rem + 2.2vw, 2.7rem);
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--text-strong);
+    text-wrap: balance;
+  }
+
+  .cta-sub {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 1.02rem;
+    line-height: 1.6;
+    max-width: 46ch;
+  }
+
+  .cta-btn {
     display: inline-flex;
     align-items: center;
     font-family: var(--font-sans);
     font-weight: var(--fw-bold);
+    font-size: 0.98rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     border-radius: var(--radius-pill);
     border: none;
     cursor: pointer;
@@ -116,13 +633,16 @@ const numStr = String(num).padStart(2, '0');
     background: var(--grad-cta);
     color: var(--text-on-accent);
     box-shadow: var(--glow-cta);
+    padding: 0.95rem 1.8rem;
     transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
   }
 
-  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; }
-
-  .btn-primary:hover {
+  .cta-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
+  }
+
+  .cta-btn:active {
+    transform: scale(0.98);
   }
 </style>
