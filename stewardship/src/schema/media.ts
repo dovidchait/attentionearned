@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, integer, boolean, real } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, boolean, real, unique } from 'drizzle-orm/pg-core';
 import { orgs } from './orgs.js';
 import { donors } from './donors.js';
 
@@ -45,7 +45,9 @@ export const mediaAssetSubjects = pgTable('media_asset_subjects', {
   method: text('method').notNull().default('human_confirmed'),
   confirmedBy: text('confirmed_by'), // user/operator who confirmed
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
-});
+}, (t) => ({
+  uniqueAssetSubject: unique().on(t.assetId, t.subjectId),
+}));
 
 export const donorSubjectLinks = pgTable('donor_subject_links', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -54,7 +56,9 @@ export const donorSubjectLinks = pgTable('donor_subject_links', {
   relationship: text('relationship').notNull(), // 'parent' | 'grandparent' | 'other'
   verifiedBy: text('verified_by').notNull(), // operator who verified this link
   verifiedAt: timestamp('verified_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  uniqueDonorSubject: unique().on(t.donorId, t.subjectId),
+}));
 
 export const mediaRenditions = pgTable('media_renditions', {
   id: uuid('id').primaryKey().defaultRandom(),

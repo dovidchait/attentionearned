@@ -32,6 +32,8 @@ export const env = {
   // EmailIt
   EMAILIT_API_KEY: optional('EMAILIT_API_KEY', ''),
   EMAILIT_BASE_URL: optional('EMAILIT_BASE_URL', 'https://api.emailit.com'),
+  // Local media storage root (used when no cloud storage backend is configured)
+  MEDIA_DIR: optional('MEDIA_DIR', './media'),
 } as const;
 
 export type Env = typeof env;
