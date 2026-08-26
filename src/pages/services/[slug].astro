@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import { getCollection } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
+import { AE_WORK, getYoutubeThumbnail } from '../../data/work';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const entries = await getCollection('services');
@@ -20,9 +21,8 @@ const allServices = await getCollection('services');
 const sortedServices = allServices.sort((a, b) => a.data.order - b.data.order);
 const otherServices = sortedServices.filter(s => s.id !== entry.id);
 
-const allWork = await getCollection('work');
 const relatedWork = sectors.length
-  ? allWork.filter(w => sectors.includes(w.data.sector)).slice(0, 3)
+  ? AE_WORK.filter(w => sectors.some((s: string) => s.toLowerCase() === w.sector.toLowerCase())).slice(0, 3)
   : [];
 
 const ctaHead = beta ? 'Want in on the beta?' : 'Ready to talk through your project?';
@@ -110,23 +110,28 @@ const ctaLabel = beta ? 'Ask about the beta' : 'Start the conversation';
           <a href="/work" class="see-all-link">See all work →</a>
         </div>
         <div class="work-grid">
-          {relatedWork.map(w => (
-            <a href={`/work/${w.id}`} class="work-card">
-              <div class="work-card__thumb">
-                {w.data.video?.poster ? (
-                  <img src={w.data.video.poster} alt="" loading="lazy" class="work-card__img" />
-                ) : (
-                  <div class="work-card__placeholder">
-                    <img src="/mark.svg" alt="" width="32" height="32" style="opacity:0.9" />
-                  </div>
-                )}
-              </div>
-              <div class="work-card__body">
-                <div class="work-card__client">{w.data.client ?? 'Attention Earned'}</div>
-                <h3 class="work-card__title">{w.data.title}</h3>
-              </div>
-            </a>
-          ))}
+          {relatedWork.map(w => {
+            const thumb = getYoutubeThumbnail(w);
+            return (
+              <a href={`/work/${w.slug}`} class="work-card">
+                <div class="work-card__thumb">
+                  {w.kind === 'dropbox-direct' ? (
+                    <video src={w.video} muted loop autoplay playsinline preload="metadata" class="work-card__img" />
+                  ) : thumb ? (
+                    <img src={thumb} alt="" loading="lazy" class="work-card__img" />
+                  ) : (
+                    <div class="work-card__placeholder">
+                      <img src="/mark.svg" alt="" width="32" height="32" style="opacity:0.9" />
+                    </div>
+                  )}
+                </div>
+                <div class="work-card__body">
+                  <div class="work-card__client">{w.client || 'Attention Earned'}</div>
+                  <h3 class="work-card__title">{w.title}</h3>
+                </div>
+              </a>
+            );
+          })}
         </div>
       </div>
     </section>
