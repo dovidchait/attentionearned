@@ -44,6 +44,15 @@ const fullTitle = title.includes('Attention Earned') ? title : `${title} | Atten
 
   <script is:inline src="https://assets.swarmify.com/swarmify.js?key=6d594846-2bde-402b-887e-b830a14569f1" async></script>
 
+  <!-- Google Analytics -->
+  <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-4MKPN5MJNY"></script>
+  <script is:inline>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-4MKPN5MJNY');
+  </script>
+
   <script is:inline>
     (function(c,l,a,r,i,t,y){
       c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
