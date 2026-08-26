@@ -115,7 +115,9 @@ const ctaLabel = beta ? 'Ask about the beta' : 'Start the conversation';
             return (
               <a href={`/work/${w.slug}`} class="work-card">
                 <div class="work-card__thumb">
-                  {thumb ? (
+                  {w.kind === 'dropbox-direct' ? (
+                    <video src={w.video} muted loop autoplay playsinline preload="metadata" class="work-card__img" />
+                  ) : thumb ? (
                     <img src={thumb} alt="" loading="lazy" class="work-card__img" />
                   ) : (
                     <div class="work-card__placeholder">
