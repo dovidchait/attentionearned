@@ -34,7 +34,15 @@ const services = defineCollection({
   schema: z.object({
     title: z.string(),
     summary: z.string(),
-    icon: z.string().optional(),
+    problem: z.string(),
+    note: z.string().optional(),
+    produces: z.array(z.string()),
+    specialties: z.array(z.string()),
+    sectors: z.array(z.string()).default([]),
+    heroType: z.enum(['video', 'iframe', 'placeholder']).default('placeholder'),
+    heroSrc: z.string().optional(),
+    heroLabel: z.string().optional(),
+    beta: z.boolean().default(false),
     order: z.number().default(0),
   }),
 });
