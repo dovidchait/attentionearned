@@ -1,0 +1,39 @@
+{
+  "name": "@attentionearned/stewardship",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "seed": "tsx seeds/synthetic-data.ts",
+    "import": "tsx src/cli/index.ts import",
+    "journey:simulate": "tsx src/cli/index.ts journey:simulate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "generate:fixtures": "tsx scripts/generate-fixtures.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.30.10",
+    "pg": "^8.11.5",
+    "pg-boss": "^9.0.3",
+    "pino": "^9.2.0",
+    "pino-pretty": "^11.2.1",
+    "xlsx": "^0.18.5",
+    "libphonenumber-js": "^1.11.4",
+    "commander": "^12.1.0",
+    "@faker-js/faker": "^8.4.1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.21.4",
+    "typescript": "^5.5.3",
+    "tsx": "^4.16.0",
+    "vitest": "^1.6.0",
+    "@types/pg": "^8.11.6",
+    "@types/node": "^20.14.9"
+  }
+}
