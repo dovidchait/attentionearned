@@ -1,0 +1,64 @@
+name: Stewardship CI
+
+on:
+  push:
+    paths:
+      - 'stewardship/**'
+      - '.github/workflows/stewardship-ci.yml'
+  pull_request:
+    paths:
+      - 'stewardship/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: stewardship_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    defaults:
+      run:
+        working-directory: stewardship
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/stewardship_test
+      DRY_RUN: 'true'
+      SEND_ENABLED: 'false'
+      LOG_LEVEL: error
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: stewardship/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migrations
+        run: npm run db:migrate
+
+      - name: Generate test fixtures
+        run: npm run generate:fixtures
+
+      - name: Run seed (smoke test)
+        run: npm run seed
+
+      - name: Run tests
+        run: npm test
