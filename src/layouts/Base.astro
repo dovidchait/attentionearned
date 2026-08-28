@@ -15,7 +15,7 @@ interface Props {
 const {
   title,
   description = 'Attention Earned. Video production that makes people buy, know you, or act.',
-  ogImage,
+  ogImage = '/og-default.png',
   noindex = false,
   noNav = false,
   noFooter = false,
@@ -34,15 +34,49 @@ const fullTitle = title.includes('Attention Earned') ? title : `${title} | Atten
   <link rel="canonical" href={canonicalURL} />
   <title>{fullTitle}</title>
   <meta name="description" content={description} />
-  {noindex && <meta name="robots" content="noindex, nofollow" />}
+  <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'} />
 
+  <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content={canonicalURL} />
   <meta property="og:title" content={fullTitle} />
   <meta property="og:description" content={description} />
-  {ogImage && <meta property="og:image" content={new URL(ogImage, Astro.site)} />}
+  <meta property="og:image" content={new URL(ogImage, Astro.site)} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="Attention Earned" />
+
+  <!-- Twitter / X card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={fullTitle} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
+
+  <!-- JSON-LD: Organization -->
+  <script is:inline type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Attention Earned",
+    "url": "https://attentionearned.com",
+    "logo": "https://attentionearned.com/mark.svg",
+    "description": "Video production that makes people buy, know you, or act.",
+    "sameAs": [
+      "https://www.linkedin.com/company/26539070",
+      "https://www.youtube.com/@attentionearned",
+      "https://www.instagram.com/attentionearned/"
+    ]
+  })} />
 
   <script is:inline src="https://assets.swarmify.com/swarmify.js?key=6d594846-2bde-402b-887e-b830a14569f1" async></script>
+
+  <!-- Google Analytics -->
+  <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-4MKPN5MJNY"></script>
+  <script is:inline>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-4MKPN5MJNY');
+  </script>
 
   <script is:inline>
     (function(c,l,a,r,i,t,y){
