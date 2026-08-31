@@ -157,6 +157,46 @@ import Base from '../../layouts/Base.astro';
 
       <div class="divider"></div>
 
+      <!-- Payment -->
+      <section class="section" id="pay">
+        <h2 class="section__title">Make a Payment</h2>
+        <p class="pay-intro">Select your package and which installment you're paying — the exact amount will calculate automatically.</p>
+
+        <div class="pay-form" id="pay-form">
+          <div class="pay-selects">
+            <div class="pay-field">
+              <label class="pay-label" for="pay-pkg">Package</label>
+              <select id="pay-pkg" class="pay-select">
+                <option value="A">Option A — Full Package ($9,500)</option>
+                <option value="B">Option B — Core Package ($6,500)</option>
+              </select>
+            </div>
+            <div class="pay-field">
+              <label class="pay-label" for="pay-install">Installment</label>
+              <select id="pay-install" class="pay-select">
+                <option value="1">1st — Deposit (due on signing)</option>
+                <option value="2">2nd — Production Day (Sep 2)</option>
+                <option value="3">3rd — Final Delivery</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pay-summary">
+            <span class="pay-summary__label">Amount due</span>
+            <span class="pay-summary__amount" id="pay-amount">$3,167</span>
+          </div>
+
+          <button class="pay-btn" id="pay-btn" type="button">
+            <span id="pay-btn-text">Pay $3,167</span>
+          </button>
+
+          <p class="pay-note" id="pay-error" hidden>Something went wrong. Please try again or contact us directly.</p>
+          <p class="pay-success" id="pay-success" hidden>Payment received — thank you. We'll be in touch shortly.</p>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
       <!-- Footer -->
       <footer class="prop-footer">
         <span class="prop-footer__name">Dovid Chait · AttentionEarned</span>
@@ -512,4 +552,191 @@ import Base from '../../layouts/Base.astro';
   }
 
   .prop-footer__site:hover { color: var(--stone-300); }
+
+  /* ── Payment section ── */
+  .pay-intro {
+    font-size: 15px;
+    color: var(--stone-300);
+    margin-bottom: 28px;
+    max-width: 55ch;
+    line-height: 1.65;
+  }
+
+  .pay-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 560px;
+  }
+
+  .pay-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 480px) { .pay-selects { grid-template-columns: 1fr; } }
+
+  .pay-field { display: flex; flex-direction: column; gap: 6px; }
+
+  .pay-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+  }
+
+  .pay-select {
+    appearance: none;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--dur-fast);
+  }
+
+  .pay-select:focus { border-color: var(--accent-soft); }
+
+  .pay-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+  }
+
+  .pay-summary__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+  }
+
+  .pay-summary__amount {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .pay-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.9rem 2rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-bold);
+    color: var(--text-on-accent);
+    background: var(--grad-cta);
+    box-shadow: var(--glow-cta);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), opacity var(--dur-fast);
+    align-self: flex-start;
+  }
+
+  .pay-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,.7), 0 0 0 1px rgba(252,44,48,.4);
+  }
+
+  .pay-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .pay-note {
+    font-size: 13px;
+    color: var(--ae-red);
+    line-height: 1.5;
+  }
+
+  .pay-success {
+    font-size: 14px;
+    color: var(--ok);
+    line-height: 1.5;
+    padding: 12px 16px;
+    background: rgba(79, 191, 139, 0.08);
+    border: 1px solid rgba(79, 191, 139, 0.2);
+    border-radius: var(--radius-md);
+  }
 </style>
+
+<script>
+  // Package totals in cents
+  const TOTALS: Record<string, number> = { A: 950000, B: 650000 };
+
+  function installmentAmount(total: number, n: number): number {
+    const base = Math.floor(total / 3);
+    const rem = total - base * 3;
+    if (n === 3) return base + rem;
+    return base + (n === 1 ? (rem > 0 ? 1 : 0) : rem > 1 ? 1 : 0);
+  }
+
+  function fmt(cents: number): string {
+    return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  const pkgEl   = document.getElementById('pay-pkg')     as HTMLSelectElement;
+  const instEl  = document.getElementById('pay-install') as HTMLSelectElement;
+  const amtEl   = document.getElementById('pay-amount')!;
+  const btnEl   = document.getElementById('pay-btn')     as HTMLButtonElement;
+  const btnText = document.getElementById('pay-btn-text')!;
+  const errEl   = document.getElementById('pay-error')!;
+  const okEl    = document.getElementById('pay-success')!;
+
+  // Show success banner if redirected back after payment
+  if (new URLSearchParams(window.location.search).get('paid') === 'true') {
+    okEl.hidden = false;
+    history.replaceState({}, '', window.location.pathname);
+  }
+
+  function update() {
+    const cents = installmentAmount(TOTALS[pkgEl.value], Number(instEl.value));
+    const label = fmt(cents);
+    amtEl.textContent = label;
+    btnText.textContent = `Pay ${label}`;
+    errEl.hidden = true;
+  }
+
+  pkgEl.addEventListener('change', update);
+  instEl.addEventListener('change', update);
+  update();
+
+  btnEl.addEventListener('click', async () => {
+    errEl.hidden = true;
+    btnEl.disabled = true;
+    btnText.textContent = 'Redirecting…';
+
+    try {
+      const res = await fetch('/api/scanpay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ package: pkgEl.value, installment: Number(instEl.value) }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error ?? 'Unknown error');
+      }
+    } catch {
+      errEl.hidden = false;
+      btnEl.disabled = false;
+      update();
+    }
+  });
+</script>
