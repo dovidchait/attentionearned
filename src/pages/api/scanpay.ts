@@ -2,19 +2,16 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 
-// Package totals in cents
 const PACKAGE_TOTALS: Record<string, number> = {
-  A: 950000, // $9,500.00
-  B: 650000, // $6,500.00
+  A: 950000,
+  B: 650000,
 };
 
-// Installment fractions (third 1, third 2, third 3)
-// Distribute rounding: first two get ceiling, last gets the remainder
-function installmentAmount(total: number, installment: 1 | 2 | 3): number {
+function installmentAmount(total: number, n: number): number {
   const base = Math.floor(total / 3);
-  const remainder = total - base * 3;
-  if (installment === 3) return base + remainder;
-  return base + (installment === 1 ? (remainder > 0 ? 1 : 0) : remainder > 1 ? 1 : 0);
+  const rem = total - base * 3;
+  if (n === 3) return base + rem;
+  return base + (n === 1 ? (rem > 0 ? 1 : 0) : rem > 1 ? 1 : 0);
 }
 
 const INSTALLMENT_LABELS: Record<number, string> = {
@@ -23,83 +20,91 @@ const INSTALLMENT_LABELS: Record<number, string> = {
   3: 'Final Delivery Payment (3rd of 3)',
 };
 
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 export const POST: APIRoute = async ({ request }) => {
-  const apiKey = import.meta.env.SCANPAY_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Payment not configured.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  let body: { package: string; installment: number };
   try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const pkg = body.package?.toUpperCase();
-  const installment = Number(body.installment) as 1 | 2 | 3;
-
-  if (!PACKAGE_TOTALS[pkg] || ![1, 2, 3].includes(installment)) {
-    return new Response(JSON.stringify({ error: 'Invalid package or installment.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const amountCents = installmentAmount(PACKAGE_TOTALS[pkg], installment);
-  const amountDollars = (amountCents / 100).toFixed(2);
-  const label = `Ha'Or Beacon School Fundraising Video — ${INSTALLMENT_LABELS[installment]}`;
-
-  const payload = {
-    orderid: `haor-${pkg.toLowerCase()}-${installment}-${Date.now()}`,
-    successurl: 'https://attentionearned.com/proposals/haor-beacon?paid=true',
-    items: [
-      {
-        name: label,
-        quantity: 1,
-        price: `${amountDollars} USD`,
-        sku: `pkg-${pkg.toLowerCase()}-install-${installment}`,
-      },
-    ],
-  };
-
-  const credentials = btoa(`${apiKey}:`);
-
-  try {
-    const res = await fetch('https://api.scanpay.dk/v1/new', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const responseText = await res.text();
-    if (!res.ok) {
-      console.error('ScanPay error:', res.status, responseText);
-      return new Response(JSON.stringify({ error: `ScanPay ${res.status}: ${responseText}` }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const apiKey = import.meta.env.SCANPAY_API_KEY;
+    if (!apiKey) {
+      return json({ error: 'SCANPAY_API_KEY is not set on the server.' }, 500);
     }
 
-    const data = JSON.parse(responseText) as { url: string };
-    return new Response(JSON.stringify({ url: data.url }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    let body: { package: string; installment: number };
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body.' }, 400);
+    }
+
+    const pkg = String(body.package ?? '').toUpperCase();
+    const installment = Number(body.installment);
+
+    if (!PACKAGE_TOTALS[pkg] || ![1, 2, 3].includes(installment)) {
+      return json({ error: `Invalid package "${pkg}" or installment "${installment}".` }, 400);
+    }
+
+    const amountCents = installmentAmount(PACKAGE_TOTALS[pkg], installment);
+    const amountDollars = (amountCents / 100).toFixed(2);
+    const itemName = `Ha'Or Beacon School Fundraising Video — ${INSTALLMENT_LABELS[installment]}`;
+
+    const payload = {
+      orderid: `haor-${pkg.toLowerCase()}-${installment}-${Date.now()}`,
+      successurl: 'https://attentionearned.com/proposals/haor-beacon?paid=true',
+      items: [
+        {
+          name: itemName,
+          quantity: 1,
+          price: `${amountDollars} USD`,
+          sku: `pkg-${pkg.toLowerCase()}-install-${installment}`,
+        },
+      ],
+    };
+
+    // ScanPay Basic auth: base64(apikey:)
+    const credentials = btoa(`${apiKey}:`);
+
+    let scanpayRes: Response;
+    try {
+      scanpayRes = await fetch('https://api.scanpay.dk/v1/new', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (fetchErr) {
+      console.error('ScanPay fetch failed:', fetchErr);
+      return json({ error: `Could not reach ScanPay: ${String(fetchErr)}` }, 502);
+    }
+
+    const responseText = await scanpayRes.text();
+    console.log('ScanPay response:', scanpayRes.status, responseText);
+
+    if (!scanpayRes.ok) {
+      return json({ error: `ScanPay ${scanpayRes.status}: ${responseText}` }, 502);
+    }
+
+    let data: { url?: string };
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      return json({ error: `ScanPay returned non-JSON: ${responseText}` }, 502);
+    }
+
+    if (!data.url) {
+      return json({ error: `ScanPay response missing url field: ${responseText}` }, 502);
+    }
+
+    return json({ url: data.url });
+
   } catch (err) {
-    console.error('ScanPay fetch failed:', err);
-    return new Response(JSON.stringify({ error: 'Could not reach payment provider.' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error('Unhandled error in /api/scanpay:', err);
+    return json({ error: `Server error: ${String(err)}` }, 500);
   }
 };

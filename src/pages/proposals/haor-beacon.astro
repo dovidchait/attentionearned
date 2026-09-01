@@ -731,9 +731,13 @@ import Base from '../../layouts/Base.astro';
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error ?? 'Unknown error');
+        errEl.textContent = data.error ?? 'Something went wrong. Please try again or contact us directly.';
+        errEl.hidden = false;
+        btnEl.disabled = false;
+        update();
       }
-    } catch {
+    } catch (err) {
+      errEl.textContent = `Network error: ${String(err)}`;
       errEl.hidden = false;
       btnEl.disabled = false;
       update();
