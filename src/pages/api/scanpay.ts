@@ -69,7 +69,7 @@ export const POST: APIRoute = async ({ request }) => {
     ],
   };
 
-  const credentials = Buffer.from(`${apiKey}:`).toString('base64');
+  const credentials = btoa(`${apiKey}:`);
 
   try {
     const res = await fetch('https://api.scanpay.dk/v1/new', {
@@ -81,16 +81,16 @@ export const POST: APIRoute = async ({ request }) => {
       body: JSON.stringify(payload),
     });
 
+    const responseText = await res.text();
     if (!res.ok) {
-      const text = await res.text();
-      console.error('ScanPay error:', res.status, text);
-      return new Response(JSON.stringify({ error: 'Payment provider error.' }), {
+      console.error('ScanPay error:', res.status, responseText);
+      return new Response(JSON.stringify({ error: `ScanPay ${res.status}: ${responseText}` }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await res.json() as { url: string };
+    const data = JSON.parse(responseText) as { url: string };
     return new Response(JSON.stringify({ url: data.url }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
