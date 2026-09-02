@@ -65,6 +65,15 @@ import CtaBand from '../components/CtaBand.astro';
     <h2>Quick credibility check</h2>
     <p>Grew up around nonprofits. Went from 15-second social ads to 70-interview documentaries. Real film set and marketing experience.</p>
 
+    <div class="sample-links">
+      <p class="sample-links__label">Sample reels</p>
+      <div class="sample-links__grid">
+        <a href="/cinematography-work-samples" class="sample-link">Cinematography samples →</a>
+        <a href="/creative-work-samples" class="sample-link">Creative samples →</a>
+        <a href="/work" class="sample-link">Full work gallery →</a>
+      </div>
+    </div>
+
     <div class="about-cta">
       <h2>Let's figure out what you actually need</h2>
       <a href="/contact" class="btn-primary btn-lg">Start the conversation</a>
@@ -219,6 +228,39 @@ import CtaBand from '../components/CtaBand.astro';
     color: var(--text-muted);
     border: 1px solid var(--border-mid);
   }
+
+  /* Sample links */
+  .sample-links {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.5rem;
+    background: var(--surface-card);
+  }
+
+  .sample-links__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin-bottom: 0.75rem !important;
+  }
+
+  .sample-links__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+
+  .sample-link {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    color: var(--accent-soft);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .sample-link:hover { color: var(--accent); }
 
   /* Bottom CTA within article */
   .about-cta {

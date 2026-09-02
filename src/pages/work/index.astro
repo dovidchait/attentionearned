@@ -59,9 +59,6 @@ const work = AE_WORK.map(w => ({
             <div class="work-tile__platform-badge">{w.platform}</div>
           )}
           <div class="work-tile__overlay" />
-          {(w.thumb || (!w.isVideo && !w.thumb)) && (
-            <span class="work-tile__tag">{w.platform}</span>
-          )}
           <div class="work-tile__info">
             <span class="work-tile__sector">{w.sector}</span>
             <span class="work-tile__title">{w.title}</span>

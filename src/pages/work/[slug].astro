@@ -61,13 +61,25 @@ if (mdxEntry) {
       )}
     </div>
 
-    <p class="work-detail__source">Source: {platform}</p>
+    {mdxEntry?.data.credits && mdxEntry.data.credits.length > 0 && (
+      <dl class="work-detail__credits">
+        {mdxEntry.data.credits.map(line => {
+          const [label, ...rest] = line.split(':');
+          const value = rest.join(':').trim();
+          return value ? (
+            <>
+              <dt>{label.trim()}</dt>
+              <dd>{value}</dd>
+            </>
+          ) : (
+            <dd class="work-detail__credits-note">{line}</dd>
+          );
+        })}
+      </dl>
+    )}
 
     <div class="work-detail__body prose">
-      {Content
-        ? <Content />
-        : <p class="placeholder">Full case study coming soon.</p>
-      }
+      {Content && <Content />}
     </div>
 
     <nav class="work-detail__next">
@@ -155,6 +167,38 @@ if (mdxEntry) {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-top: -0.75rem;
+  }
+
+  /* Credits */
+  .work-detail__credits {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1.25rem;
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 1rem;
+    margin-top: -0.5rem;
+  }
+
+  .work-detail__credits dt {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    padding-top: 0.1rem;
+  }
+
+  .work-detail__credits dd {
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .work-detail__credits-note {
+    grid-column: 1 / -1;
+    color: var(--text-faint);
+    font-style: italic;
+    font-size: 0.85rem;
   }
 
   /* Body */

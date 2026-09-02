@@ -85,6 +85,7 @@ export function getMediaFor(w: WorkEntry): { type: 'video'; src: string } | { ty
   if (w.kind === 'dropbox-direct') return { type: 'video', src: w.video };
   if (w.kind === 'youtube') return { type: 'iframe', src: `https://www.youtube.com/embed/${w.video}` };
   if (w.kind === 'vimeo') return { type: 'iframe', src: `https://player.vimeo.com/video/${w.video}` };
+  if (w.kind === 'instagram') return { type: 'iframe', src: w.video.replace(/\/$/, '') + '/embed/' };
   return { type: 'link', src: w.video };
 }
 
