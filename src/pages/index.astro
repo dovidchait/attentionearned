@@ -14,7 +14,16 @@ const featuredWork = AE_WORK
   <section class="hero">
     <div class="hero__inner ae-reveal">
       <Kicker bullet={false}>Video Production</Kicker>
-      <h1 class="hero__h1">We make people buy.<br />Cry. Act.</h1>
+      <h1 class="hero__h1">
+        We make people
+        <span class="hero__flip-wrap" aria-label="buy, cry, feel">
+          <span class="hero__flip" aria-hidden="true">
+            <span>buy.</span>
+            <span>cry.</span>
+            <span>feel.</span>
+          </span>
+        </span>
+      </h1>
       <p class="hero__sub">
         For B2B teams and service brands who want to turn watchers into buyers.
         For founders who want to build trust, not just awareness. For nonprofits
@@ -118,6 +127,34 @@ const featuredWork = AE_WORK
     letter-spacing: var(--tracking-display);
     color: var(--text-strong);
     text-wrap: balance;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 0.28em;
+  }
+
+  /* Flip card */
+  .hero__flip-wrap {
+    display: inline-flex;
+    overflow: hidden;
+    height: 1.15em;
+    align-items: flex-start;
+  }
+
+  .hero__flip {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  .hero__flip span {
+    display: block;
+    height: 1.15em;
+    line-height: 1.15;
+    color: var(--accent-soft);
+    white-space: nowrap;
   }
 
   .hero__sub {
@@ -291,3 +328,15 @@ const featuredWork = AE_WORK
     line-height: var(--lh-body);
   }
 </style>
+
+<script>
+  const flip = document.querySelector('.hero__flip') as HTMLElement | null;
+  if (flip) {
+    const count = flip.children.length;
+    let idx = 0;
+    setInterval(() => {
+      idx = (idx + 1) % count;
+      flip.style.transform = `translateY(${-idx * 1.15}em)`;
+    }, 2200);
+  }
+</script>
