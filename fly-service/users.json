@@ -1,0 +1,17 @@
+{
+  "users": [
+    {
+      "email": "david@attentionearned.com",
+      "phone": "+1YOURNUMBER",
+      "whatsapp": "+1YOURNUMBER",
+      "name": "David",
+      "profileId": "prof_YOURID",
+      "accounts": {
+        "instagram": "acc_YOURID",
+        "facebook": "acc_YOURID",
+        "linkedin": "acc_YOURID",
+        "twitter": "acc_YOURID"
+      }
+    }
+  ]
+}

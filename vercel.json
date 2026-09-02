@@ -2,11 +2,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "astro",
-  "redirects": [],
-  "crons": [
-    {
-      "path": "/api/remind",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "redirects": []
 }
