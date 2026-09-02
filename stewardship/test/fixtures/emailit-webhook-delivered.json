@@ -1,0 +1,6 @@
+{
+  "event": "delivered",
+  "message_id": "eit_msg_test_456",
+  "email": "donor@example.com",
+  "timestamp": "2024-06-15T14:02:00Z"
+}

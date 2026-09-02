@@ -32,6 +32,10 @@ export const env = {
   // EmailIt
   EMAILIT_API_KEY: optional('EMAILIT_API_KEY', ''),
   EMAILIT_BASE_URL: optional('EMAILIT_BASE_URL', 'https://api.emailit.com'),
+  // Webhook HMAC secrets — empty string disables signature verification (dev mode)
+  ZERNIO_WEBHOOK_SECRET: optional('ZERNIO_WEBHOOK_SECRET', ''),
+  EMAILIT_WEBHOOK_SECRET: optional('EMAILIT_WEBHOOK_SECRET', ''),
+  WEBHOOK_PORT: optional('WEBHOOK_PORT', '3001'),
   // Local media storage root (used when no cloud storage backend is configured)
   MEDIA_DIR: optional('MEDIA_DIR', './media'),
 } as const;

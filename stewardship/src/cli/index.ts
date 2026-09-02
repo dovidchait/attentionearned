@@ -9,6 +9,12 @@ import {
   subjectLinkCommand,
   subjectConsentCommand,
 } from './commands/media.js';
+import {
+  templateUpsertCommand,
+  templateListCommand,
+  sendTouchCommand,
+  webhooksServeCommand,
+} from './commands/channels.js';
 
 const program = new Command('stewardship');
 
@@ -25,6 +31,10 @@ program.addCommand(subjectEnrollCommand);
 program.addCommand(subjectTagCommand);
 program.addCommand(subjectLinkCommand);
 program.addCommand(subjectConsentCommand);
+program.addCommand(templateUpsertCommand);
+program.addCommand(templateListCommand);
+program.addCommand(sendTouchCommand);
+program.addCommand(webhooksServeCommand);
 
 program.parseAsync(process.argv).catch((err: Error) => {
   console.error('Fatal:', err.message);

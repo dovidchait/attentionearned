@@ -1,0 +1,6 @@
+{
+  "event": "delivered",
+  "message_id": "zm_test_abc123",
+  "to": "+12125551234",
+  "timestamp": "2024-06-15T14:00:00Z"
+}
