@@ -14,11 +14,11 @@ const featuredWork = AE_WORK
   <section class="hero">
     <div class="hero__inner ae-reveal">
       <Kicker bullet={false}>Video Production</Kicker>
-      <h1 class="hero__h1">We make people buy.<br />Cry. Act.</h1>
+      <h1 class="hero__h1">We make people <span class="hero__flip" aria-live="polite"><span class="hero__flip-word" id="heroFlipWord">buy.</span></span></h1>
       <p class="hero__sub">
         For B2B teams and service brands who want to turn watchers into buyers.
         For founders who want to build trust, not just awareness. For nonprofits
-        and missions that deserve more than applause — they deserve action.
+        and missions that deserve more than applause. They deserve action.
       </p>
       <div class="hero__actions">
         <a href="/contact" class="btn-primary btn-lg">Let's make them feel something</a>
@@ -82,7 +82,7 @@ const featuredWork = AE_WORK
   <CtaBand
     heading="We've been there, done that."
     accentPhrase=""
-    body="Whatever your industry or story, we've probably solved something like it before — and we'll build something unique for what you need, not a template of what we've already made."
+    body="Whatever your industry or story, we've probably solved something like it before. We'll build something unique for what you need, not a template of what we've already made."
     primaryLabel="Start your project"
     primaryHref="/contact"
     secondaryLabel="See all work"
@@ -290,4 +290,90 @@ const featuredWork = AE_WORK
     font-size: 1.05rem;
     line-height: var(--lh-body);
   }
+
+  /* Word flip */
+  .hero__flip {
+    display: inline-block;
+    position: relative;
+  }
+
+  .hero__flip-word {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    border-right: 3px solid var(--accent, #fc2c30);
+  }
+
+  .hero__flip-word.typing {
+    animation: blink-caret 0.75s step-end infinite;
+  }
+
+  .hero__flip-word.erasing {
+    animation: blink-caret 0.75s step-end infinite;
+  }
+
+  @keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: var(--accent, #fc2c30); }
+  }
 </style>
+
+<script>
+  const words = ['buy.', 'cry.', 'act.'];
+  const el = document.getElementById('heroFlipWord') as HTMLElement;
+  if (el) {
+    let wordIndex = 0;
+    let charIndex = words[0].length;
+    let phase: 'pause' | 'erase' | 'type' = 'pause';
+
+    const TYPE_SPEED = 80;
+    const ERASE_SPEED = 55;
+    const PAUSE_AFTER = 1800;
+    const PAUSE_BEFORE = 200;
+
+    el.textContent = words[0];
+    el.classList.add('typing');
+
+    function tick() {
+      const word = words[wordIndex];
+
+      if (phase === 'pause') {
+        phase = 'erase';
+        el.classList.remove('typing');
+        el.classList.add('erasing');
+        setTimeout(tick, PAUSE_AFTER);
+        return;
+      }
+
+      if (phase === 'erase') {
+        if (charIndex > 0) {
+          charIndex--;
+          el.textContent = word.slice(0, charIndex);
+          setTimeout(tick, ERASE_SPEED);
+        } else {
+          wordIndex = (wordIndex + 1) % words.length;
+          charIndex = 0;
+          phase = 'type';
+          el.classList.remove('erasing');
+          setTimeout(tick, PAUSE_BEFORE);
+        }
+        return;
+      }
+
+      if (phase === 'type') {
+        const next = words[wordIndex];
+        if (charIndex < next.length) {
+          charIndex++;
+          el.textContent = next.slice(0, charIndex);
+          el.classList.add('typing');
+          setTimeout(tick, TYPE_SPEED);
+        } else {
+          phase = 'pause';
+          setTimeout(tick, PAUSE_AFTER);
+        }
+      }
+    }
+
+    setTimeout(tick, PAUSE_AFTER);
+  }
+</script>
