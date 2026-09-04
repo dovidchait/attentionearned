@@ -14,7 +14,7 @@ const featuredWork = AE_WORK
   <section class="hero">
     <div class="hero__inner ae-reveal">
       <Kicker bullet={false}>Video Production</Kicker>
-      <h1 class="hero__h1">We make people <span class="hero__flip" aria-live="polite"><span class="hero__flip-word" id="heroFlipWord">buy.</span></span></h1>
+      <h1 class="hero__h1">We make people <span id="heroFlipWord">buy.</span><span class="hero__cursor" aria-hidden="true">|</span></h1>
       <p class="hero__sub">
         For B2B teams and service brands who want to turn watchers into buyers.
         For founders who want to build trust, not just awareness. For nonprofits
@@ -292,33 +292,22 @@ const featuredWork = AE_WORK
   }
 
   /* Word flip */
-  .hero__flip {
+  #heroFlipWord {
     display: inline;
-    vertical-align: baseline;
   }
 
-  .hero__flip-word {
+  .hero__cursor {
     display: inline;
-    white-space: nowrap;
-    border-right: 3px solid var(--accent, #fc2c30);
-    vertical-align: baseline;
-    line-height: inherit;
-    font-size: inherit;
+    color: var(--accent, #fc2c30);
+    animation: blink-cursor 0.9s step-end infinite;
+    margin-left: 2px;
     font-weight: inherit;
-    letter-spacing: inherit;
+    font-size: inherit;
   }
 
-  .hero__flip-word.typing {
-    animation: blink-caret 0.75s step-end infinite;
-  }
-
-  .hero__flip-word.erasing {
-    animation: blink-caret 0.75s step-end infinite;
-  }
-
-  @keyframes blink-caret {
-    from, to { border-color: transparent; }
-    50% { border-color: var(--accent, #fc2c30); }
+  @keyframes blink-cursor {
+    from, to { opacity: 1; }
+    50% { opacity: 0; }
   }
 </style>
 
@@ -336,15 +325,12 @@ const featuredWork = AE_WORK
     const PAUSE_BEFORE = 200;
 
     el.textContent = words[0];
-    el.classList.add('typing');
 
     function tick() {
       const word = words[wordIndex];
 
       if (phase === 'pause') {
         phase = 'erase';
-        el.classList.remove('typing');
-        el.classList.add('erasing');
         setTimeout(tick, PAUSE_AFTER);
         return;
       }
@@ -358,7 +344,6 @@ const featuredWork = AE_WORK
           wordIndex = (wordIndex + 1) % words.length;
           charIndex = 0;
           phase = 'type';
-          el.classList.remove('erasing');
           setTimeout(tick, PAUSE_BEFORE);
         }
         return;
@@ -369,7 +354,6 @@ const featuredWork = AE_WORK
         if (charIndex < next.length) {
           charIndex++;
           el.textContent = next.slice(0, charIndex);
-          el.classList.add('typing');
           setTimeout(tick, TYPE_SPEED);
         } else {
           phase = 'pause';
