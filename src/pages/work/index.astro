@@ -24,6 +24,16 @@ const work = AE_WORK.map(w => ({
       <span id="work-count">{work.length}</span> projects
     </p>
 
+    <div class="search-bar">
+      <input
+        type="search"
+        id="work-search"
+        placeholder="Search by title, client, sector…"
+        autocomplete="off"
+        aria-label="Search projects"
+      />
+    </div>
+
     <div class="filter-pills" id="filter-pills" role="group" aria-label="Filter by sector">
       {AE_SECTORS.map(sector => (
         <button
@@ -42,6 +52,8 @@ const work = AE_WORK.map(w => ({
           href={`/work/${w.slug}`}
           class="work-tile"
           data-sector={w.sector}
+          data-title={w.title.toLowerCase()}
+          data-client={w.client.toLowerCase()}
         >
           {w.isVideo && (
             <video
@@ -67,6 +79,7 @@ const work = AE_WORK.map(w => ({
         </a>
       ))}
     </div>
+    <p class="work-no-results" id="work-no-results" hidden>No projects match your search.</p>
   </section>
 
   <CtaBand
@@ -81,23 +94,41 @@ const work = AE_WORK.map(w => ({
   const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
   const tiles = document.querySelectorAll<HTMLElement>('.work-tile');
   const countEl = document.getElementById('work-count');
+  const searchInput = document.getElementById('work-search') as HTMLInputElement | null;
+  const noResults = document.getElementById('work-no-results');
+
+  let activeSector = 'All';
+  let searchQuery = '';
+
+  function applyFilters() {
+    let visible = 0;
+    tiles.forEach(tile => {
+      const sectorMatch = activeSector === 'All' || tile.dataset.sector === activeSector;
+      const q = searchQuery.trim();
+      const textMatch = q === '' ||
+        (tile.dataset.title ?? '').includes(q) ||
+        (tile.dataset.client ?? '').includes(q) ||
+        (tile.dataset.sector ?? '').toLowerCase().includes(q);
+      const show = sectorMatch && textMatch;
+      tile.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    if (countEl) countEl.textContent = String(visible);
+    if (noResults) noResults.hidden = visible > 0;
+  }
 
   pills.forEach(pill => {
     pill.addEventListener('click', () => {
-      const sector = pill.dataset.sector ?? 'All';
-
+      activeSector = pill.dataset.sector ?? 'All';
       pills.forEach(p => p.setAttribute('aria-pressed', 'false'));
       pill.setAttribute('aria-pressed', 'true');
-
-      let visible = 0;
-      tiles.forEach(tile => {
-        const show = sector === 'All' || tile.dataset.sector === sector;
-        tile.style.display = show ? '' : 'none';
-        if (show) visible++;
-      });
-
-      if (countEl) countEl.textContent = String(visible);
+      applyFilters();
     });
+  });
+
+  searchInput?.addEventListener('input', () => {
+    searchQuery = searchInput.value.toLowerCase();
+    applyFilters();
   });
 </script>
 
@@ -124,6 +155,40 @@ const work = AE_WORK.map(w => ({
     font-size: var(--fs-sm);
     color: var(--text-faint);
     margin-bottom: 2rem;
+  }
+
+  /* Search bar */
+  .search-bar {
+    margin-bottom: 1.25rem;
+  }
+
+  .search-bar input {
+    width: 100%;
+    max-width: 400px;
+    padding: 9px 16px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-body);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color var(--dur-fast) var(--ease-out);
+    outline: none;
+  }
+
+  .search-bar input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .search-bar input:focus {
+    border-color: var(--border-mid);
+  }
+
+  /* No results */
+  .work-no-results {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-top: 2rem;
   }
 
   /* Filter pills */
