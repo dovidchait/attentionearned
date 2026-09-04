@@ -293,15 +293,19 @@ const featuredWork = AE_WORK
 
   /* Word flip */
   .hero__flip {
-    display: inline-block;
-    position: relative;
+    display: inline;
+    vertical-align: baseline;
   }
 
   .hero__flip-word {
-    display: inline-block;
+    display: inline;
     white-space: nowrap;
-    overflow: hidden;
     border-right: 3px solid var(--accent, #fc2c30);
+    vertical-align: baseline;
+    line-height: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
   }
 
   .hero__flip-word.typing {
@@ -326,8 +330,8 @@ const featuredWork = AE_WORK
     let charIndex = words[0].length;
     let phase: 'pause' | 'erase' | 'type' = 'pause';
 
-    const TYPE_SPEED = 80;
-    const ERASE_SPEED = 55;
+    const TYPE_SPEED = 96;
+    const ERASE_SPEED = 66;
     const PAUSE_AFTER = 1800;
     const PAUSE_BEFORE = 200;
 
