@@ -3,7 +3,7 @@
    Fireside / cinematic. Dark-first, warm neutrals, signal red.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,500;1,700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,500;1,700&family=Playfair+Display:ital,wght@0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
   /* --- Brand reds --- */
@@ -70,6 +70,7 @@
   --font-display: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-sans:    'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono:    'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-serif:   'Playfair Display', Georgia, 'Times New Roman', serif;
 
   /* --- Weights --- */
   --fw-regular:  400;

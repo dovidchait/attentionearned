@@ -10,14 +10,15 @@ export const getStaticPaths: GetStaticPaths = async () => {
   const workEntries = await getCollection('work');
   const workById = Object.fromEntries(workEntries.map(e => [e.id, e]));
 
-  return AE_WORK.map((entry, idx) => {
+  return AE_WORK.flatMap((entry, idx) => {
+    if (entry.slug === 'ykq') return [];
     const mdxId = MDX_SLUG_MAP[entry.slug];
     const mdxEntry = mdxId ? workById[mdxId] : undefined;
     const nextEntry = AE_WORK[(idx + 1) % AE_WORK.length];
-    return {
+    return [{
       params: { slug: entry.slug },
       props: { entry, mdxEntry, nextEntry },
-    };
+    }];
   });
 };
 
