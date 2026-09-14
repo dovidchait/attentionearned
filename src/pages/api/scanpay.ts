@@ -2,26 +2,69 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 
-// Package totals in cents
-const PACKAGE_TOTALS: Record<string, number> = {
-  A: 950000, // $9,500.00
-  B: 650000, // $6,500.00
-};
+// ── Client configs ──────────────────────────────────────────────────────────
 
-// Installment fractions (third 1, third 2, third 3)
-// Distribute rounding: first two get ceiling, last gets the remainder
-function installmentAmount(total: number, installment: 1 | 2 | 3): number {
-  const base = Math.floor(total / 3);
-  const remainder = total - base * 3;
-  if (installment === 3) return base + remainder;
-  return base + (installment === 1 ? (remainder > 0 ? 1 : 0) : remainder > 1 ? 1 : 0);
+type InstallmentCount = 2 | 3;
+
+interface ClientConfig {
+  packages: Record<string, number>; // cents
+  installments: InstallmentCount;
+  label: (pkg: string, installment: number) => string;
+  orderPrefix: string;
+  successUrl: string;
+  skuPrefix: string;
 }
 
-const INSTALLMENT_LABELS: Record<number, string> = {
+const CLIENTS: Record<string, ClientConfig> = {
+  'haor-beacon': {
+    packages: { A: 950000, B: 650000 },
+    installments: 3,
+    label: (pkg, n) => `Ha'Or Beacon School Fundraising Video — ${THIRDS_LABELS[n]}`,
+    orderPrefix: 'haor',
+    successUrl: 'https://attentionearned.com/proposals/haor-beacon?paid=true',
+    skuPrefix: 'pkg',
+  },
+  'yeshiva-orlando': {
+    packages: { A: 600000, B: 800000 },
+    installments: 2,
+    label: (pkg, n) => `Yeshiva of Orlando — ${YESHIVA_PKG_LABELS[pkg]} — ${HALVES_LABELS[n]}`,
+    orderPrefix: 'yeshiva-orlando',
+    successUrl: 'https://attentionearned.com/proposals/yeshiva-orlando?paid=true',
+    skuPrefix: 'yeshiva-orlando-pkg',
+  },
+};
+
+const THIRDS_LABELS: Record<number, string> = {
   1: 'Deposit (1st of 3)',
   2: 'Production Day Payment (2nd of 3)',
   3: 'Final Delivery Payment (3rd of 3)',
 };
+
+const HALVES_LABELS: Record<number, string> = {
+  1: 'Deposit (1 of 2)',
+  2: 'Final Delivery (2 of 2)',
+};
+
+const YESHIVA_PKG_LABELS: Record<string, string> = {
+  A: 'Recruiting Video',
+  B: 'Recruiting Video + Fundraising Add-On',
+};
+
+// ── Installment math ────────────────────────────────────────────────────────
+
+function installmentAmount(total: number, n: number, count: InstallmentCount): number {
+  if (count === 2) {
+    const half = Math.floor(total / 2);
+    return n === 1 ? half : total - half;
+  }
+  // thirds — distribute rounding to first installments
+  const base = Math.floor(total / 3);
+  const remainder = total - base * 3;
+  if (n === 3) return base + remainder;
+  return base + (n === 1 ? (remainder > 0 ? 1 : 0) : remainder > 1 ? 1 : 0);
+}
+
+// ── Route ───────────────────────────────────────────────────────────────────
 
 export const POST: APIRoute = async ({ request }) => {
   const apiKey = import.meta.env.SCANPAY_API_KEY;
@@ -32,7 +75,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  let body: { package: string; installment: number };
+  let body: { client?: string; package: string; installment: number };
   try {
     body = await request.json();
   } catch {
@@ -42,29 +85,39 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const pkg = body.package?.toUpperCase();
-  const installment = Number(body.installment) as 1 | 2 | 3;
+  // Default to haor-beacon for backwards compatibility
+  const clientKey = body.client ?? 'haor-beacon';
+  const config = CLIENTS[clientKey];
+  if (!config) {
+    return new Response(JSON.stringify({ error: 'Unknown client.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-  if (!PACKAGE_TOTALS[pkg] || ![1, 2, 3].includes(installment)) {
+  const pkg = body.package?.toUpperCase();
+  const installment = Number(body.installment);
+  const validInstallments = Array.from({ length: config.installments }, (_, i) => i + 1);
+
+  if (!config.packages[pkg] || !validInstallments.includes(installment)) {
     return new Response(JSON.stringify({ error: 'Invalid package or installment.' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const amountCents = installmentAmount(PACKAGE_TOTALS[pkg], installment);
+  const amountCents = installmentAmount(config.packages[pkg], installment, config.installments);
   const amountDollars = (amountCents / 100).toFixed(2);
-  const label = `Ha'Or Beacon School Fundraising Video — ${INSTALLMENT_LABELS[installment]}`;
 
   const payload = {
-    orderid: `haor-${pkg.toLowerCase()}-${installment}-${Date.now()}`,
-    successurl: 'https://attentionearned.com/proposals/haor-beacon?paid=true',
+    orderid: `${config.orderPrefix}-${pkg.toLowerCase()}-${installment}-${Date.now()}`,
+    successurl: config.successUrl,
     items: [
       {
-        name: label,
+        name: config.label(pkg, installment),
         quantity: 1,
         price: `${amountDollars} USD`,
-        sku: `pkg-${pkg.toLowerCase()}-install-${installment}`,
+        sku: `${config.skuPrefix}-${pkg.toLowerCase()}-install-${installment}`,
       },
     ],
   };

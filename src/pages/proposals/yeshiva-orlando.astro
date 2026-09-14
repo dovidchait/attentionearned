@@ -605,10 +605,10 @@ import Base from '../../layouts/Base.astro';
     btnText.textContent = 'Redirecting…';
 
     try {
-      const res = await fetch('/api/scanpay-yeshiva-orlando', {
+      const res = await fetch('/api/scanpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ package: pkgEl.value, installment: Number(instEl.value) }),
+        body: JSON.stringify({ client: 'yeshiva-orlando', package: pkgEl.value, installment: Number(instEl.value) }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) {
