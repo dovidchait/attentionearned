@@ -1,0 +1,625 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Yeshiva of Orlando — Payment"
+  description="Payment page for AttentionEarned video production services."
+  noindex={true}
+  noNav={true}
+  noFooter={true}
+>
+  <div class="proposal-wrap">
+
+    <header class="prop-header">
+      <div class="prop-header__inner">
+        <a href="/" aria-label="Attention Earned home">
+          <img src="/wordmark-white.svg" alt="Attention Earned" height="18" width="148" />
+        </a>
+        <span class="prop-header__label">Payment · Confidential</span>
+      </div>
+    </header>
+
+    <div class="prop-body container">
+
+      <!-- Title block -->
+      <section class="title-block ae-reveal">
+        <p class="eyebrow">Video Production</p>
+        <h1 class="title-block__h1">
+          Yeshiva of Orlando<br />
+          <span class="accent-text">Orlando Torah Academy</span>
+        </h1>
+        <dl class="meta-row">
+          <div class="meta-item">
+            <dt>Prepared for</dt>
+            <dd>Yeshiva of Orlando</dd>
+          </div>
+          <div class="meta-item">
+            <dt>Prepared by</dt>
+            <dd>Dovid Chait, AttentionEarned</dd>
+          </div>
+          <div class="meta-item">
+            <dt>Shoot date</dt>
+            <dd>September 15, 2026</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- Package Options -->
+      <section class="section">
+        <h2 class="section__title">Packages</h2>
+        <div class="packages">
+
+          <div class="package package--featured">
+            <div class="package__badge">Recruiting + Fundraising</div>
+            <div class="package__head">
+              <span class="package__label">Option B</span>
+              <h3 class="package__name">Full Package</h3>
+              <p class="package__sub">Recruiting video plus the fundraising add-on.</p>
+            </div>
+            <ul class="package__features">
+              <li>Recruiting video</li>
+              <li>Fundraising video add-on</li>
+            </ul>
+            <div class="package__footer">
+              <span class="package__price">$8,000</span>
+            </div>
+          </div>
+
+          <div class="package">
+            <div class="package__head">
+              <span class="package__label">Option A</span>
+              <h3 class="package__name">Recruiting Video</h3>
+              <p class="package__sub">Recruiting video only.</p>
+            </div>
+            <ul class="package__features">
+              <li>Recruiting video</li>
+            </ul>
+            <div class="package__footer">
+              <span class="package__price">$6,000</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- Payment Terms -->
+      <section class="section">
+        <h2 class="section__title">Payment Terms</h2>
+        <div class="payment-grid">
+          <div class="payment-step">
+            <span class="payment-step__fraction">½</span>
+            <p class="payment-step__label">Deposit — due before the shoot, September 15, 2026</p>
+          </div>
+          <div class="payment-step">
+            <span class="payment-step__fraction">½</span>
+            <p class="payment-step__label">Balance — due upon final delivery</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- Payment -->
+      <section class="section" id="pay">
+        <h2 class="section__title">Make a Payment</h2>
+        <p class="pay-intro">Select your package and installment — the amount will calculate automatically.</p>
+
+        <div class="pay-form" id="pay-form">
+          <div class="pay-selects">
+            <div class="pay-field">
+              <label class="pay-label" for="pay-pkg">Package</label>
+              <select id="pay-pkg" class="pay-select">
+                <option value="A">Option A — Recruiting Video ($6,000)</option>
+                <option value="B">Option B — Full Package ($8,000)</option>
+              </select>
+            </div>
+            <div class="pay-field">
+              <label class="pay-label" for="pay-install">Installment</label>
+              <select id="pay-install" class="pay-select">
+                <option value="1">1st — Deposit (due before shoot)</option>
+                <option value="2">2nd — Final Delivery</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pay-summary">
+            <span class="pay-summary__label">Amount due</span>
+            <span class="pay-summary__amount" id="pay-amount">$3,000</span>
+          </div>
+
+          <button class="pay-btn" id="pay-btn" type="button">
+            <span id="pay-btn-text">Pay $3,000</span>
+          </button>
+
+          <p class="pay-note" id="pay-error" hidden>Something went wrong. Please try again or contact us directly.</p>
+          <p class="pay-success" id="pay-success" hidden>Payment received — thank you. We'll be in touch shortly.</p>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- Footer -->
+      <footer class="prop-footer">
+        <span class="prop-footer__name">Dovid Chait · AttentionEarned</span>
+        <a href="https://attentionearned.com" class="prop-footer__site">attentionearned.com</a>
+      </footer>
+
+    </div>
+  </div>
+</Base>
+
+<style>
+  .proposal-wrap {
+    min-height: 100vh;
+    background: var(--surface-base);
+    color: var(--text-body);
+  }
+
+  /* ── Header ── */
+  .prop-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(14,14,12,0.80);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .prop-header__inner {
+    max-width: 860px;
+    margin-inline: auto;
+    padding: 16px var(--gutter);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .prop-header__inner img { height: 18px; width: auto; }
+
+  .prop-header__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+  }
+
+  /* ── Body ── */
+  .prop-body {
+    max-width: 860px;
+    padding-block: 72px 96px;
+  }
+
+  /* ── Title block ── */
+  .title-block {
+    margin-bottom: 56px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--ae-coral);
+    margin-bottom: 20px;
+  }
+
+  .title-block__h1 {
+    font-size: clamp(2.6rem, 6vw, 4rem);
+    font-weight: var(--fw-black);
+    line-height: var(--lh-display);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin-bottom: 36px;
+  }
+
+  .accent-text { color: var(--ae-coral); }
+
+  .meta-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem 2rem;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-mid);
+  }
+
+  @media (max-width: 560px) {
+    .meta-row { grid-template-columns: 1fr; }
+  }
+
+  .meta-item dt {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+    margin-bottom: 4px;
+  }
+
+  .meta-item dd {
+    font-size: 14px;
+    color: var(--stone-300);
+    line-height: 1.45;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin-block: 52px;
+  }
+
+  /* ── Section ── */
+  .section__title {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin-bottom: 28px;
+  }
+
+  /* ── Packages ── */
+  .packages {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 600px) { .packages { grid-template-columns: 1fr; } }
+
+  .package {
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-card);
+    padding: 28px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: var(--shadow-card);
+  }
+
+  .package--featured {
+    border-color: rgba(252,106,106,0.35);
+    box-shadow: var(--shadow-card), 0 0 40px -16px rgba(252,44,48,0.18);
+  }
+
+  .package__badge {
+    position: absolute;
+    top: -11px;
+    left: 20px;
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--glow-cta);
+  }
+
+  .package__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .package__name {
+    font-size: 1.2rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    margin-bottom: 6px;
+    line-height: var(--lh-tight);
+  }
+
+  .package__sub {
+    font-size: 13px;
+    color: var(--stone-400);
+    line-height: 1.55;
+    margin: 0 0 20px;
+  }
+
+  .package__head { margin-bottom: 4px; }
+
+  .package__features {
+    list-style: none;
+    flex: 1;
+    margin-bottom: 24px;
+  }
+
+  .package__features li {
+    font-size: 13.5px;
+    color: var(--stone-300);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    line-height: 1.5;
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .package__features li:last-child { border-bottom: none; }
+
+  .package__features li::before {
+    content: '–';
+    color: var(--ae-red);
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .package__footer {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-mid);
+  }
+
+  .package__price {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* ── Payment Terms ── */
+  .payment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  @media (max-width: 520px) { .payment-grid { grid-template-columns: 1fr; } }
+
+  .payment-step {
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    padding: 22px 20px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .payment-step__fraction {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 2.2rem;
+    color: var(--ae-coral);
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+
+  .payment-step__label {
+    font-size: 13.5px;
+    color: var(--stone-300);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* ── Page footer ── */
+  .prop-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .prop-footer__name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--stone-400);
+    letter-spacing: 0.04em;
+  }
+
+  .prop-footer__site {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--stone-400);
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .prop-footer__site:hover { color: var(--stone-300); }
+
+  /* ── Payment section ── */
+  .pay-intro {
+    font-size: 15px;
+    color: var(--stone-300);
+    margin-bottom: 28px;
+    max-width: 55ch;
+    line-height: 1.65;
+  }
+
+  .pay-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 560px;
+  }
+
+  .pay-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 480px) { .pay-selects { grid-template-columns: 1fr; } }
+
+  .pay-field { display: flex; flex-direction: column; gap: 6px; }
+
+  .pay-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+  }
+
+  .pay-select {
+    appearance: none;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--dur-fast);
+  }
+
+  .pay-select:focus { border-color: var(--accent-soft); }
+
+  .pay-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+  }
+
+  .pay-summary__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+  }
+
+  .pay-summary__amount {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .pay-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.9rem 2rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-bold);
+    color: var(--text-on-accent);
+    background: var(--grad-cta);
+    box-shadow: var(--glow-cta);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), opacity var(--dur-fast);
+    align-self: flex-start;
+  }
+
+  .pay-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,.7), 0 0 0 1px rgba(252,44,48,.4);
+  }
+
+  .pay-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .pay-note {
+    font-size: 13px;
+    color: var(--ae-red);
+    line-height: 1.5;
+  }
+
+  .pay-success {
+    font-size: 14px;
+    color: var(--ok);
+    line-height: 1.5;
+    padding: 12px 16px;
+    background: rgba(79, 191, 139, 0.08);
+    border: 1px solid rgba(79, 191, 139, 0.2);
+    border-radius: var(--radius-md);
+  }
+</style>
+
+<script>
+  const TOTALS: Record<string, number> = { A: 600000, B: 800000 };
+
+  function installmentAmount(total: number, n: number): number {
+    const half = Math.floor(total / 2);
+    return n === 1 ? half : total - half;
+  }
+
+  function fmt(cents: number): string {
+    return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  const pkgEl   = document.getElementById('pay-pkg')     as HTMLSelectElement;
+  const instEl  = document.getElementById('pay-install') as HTMLSelectElement;
+  const amtEl   = document.getElementById('pay-amount')!;
+  const btnEl   = document.getElementById('pay-btn')     as HTMLButtonElement;
+  const btnText = document.getElementById('pay-btn-text')!;
+  const errEl   = document.getElementById('pay-error')!;
+  const okEl    = document.getElementById('pay-success')!;
+
+  if (new URLSearchParams(window.location.search).get('paid') === 'true') {
+    okEl.hidden = false;
+    history.replaceState({}, '', window.location.pathname);
+  }
+
+  function update() {
+    const cents = installmentAmount(TOTALS[pkgEl.value], Number(instEl.value));
+    const label = fmt(cents);
+    amtEl.textContent = label;
+    btnText.textContent = `Pay ${label}`;
+    errEl.hidden = true;
+  }
+
+  pkgEl.addEventListener('change', update);
+  instEl.addEventListener('change', update);
+  update();
+
+  btnEl.addEventListener('click', async () => {
+    errEl.hidden = true;
+    btnEl.disabled = true;
+    btnText.textContent = 'Redirecting…';
+
+    try {
+      const res = await fetch('/api/scanpay-yeshiva-orlando', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ package: pkgEl.value, installment: Number(instEl.value) }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error ?? 'Unknown error');
+      }
+    } catch {
+      errEl.hidden = false;
+      btnEl.disabled = false;
+      update();
+    }
+  });
+</script>
