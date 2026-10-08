@@ -2,5 +2,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "astro",
-  "redirects": []
+  "redirects": [
+    { "source": "/ykq", "destination": "/work", "permanent": true },
+    { "source": "/linkedin", "destination": "/", "permanent": true },
+    { "source": "/devorahs-hope", "destination": "/work/devorahs-hope", "permanent": true },
+    { "source": "/imagine-the-future", "destination": "/work/imagine-the-future", "permanent": true },
+    { "source": "/why-i-do-this", "destination": "/work/why-i-do-this", "permanent": true },
+    { "source": "/zevi-giniger-are-you-there", "destination": "/work/zevi-giniger", "permanent": true }
+  ]
 }

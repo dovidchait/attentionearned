@@ -24,11 +24,13 @@ const UNLISTED_SLUGS = [
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://attentionearned.com',
+  site: 'https://www.attentionearned.com',
   integrations: [
     mdx(),
     sitemap({
-      filter: (page) => !UNLISTED_SLUGS.some((slug) => page.endsWith(`/${slug}/`) || page.endsWith(`/${slug}`)),
+      filter: (page) =>
+        !UNLISTED_SLUGS.some((slug) => page.endsWith(`/${slug}/`) || page.endsWith(`/${slug}`)) &&
+        !page.includes('/proposals/'),
     }),
   ],
   adapter: vercel(),
