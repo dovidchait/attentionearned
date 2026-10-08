@@ -31,7 +31,7 @@ export const CAMPAIGNS: Record<string, Campaign> = {
 };
 
 export const LP_FEATURED_WORK = [
-  { client: 'Building Campaign', title: 'Visualizing the Future', video: 'https://dl.dropboxusercontent.com/s/tw9ss2ncet1asva/7.1%20for%20aproval%201055%20am%20.mov', href: '/work/imagine-the-future' },
+  { client: 'Building Campaign', title: 'Imagine the Future', video: 'https://dl.dropboxusercontent.com/s/tw9ss2ncet1asva/7.1%20for%20aproval%201055%20am%20.mov', href: '/work/imagine-the-future' },
   { client: 'Orlando Community Kollel', title: 'Creating Buy In', video: 'https://dl.dropboxusercontent.com/scl/fi/6w1aiym31b18bm0luruxl/v4.8-orlando-Kollel-Causematch-2.10-1050-am-dc-with-subs.mov?rlkey=9bmwip04wcxld47a42cwn0im3', href: '/work/orlando-kollel-buy-in' },
   { client: 'Home Vet', title: 'Trust in the Hardest Moment', video: 'https://dl.dropboxusercontent.com/scl/fi/f1kfv427kfd9f76w80r4s/main-video-6.21.24-with-out-subs.mov?rlkey=8392crpsaw2jevh2t0petoknk', href: '/work/home-vet' },
   { client: 'Meoros Orlando', title: 'First Impression, Millions at Stake', video: 'https://dl.dropboxusercontent.com/scl/fi/s64kwfqv7706armqhdueh/Meoros-Orlando-how-far-we-come-v5-5-pm-10.27-dc.mov?rlkey=2h4o0nn1ghea5lako05atgecm', href: '/work/meoros-orlando' },
