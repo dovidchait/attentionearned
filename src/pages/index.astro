@@ -37,7 +37,7 @@ const featuredWork = AE_WORK
         const thumb = isYoutube ? `https://img.youtube.com/vi/${entry.video}/hqdefault.jpg` : null;
         return (
           <a
-            href={`/work/${entry.slug}`}
+            href={entry.href && !entry.href.startsWith('http') ? entry.href : `/work/${entry.slug}`}
             class:list={['work-tile', { 'work-tile--wide': i === 0 }]}
           >
             {isVideo && (
