@@ -12,6 +12,39 @@ export interface WorkEntry {
   href?: string;
 }
 
+export const WORK_ROLES: Record<string, string> = {
+  'imagine-the-future':          'Director · Producer · DP',
+  'orlando-kollel-buy-in':       'Director · Producer · DP',
+  'oelbaum-50-year-dinner':      'Director · Producer · DP',
+  'meoros-orlando':              'Director · DP',
+  'chabad-cheder-building':      'Director · DP',
+  'darchei-torah-50-year':       'Director · Producer · DP',
+  'turo-weisberg-honoree':       'Director · DP',
+  'tag-of-queens':               'Director · DP',
+  'home-vet':                    'Director · Producer · DP',
+  'ykq':                         'Director · DP',
+  'covid-epicenter-lifesavers':  'DP',
+  'cross-river-aba':             'Director · DP',
+  'homecare-miami':              'Director · DP',
+  'zevi-giniger':                'Director · DP',
+  'ayeka-avrumy-straus':         'Director · DP',
+  'kol-zman':                    'DP',
+  'yitzi-waldner':               'Director · DP',
+  '8th-day':                     'Director · DP',
+  'life-is-a-highway':           'Director · DP',
+  'we-are-the-music':            'DP',
+  'gibor':                       'Director · Producer · DP',
+  'gourmet-glatt-reels':         'Director · DP',
+  'nexivity-ad':                 'Director · DP',
+  'gabi-koyenov':                'Director · DP',
+  'why-i-do-this':               'Director · DP',
+  'devorahs-hope':               'DP',
+  'maafa':                       'DP',
+  'feil-cosmetics':              'Director · DP',
+  'elijah-deiz':                 'Director · Producer · DP',
+  'training-videos':             'Director · DP',
+};
+
 function dropboxDirect(url: string): string {
   return url
     .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
@@ -81,6 +114,22 @@ export const AE_SECTORS = [
   'All', 'Corporate', 'Healthcare', 'Nonprofit', 'Film',
   'Music video', 'Commercial', 'Fashion', 'Behind-the-scenes',
 ];
+
+export const SECTOR_SLUG: Record<string, string> = {
+  'All':               '',
+  'Corporate':         'corporate',
+  'Healthcare':        'healthcare',
+  'Nonprofit':         'nonprofit',
+  'Film':              'film',
+  'Music video':       'music-video',
+  'Commercial':        'commercial',
+  'Fashion':           'fashion',
+  'Behind-the-scenes': 'behind-the-scenes',
+};
+
+export const SLUG_SECTOR: Record<string, string> = Object.fromEntries(
+  Object.entries(SECTOR_SLUG).map(([k, v]) => [v, k])
+);
 
 export function getMediaFor(w: WorkEntry): { type: 'video'; src: string } | { type: 'iframe'; src: string } | { type: 'link'; src: string } {
   if (w.kind === 'dropbox-direct') return { type: 'video', src: w.video };

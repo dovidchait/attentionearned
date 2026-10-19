@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Kicker from '../../components/Kicker.astro';
 import Badge from '../../components/Badge.astro';
 import Card from '../../components/Card.astro';
-import { CAMPAIGNS, LP_FEATURED_WORK } from '../../data/campaigns';
+import { CAMPAIGNS, LP_WORK_BY_CAMPAIGN } from '../../data/campaigns';
 import type { GetStaticPaths } from 'astro';
 
 export const getStaticPaths: GetStaticPaths = async () => {
@@ -14,7 +14,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 const { campaign } = Astro.params;
 const data = CAMPAIGNS[campaign] ?? CAMPAIGNS['founders'];
-const featuredWork = LP_FEATURED_WORK;
+const featuredWork = LP_WORK_BY_CAMPAIGN[campaign] ?? LP_WORK_BY_CAMPAIGN['nonprofits'];
 const headlineParts = data.headline.split('\n');
 ---
 
@@ -69,15 +69,25 @@ const headlineParts = data.headline.split('\n');
       <div class="lp-work__grid">
         {featuredWork.map(w => (
           <div class="lp-work__item">
-            <a href={w.href} class="lp-tile">
-              <video
-                src={w.video}
-                muted
-                loop
-                playsinline
-                preload="metadata"
-                class="lp-tile__vid"
-              />
+            <a href={w.href} class={`lp-tile${w.youtubeId ? ' lp-tile--static' : ''}`}>
+              {w.video && (
+                <video
+                  src={w.video}
+                  muted
+                  loop
+                  playsinline
+                  preload="metadata"
+                  class="lp-tile__vid"
+                />
+              )}
+              {w.youtubeId && (
+                <img
+                  src={`https://img.youtube.com/vi/${w.youtubeId}/hqdefault.jpg`}
+                  alt={w.title}
+                  class="lp-tile__thumb"
+                  loading="lazy"
+                />
+              )}
               <div class="lp-tile__overlay" />
               <span class="lp-tile__title">{w.title}</span>
             </a>
@@ -144,7 +154,7 @@ const headlineParts = data.headline.split('\n');
     });
     tile.addEventListener('mouseleave', () => {
       vid.pause();
-      try { vid.currentTime = 0; } catch (_) {}
+      try { vid.currentTime = 0; } catch (_e) {}
     });
   });
 </script>
@@ -319,6 +329,15 @@ const headlineParts = data.headline.split('\n');
   }
 
   .lp-tile:hover .lp-tile__vid { opacity: 0.85; }
+
+  .lp-tile__thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.65;
+  }
 
   .lp-tile__overlay {
     position: absolute;

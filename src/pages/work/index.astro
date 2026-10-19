@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import CtaBand from '../../components/CtaBand.astro';
-import { AE_WORK, AE_SECTORS, getYoutubeThumbnail, getPlatformLabel } from '../../data/work';
+import { AE_WORK, AE_SECTORS, SECTOR_SLUG, getYoutubeThumbnail, getPlatformLabel } from '../../data/work';
 
 const work = AE_WORK.map(w => ({
   ...w,
@@ -39,6 +39,7 @@ const work = AE_WORK.map(w => ({
         <button
           class="filter-pill"
           data-sector={sector}
+          data-slug={SECTOR_SLUG[sector]}
           aria-pressed={sector === 'All' ? 'true' : 'false'}
         >
           {sector}
@@ -117,13 +118,33 @@ const work = AE_WORK.map(w => ({
     if (noResults) noResults.hidden = visible > 0;
   }
 
+  function activatePill(pill: HTMLButtonElement) {
+    activeSector = pill.dataset.sector ?? 'All';
+    pills.forEach(p => p.setAttribute('aria-pressed', 'false'));
+    pill.setAttribute('aria-pressed', 'true');
+    const slug = pill.dataset.slug ?? '';
+    const url = new URL(location.href);
+    if (slug) {
+      url.searchParams.set('type', slug);
+    } else {
+      url.searchParams.delete('type');
+    }
+    history.replaceState(null, '', url.toString());
+    applyFilters();
+  }
+
+  // Read URL param on load
+  const initialSlug = new URL(location.href).searchParams.get('type') ?? '';
+  if (initialSlug) {
+    const match = Array.from(pills).find(p => p.dataset.slug === initialSlug);
+    if (match) activatePill(match);
+    else applyFilters();
+  } else {
+    applyFilters();
+  }
+
   pills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      activeSector = pill.dataset.sector ?? 'All';
-      pills.forEach(p => p.setAttribute('aria-pressed', 'false'));
-      pill.setAttribute('aria-pressed', 'true');
-      applyFilters();
-    });
+    pill.addEventListener('click', () => activatePill(pill));
   });
 
   searchInput?.addEventListener('input', () => {

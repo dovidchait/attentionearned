@@ -1,0 +1,133 @@
+---
+import type { WorkEntry } from '../data/work';
+import { getYoutubeThumbnail, getPlatformLabel, WORK_ROLES } from '../data/work';
+
+interface Props {
+  entries: WorkEntry[];
+}
+
+const { entries } = Astro.props;
+---
+
+<div class="cat-grid">
+  {entries.map(w => {
+    const isVideo = w.kind === 'dropbox-direct';
+    const thumb = getYoutubeThumbnail(w);
+    const platform = getPlatformLabel(w);
+    const role = WORK_ROLES[w.slug];
+    return (
+      <a href={`/work/${w.slug}`} class="cat-tile">
+        {isVideo && (
+          <video
+            src={w.video}
+            muted
+            loop
+            autoplay
+            playsinline
+            preload="metadata"
+            class="cat-tile__media"
+          />
+        )}
+        {thumb && <img src={thumb} alt="" class="cat-tile__media" loading="lazy" />}
+        {!isVideo && !thumb && (
+          <div class="cat-tile__platform">{platform}</div>
+        )}
+        <div class="cat-tile__overlay" />
+        <div class="cat-tile__info">
+          {role && <span class="cat-tile__role">{role}</span>}
+          <span class="cat-tile__title">{w.title}</span>
+          {w.client && <span class="cat-tile__client">{w.client}</span>}
+        </div>
+      </a>
+    );
+  })}
+</div>
+
+<style>
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  @media (max-width: 900px) { .cat-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .cat-grid { grid-template-columns: 1fr; } }
+
+  .cat-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: radial-gradient(120% 120% at 30% 20%, hsl(16 50% 18%) 0%, hsl(16 40% 10%) 45%, #0B0A09 100%);
+    text-decoration: none;
+    transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .cat-tile:hover {
+    transform: translateY(-4px);
+    border-color: rgba(252, 44, 48, 0.45);
+    box-shadow: 0 24px 60px -24px rgba(0,0,0,.8), 0 0 46px -16px rgba(252,44,48,.3);
+  }
+
+  .cat-tile__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+  }
+
+  .cat-tile__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(11,10,9,.85) 0%, transparent 45%);
+  }
+
+  .cat-tile__platform {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .cat-tile__info {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cat-tile__role {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--accent-soft);
+  }
+
+  .cat-tile__title {
+    color: var(--paper);
+    font-weight: var(--fw-bold);
+    font-size: 15px;
+    line-height: var(--lh-snug);
+    margin-top: 2px;
+  }
+
+  .cat-tile__client {
+    color: var(--stone-300);
+    font-size: 12px;
+    font-style: italic;
+  }
+</style>

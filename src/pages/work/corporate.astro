@@ -1,0 +1,67 @@
+---
+import Base from '../../layouts/Base.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import WorkCategoryGrid from '../../components/WorkCategoryGrid.astro';
+import { AE_WORK } from '../../data/work';
+
+const entries = AE_WORK.filter(w => w.sector === 'Corporate');
+---
+
+<Base
+  title="Corporate & Business Films"
+  description="Training videos, company films, and executive profiles. Built for internal teams, stakeholder trust, and culture storytelling."
+>
+  <section class="cat-page container">
+    <div class="cat-page__header">
+      <p class="cat-page__kicker">Corporate</p>
+      <h1>Corporate & Business Films</h1>
+      <p class="cat-page__intro">
+        Training videos, culture films, and executive profiles. For organizations that need their people and partners to trust and remember them.
+      </p>
+      <p class="cat-page__back"><a href="/work">← All work</a></p>
+    </div>
+
+    <WorkCategoryGrid entries={entries} />
+  </section>
+
+  <CtaBand
+    heading="Your organization has a story worth telling."
+    accentPhrase=""
+    primaryLabel="Talk about your project"
+    primaryHref="/contact"
+  />
+</Base>
+
+<style>
+  .cat-page { padding-block: clamp(4rem, 8vw, 6rem) 3rem; }
+  .cat-page__header { margin-bottom: 2.5rem; }
+  .cat-page__kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    margin-bottom: 0.5rem;
+  }
+  .cat-page h1 {
+    font-size: clamp(2.2rem, 4vw, 3.2rem);
+    color: var(--text-strong);
+    margin-bottom: 0.875rem;
+  }
+  .cat-page__intro {
+    max-width: 56ch;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: var(--lh-body);
+    margin-bottom: 0.5rem;
+  }
+  .cat-page__back a {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+  .cat-page__back a:hover { color: var(--text-muted); }
+</style>
