@@ -60,10 +60,10 @@ import Base from '../layouts/Base.astro';
         <span class="field__hint">Comma-separated — these get a boost in transcription accuracy</span>
       </div>
 
-      <div class="field">
+      <div class="field" id="anthropicField">
         <label for="anthropicKey">Anthropic API key</label>
         <input type="password" id="anthropicKey" name="anthropicKey" placeholder="sk-ant-…" autocomplete="off" />
-        <span class="field__hint">Used to write captions — get one free at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a></span>
+        <span class="field__hint" id="anthropicHint"></span>
       </div>
 
       <button type="submit" class="btn btn--primary" id="submitBtn">
@@ -218,6 +218,42 @@ import Base from '../layouts/Base.astro';
 
   let currentVideoUrl = '';
   let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+  const FREE_LIMIT = 2;
+  const STORAGE_KEY = 'npo_free_uses';
+
+  function getFreeUsesLeft(): number {
+    try {
+      return Math.max(0, FREE_LIMIT - parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10));
+    } catch { return FREE_LIMIT; }
+  }
+
+  function incrementFreeUses() {
+    try {
+      const used = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10);
+      localStorage.setItem(STORAGE_KEY, String(used + 1));
+    } catch { /* ignore */ }
+  }
+
+  function updateKeyFieldUI() {
+    const left = getFreeUsesLeft();
+    const hint = document.getElementById('anthropicHint') as HTMLElement;
+    const keyInput = document.getElementById('anthropicKey') as HTMLInputElement;
+    const field = document.getElementById('anthropicField') as HTMLElement;
+
+    if (left > 0) {
+      hint.innerHTML = `${left} free caption generation${left === 1 ? '' : 's'} remaining — or <a href="https://console.anthropic.com" target="_blank" rel="noopener">add your own key</a> to keep going`;
+      keyInput.required = false;
+      field.classList.remove('field--required');
+    } else {
+      hint.innerHTML = `Free trial used up — <a href="https://console.anthropic.com" target="_blank" rel="noopener">get your own key</a> (takes 2 minutes, free tier available)`;
+      keyInput.required = true;
+      keyInput.placeholder = 'sk-ant-… (required)';
+      field.classList.add('field--required');
+    }
+  }
+
+  updateKeyFieldUI();
   let pollCount = 0;
   const MAX_POLLS = 60; // 5 minutes at 5s intervals
 
@@ -306,6 +342,10 @@ import Base from '../layouts/Base.astro';
 
     if (data.status === 'completed') {
       if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+      if (!anthropicKey) {
+        incrementFreeUses();
+        updateKeyFieldUI();
+      }
       showResults(data as Parameters<typeof showResults>[0]);
       return;
     }
@@ -324,6 +364,11 @@ import Base from '../layouts/Base.astro';
     const vocab = (fd.get('vocab') as string).trim();
     const wordBoost = vocab ? vocab.split(',').map(s => s.trim()).filter(Boolean) : [];
     const anthropicKey = (fd.get('anthropicKey') as string).trim();
+
+    if (!anthropicKey && getFreeUsesLeft() === 0) {
+      (document.getElementById('anthropicKey') as HTMLInputElement).focus();
+      return;
+    }
 
     hide(form);
     show(statusPanel);
@@ -810,6 +855,19 @@ import Base from '../layouts/Base.astro';
     text-align: center;
   }
   .tool__footer a:hover { color: var(--text-muted); }
+
+  .field--required label::after {
+    content: ' *';
+    color: var(--ae-red);
+  }
+  .field--required input {
+    border-color: rgba(252, 44, 48, 0.4);
+  }
+  .field--required .field__hint a,
+  .field__hint a {
+    color: var(--ae-red);
+    text-decoration: underline;
+  }
 
   /* Scheduling section */
   .schedule-section {
