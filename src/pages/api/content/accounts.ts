@@ -11,10 +11,10 @@ interface ZernioAccount {
   profileUrl?: string;
 }
 
-export const GET: APIRoute = async ({ url }) => {
-  const apiKey = url.searchParams.get('apiKey');
+export const GET: APIRoute = async () => {
+  const apiKey = import.meta.env.ZERNIO_API_KEY;
   if (!apiKey?.trim()) {
-    return json({ error: 'apiKey is required.' }, 400);
+    return json({ error: 'ZERNIO_API_KEY not configured.' }, 500);
   }
 
   const base = import.meta.env.ZERNIO_API_BASE ?? 'https://api.zernio.com/v1';
