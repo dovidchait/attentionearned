@@ -60,6 +60,12 @@ import Base from '../layouts/Base.astro';
         <span class="field__hint">Comma-separated — these get a boost in transcription accuracy</span>
       </div>
 
+      <div class="field">
+        <label for="anthropicKey">Anthropic API key</label>
+        <input type="password" id="anthropicKey" name="anthropicKey" placeholder="sk-ant-…" autocomplete="off" />
+        <span class="field__hint">Used to write captions — get one free at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a></span>
+      </div>
+
       <button type="submit" class="btn btn--primary" id="submitBtn">
         <span class="btn__label">Process video</span>
         <svg class="btn__arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -265,14 +271,14 @@ import Base from '../layouts/Base.astro';
     resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async function pollResult(jobId: string, orgName: string, dayNumber: string, credits: string) {
+  async function pollResult(jobId: string, orgName: string, dayNumber: string, credits: string, anthropicKey: string) {
     pollCount++;
     if (pollCount > MAX_POLLS) {
       showError('Timed out after 5 minutes. Please try again.');
       return;
     }
 
-    const params = new URLSearchParams({ jobId, orgName, dayNumber, credits });
+    const params = new URLSearchParams({ jobId, orgName, dayNumber, credits, ...(anthropicKey ? { anthropicKey } : {}) });
     let data: { status: string; error?: string; transcript?: string; flagged?: Array<{ text: string; confidence: number }>; instagram?: string; linkedin?: string; firstComment?: string };
 
     try {
@@ -317,6 +323,7 @@ import Base from '../layouts/Base.astro';
     const credits = (fd.get('credits') as string).trim();
     const vocab = (fd.get('vocab') as string).trim();
     const wordBoost = vocab ? vocab.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const anthropicKey = (fd.get('anthropicKey') as string).trim();
 
     hide(form);
     show(statusPanel);
@@ -343,9 +350,9 @@ import Base from '../layouts/Base.astro';
     }
 
     statusText.textContent = 'In queue…';
-    pollInterval = setInterval(() => pollResult(jobId, orgName, dayNumber, credits), 5000);
+    pollInterval = setInterval(() => pollResult(jobId, orgName, dayNumber, credits, anthropicKey), 5000);
     // Poll once immediately after a short delay
-    setTimeout(() => pollResult(jobId, orgName, dayNumber, credits), 2000);
+    setTimeout(() => pollResult(jobId, orgName, dayNumber, credits, anthropicKey), 2000);
   });
 
   document.getElementById('resetBtn')!.addEventListener('click', () => { reset(); });
