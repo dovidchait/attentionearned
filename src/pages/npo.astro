@@ -144,6 +144,48 @@ import Base from '../layouts/Base.astro';
         <textarea class="caption-textarea caption-textarea--sm" id="firstComment" rows="2" spellcheck="true"></textarea>
       </div>
 
+      <!-- Zernio scheduling -->
+      <div class="schedule-section">
+        <h2 class="section-title">Schedule with Zernio</h2>
+        <p class="section-desc">Post to your connected social accounts. Zernio fetches the video directly from the URL above.</p>
+
+        <div class="field">
+          <label for="zernioKey">Zernio API key</label>
+          <div class="key-row">
+            <input type="password" id="zernioKey" placeholder="paste your Zernio API key" autocomplete="off" />
+            <button class="btn btn--ghost" id="loadAccountsBtn" type="button">Load accounts</button>
+          </div>
+        </div>
+
+        <div id="accountsArea" hidden>
+          <div class="field">
+            <label>Select accounts</label>
+            <div class="accounts-list" id="accountsList"></div>
+          </div>
+
+          <div class="field">
+            <label for="scheduledFor">Schedule for</label>
+            <input type="datetime-local" id="scheduledFor" />
+          </div>
+
+          <button class="btn btn--primary" id="scheduleBtn" type="button">
+            <span class="btn__label">Schedule post</span>
+            <svg class="btn__arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 8H13M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="sched-success" id="schedSuccess" hidden>
+          <span class="badge badge--ok">Scheduled</span>
+          <p id="schedSuccessText"></p>
+        </div>
+
+        <div class="sched-error" id="schedError" hidden>
+          <p id="schedErrorText"></p>
+        </div>
+      </div>
+
       <button class="btn btn--ghost" id="startOverBtn">Process another video</button>
     </div>
 
@@ -168,6 +210,7 @@ import Base from '../layouts/Base.astro';
   const linkedinCaption = document.getElementById('linkedinCaption') as HTMLTextAreaElement;
   const firstComment = document.getElementById('firstComment') as HTMLTextAreaElement;
 
+  let currentVideoUrl = '';
   let pollInterval: ReturnType<typeof setInterval> | null = null;
   let pollCount = 0;
   const MAX_POLLS = 60; // 5 minutes at 5s intervals
@@ -184,6 +227,8 @@ import Base from '../layouts/Base.astro';
     show(form);
     submitBtn.disabled = false;
     submitBtn.querySelector('.btn__label')!.textContent = 'Process video';
+    (document.getElementById('schedSuccess') as HTMLElement).hidden = true;
+    (document.getElementById('schedError') as HTMLElement).hidden = true;
   }
 
   function showError(msg: string) {
@@ -266,6 +311,7 @@ import Base from '../layouts/Base.astro';
 
     const fd = new FormData(form);
     const videoUrl = (fd.get('videoUrl') as string).trim();
+    currentVideoUrl = videoUrl;
     const orgName = (fd.get('orgName') as string).trim();
     const dayNumber = (fd.get('dayNumber') as string).trim() || '1';
     const credits = (fd.get('credits') as string).trim();
@@ -304,6 +350,119 @@ import Base from '../layouts/Base.astro';
 
   document.getElementById('resetBtn')!.addEventListener('click', () => { reset(); });
   document.getElementById('startOverBtn')!.addEventListener('click', () => { reset(); show(form); });
+
+  // Zernio scheduling
+  const zernioKeyInput = document.getElementById('zernioKey') as HTMLInputElement;
+  const loadAccountsBtn = document.getElementById('loadAccountsBtn') as HTMLButtonElement;
+  const accountsArea = document.getElementById('accountsArea') as HTMLElement;
+  const accountsList = document.getElementById('accountsList') as HTMLElement;
+  const scheduledForInput = document.getElementById('scheduledFor') as HTMLInputElement;
+  const scheduleBtn = document.getElementById('scheduleBtn') as HTMLButtonElement;
+  const schedSuccess = document.getElementById('schedSuccess') as HTMLElement;
+  const schedSuccessText = document.getElementById('schedSuccessText') as HTMLElement;
+  const schedError = document.getElementById('schedError') as HTMLElement;
+  const schedErrorText = document.getElementById('schedErrorText') as HTMLElement;
+
+  function setDefaultSchedule() {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    scheduledForInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  loadAccountsBtn.addEventListener('click', async () => {
+    const key = zernioKeyInput.value.trim();
+    if (!key) { alert('Enter your Zernio API key first.'); return; }
+
+    loadAccountsBtn.disabled = true;
+    loadAccountsBtn.textContent = 'Loading…';
+
+    try {
+      const res = await fetch(`/api/content/accounts?apiKey=${encodeURIComponent(key)}`);
+      const data = await res.json() as { accounts?: Array<{ id: string; platform: string; username: string }>; error?: string };
+
+      if (!res.ok || data.error) {
+        alert(data.error ?? 'Failed to load accounts.');
+        return;
+      }
+
+      const accounts = data.accounts ?? [];
+      if (!accounts.length) {
+        alert('No active accounts found on this Zernio key.');
+        return;
+      }
+
+      accountsList.innerHTML = accounts.map(a => `
+        <label class="account-item">
+          <input type="checkbox" class="account-checkbox" data-id="${a.id}" data-platform="${a.platform.toLowerCase()}" checked />
+          <span class="account-platform">${a.platform}</span>
+          <span class="account-name">${a.username}</span>
+        </label>
+      `).join('');
+
+      setDefaultSchedule();
+      accountsArea.hidden = false;
+    } catch {
+      alert('Network error loading accounts.');
+    } finally {
+      loadAccountsBtn.disabled = false;
+      loadAccountsBtn.textContent = 'Load accounts';
+    }
+  });
+
+  scheduleBtn.addEventListener('click', async () => {
+    const key = zernioKeyInput.value.trim();
+    if (!key) { alert('Zernio API key is missing.'); return; }
+    if (!currentVideoUrl) { alert('No video URL — process a video first.'); return; }
+    if (!scheduledForInput.value) { alert('Pick a schedule time.'); return; }
+
+    const checkboxes = accountsList.querySelectorAll<HTMLInputElement>('.account-checkbox:checked');
+    if (!checkboxes.length) { alert('Select at least one account.'); return; }
+
+    const igCaption = instagramCaption.value;
+    const liCaption = linkedinCaption.value;
+
+    const platforms = Array.from(checkboxes).map(cb => ({
+      accountId: cb.dataset.id!,
+      caption: cb.dataset.platform === 'linkedin' ? liCaption : igCaption,
+    }));
+
+    scheduleBtn.disabled = true;
+    (scheduleBtn.querySelector('.btn__label') as HTMLElement).textContent = 'Scheduling…';
+    schedSuccess.hidden = true;
+    schedError.hidden = true;
+
+    try {
+      const res = await fetch('/api/content/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: key,
+          videoUrl: currentVideoUrl,
+          platforms,
+          scheduledFor: new Date(scheduledForInput.value).toISOString(),
+        }),
+      });
+
+      const data = await res.json() as { success?: boolean; postIds?: string[]; errors?: string[]; error?: string };
+
+      if (!res.ok || data.error) {
+        schedErrorText.textContent = data.error ?? 'Scheduling failed.';
+        schedError.hidden = false;
+        return;
+      }
+
+      const count = data.postIds?.length ?? 0;
+      const extra = data.errors?.length ? ' Some accounts failed — check Zernio.' : '';
+      schedSuccessText.textContent = `${count} post${count === 1 ? '' : 's'} scheduled.${extra}`;
+      schedSuccess.hidden = false;
+    } catch {
+      schedErrorText.textContent = 'Network error. Please try again.';
+      schedError.hidden = false;
+    } finally {
+      scheduleBtn.disabled = false;
+      (scheduleBtn.querySelector('.btn__label') as HTMLElement).textContent = 'Schedule post';
+    }
+  });
 
   // Copy buttons
   document.querySelectorAll<HTMLButtonElement>('.btn--copy').forEach(btn => {
@@ -645,8 +804,104 @@ import Base from '../layouts/Base.astro';
   }
   .tool__footer a:hover { color: var(--text-muted); }
 
+  /* Scheduling section */
+  .schedule-section {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .key-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .key-row input { flex: 1; }
+
+  .accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .account-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+    font-size: var(--fs-body);
+    color: var(--text-body);
+    text-transform: none;
+    font-weight: var(--fw-normal);
+    letter-spacing: normal;
+  }
+  .account-item:hover { background: var(--surface-inset); }
+
+  .account-platform {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    min-width: 70px;
+  }
+
+  .account-name { color: var(--text-body); }
+
+  input[type="datetime-local"] {
+    width: 100%;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4);
+    color: var(--text-strong);
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    outline: none;
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  input[type="datetime-local"]:focus {
+    border-color: var(--ae-red);
+    box-shadow: 0 0 0 3px rgba(252, 44, 48, 0.15);
+  }
+
+  .badge--ok {
+    background: rgba(0, 200, 100, 0.12);
+    color: var(--ok);
+    border: 1px solid rgba(0, 200, 100, 0.25);
+  }
+
+  .sched-success {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: rgba(0, 200, 100, 0.06);
+    border: 1px solid rgba(0, 200, 100, 0.2);
+    border-radius: var(--radius-sm);
+  }
+  .sched-success p { font-size: var(--fs-sm); color: var(--text-muted); }
+
+  .sched-error {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(252, 44, 48, 0.08);
+    border: 1px solid rgba(252, 44, 48, 0.25);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    color: var(--ae-coral);
+  }
+
   @media (max-width: 480px) {
     .field-row { grid-template-columns: 1fr; }
     .field--short { width: 100%; }
+    .key-row { flex-direction: column; align-items: stretch; }
   }
 </style>
