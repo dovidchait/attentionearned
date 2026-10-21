@@ -17,14 +17,19 @@ export const GET: APIRoute = async () => {
     return json({ error: 'ZERNIO_API_KEY not configured.' }, 500);
   }
 
-  const base = import.meta.env.ZERNIO_API_BASE ?? 'https://api.zernio.com/v1';
+  const base = import.meta.env.ZERNIO_API_BASE ?? 'https://zernio.com/api/v1';
 
-  const res = await fetch(`${base}/accounts?limit=100`, {
-    headers: {
-      Authorization: `Bearer ${apiKey.trim()}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base}/accounts?limit=100`, {
+      headers: {
+        Authorization: `Bearer ${apiKey.trim()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (err) {
+    return json({ error: `Network error reaching Zernio: ${String(err)}` }, 502);
+  }
 
   if (res.status === 401) {
     return json({ error: 'Invalid Zernio API key.' }, 401);
