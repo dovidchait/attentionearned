@@ -92,10 +92,10 @@ export const GET: APIRoute = async ({ url }) => {
   if (!jobId) return json({ error: 'jobId is required.' }, 400);
 
   const assemblyKey = import.meta.env.ASSEMBLYAI_API_KEY;
-  const anthropicKey = import.meta.env.ANTHROPIC_API_KEY;
+  const anthropicKey = url.searchParams.get('anthropicKey')?.trim() || import.meta.env.ANTHROPIC_API_KEY;
 
   if (!assemblyKey) return json({ error: 'ASSEMBLYAI_API_KEY not configured.' }, 500);
-  if (!anthropicKey) return json({ error: 'ANTHROPIC_API_KEY not configured.' }, 500);
+  if (!anthropicKey) return json({ error: 'Anthropic API key is required. Add yours to the form.' }, 400);
 
   const res = await fetch(`https://api.assemblyai.com/v2/transcript/${jobId}`, {
     headers: { Authorization: assemblyKey },

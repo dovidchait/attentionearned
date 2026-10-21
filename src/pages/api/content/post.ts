@@ -11,13 +11,15 @@ interface PlatformPost {
 }
 
 interface PostBody {
-  apiKey: string;
   videoUrl: string;
   platforms: PlatformPost[];  // each entry is one account + its caption
   scheduledFor: string;       // ISO 8601
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  const apiKey = import.meta.env.ZERNIO_API_KEY;
+  if (!apiKey?.trim()) return json({ error: 'ZERNIO_API_KEY not configured.' }, 500);
+
   let body: PostBody;
   try {
     body = await request.json();
@@ -25,9 +27,8 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'Invalid request body.' }, 400);
   }
 
-  const { apiKey, videoUrl, platforms, scheduledFor } = body;
+  const { videoUrl, platforms, scheduledFor } = body;
 
-  if (!apiKey?.trim()) return json({ error: 'apiKey is required.' }, 400);
   if (!videoUrl?.trim()) return json({ error: 'videoUrl is required.' }, 400);
   if (!platforms?.length) return json({ error: 'At least one platform/account is required.' }, 400);
   if (!scheduledFor) return json({ error: 'scheduledFor is required.' }, 400);
