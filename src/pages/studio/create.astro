@@ -1,0 +1,900 @@
+---
+export const prerender = false;
+
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { clerkClient } from '@clerk/astro/server';
+
+const { userId } = Astro.locals.auth();
+if (!userId) return Astro.redirect('/studio/login');
+
+// Pre-load settings for the caption prompt
+const clerk = clerkClient(Astro);
+const user = await clerk.users.getUser(userId!);
+const meta = (user.privateMetadata as Record<string, unknown>) ?? {};
+
+const settings = {
+  orgName:      (meta.orgName as string)      ?? '',
+  campaignName: (meta.campaignName as string) ?? '',
+  dayNumber:    (meta.dayNumber as string)    ?? '1',
+  voiceTone:    (meta.voiceTone as string)    ?? '',
+};
+---
+
+<StudioLayout title="Create post" activePage="create">
+  <div class="create-wrap">
+
+    <!-- Step indicator -->
+    <div class="steps-bar" aria-label="Steps">
+      {[
+        { n: 1, label: 'Video' },
+        { n: 2, label: 'Transcript' },
+        { n: 3, label: 'Captions' },
+        { n: 4, label: 'Graphic' },
+        { n: 5, label: 'Schedule' },
+      ].map(({ n, label }) => (
+        <div class="step-indicator" data-step={n}>
+          <span class="step-num">{n}</span>
+          <span class="step-label">{label}</span>
+        </div>
+      ))}
+    </div>
+
+    <!-- STEP 1: Video input -->
+    <section class="step-panel" id="step-1">
+      <h1 class="step-title">Add your video</h1>
+      <p class="step-desc">Paste a video URL or upload a file to get started.</p>
+
+      <div class="input-toggle">
+        <button class="toggle-btn toggle-btn--active" id="tab-url">URL</button>
+        <button class="toggle-btn" id="tab-upload">Upload</button>
+      </div>
+
+      <div id="url-input-area">
+        <input
+          type="url"
+          class="text-input"
+          id="video-url"
+          placeholder="https://…"
+          autocomplete="off"
+        />
+        <p class="input-hint">Works with YouTube, Vimeo, Dropbox, Google Drive, or any direct video URL.</p>
+      </div>
+
+      <div id="upload-input-area" class="upload-area" hidden>
+        <div class="dropzone" id="dropzone">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M16 6v14M10 12l6-6 6 6" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6 24h20" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p class="dropzone-text">Drag & drop your video, or <label class="dropzone-browse" for="file-input">browse</label></p>
+          <p class="dropzone-hint">MP4, MOV, AVI up to 500MB</p>
+          <input type="file" id="file-input" accept="video/*" class="sr-only" />
+        </div>
+        <p class="upload-notice">Note: File upload requires a public URL. We'll use the URL tab for most workflows.</p>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-primary" id="start-transcription">Start transcription</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: Transcribing / review -->
+    <section class="step-panel" id="step-2" hidden>
+      <h1 class="step-title">Transcribing…</h1>
+      <p class="step-desc" id="transcription-status">Sending to AssemblyAI…</p>
+
+      <div class="progress-area" id="progress-area">
+        <div class="spinner-lg"></div>
+      </div>
+
+      <div id="transcript-area" hidden>
+        <div class="transcript-hd">
+          <h2 class="section-label">Transcript</h2>
+          <div id="flagged-words-notice" hidden class="flagged-notice">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 1.5l5.5 10H1.5L7 1.5z" stroke="var(--warn)" stroke-width="1.3"/>
+              <path d="M7 5.5v3M7 9.5v.5" stroke="var(--warn)" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            Low-confidence words: <span id="flagged-list"></span>
+          </div>
+        </div>
+        <textarea class="text-area" id="transcript-text" rows="8" placeholder="Transcript will appear here…"></textarea>
+        <div class="step-actions">
+          <button class="btn-primary" id="use-transcript">Generate captions →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3: Captions -->
+    <section class="step-panel" id="step-3" hidden>
+      <h1 class="step-title">Review captions</h1>
+      <p class="step-desc">Edit any caption before scheduling.</p>
+
+      <div class="caption-tabs">
+        <button class="cap-tab cap-tab--active" data-cap="instagram">Instagram / TikTok</button>
+        <button class="cap-tab" data-cap="linkedin">LinkedIn</button>
+        <button class="cap-tab" data-cap="first-comment">First comment</button>
+      </div>
+
+      <div class="caption-panels">
+        <div class="caption-panel" data-cap-panel="instagram">
+          <textarea class="text-area" id="caption-instagram" rows="8"></textarea>
+        </div>
+        <div class="caption-panel" data-cap-panel="linkedin" hidden>
+          <textarea class="text-area" id="caption-linkedin" rows="8"></textarea>
+        </div>
+        <div class="caption-panel" data-cap-panel="first-comment" hidden>
+          <textarea class="text-area" id="caption-first-comment" rows="3"></textarea>
+          <p class="input-hint">Posted as the first comment on Instagram.</p>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-secondary" id="regen-captions">↺ Regenerate</button>
+        <button class="btn-primary" id="go-graphic">Generate graphic →</button>
+      </div>
+    </section>
+
+    <!-- STEP 4: Graphic -->
+    <section class="step-panel" id="step-4" hidden>
+      <h1 class="step-title">Generate graphic</h1>
+      <p class="step-desc">Describe the image. We'll generate four options.</p>
+
+      <div class="field">
+        <label class="field-label" for="graphic-prompt">Image description</label>
+        <textarea
+          class="text-area"
+          id="graphic-prompt"
+          rows="3"
+          placeholder="e.g. A warm, cinematic photo of a community kitchen with volunteers serving meals, golden hour light"
+        ></textarea>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-primary" id="gen-graphic">Generate</button>
+        <button class="btn-ghost" id="skip-graphic">Skip graphic →</button>
+      </div>
+
+      <div id="graphic-grid" class="graphic-grid" hidden></div>
+
+      <div class="step-actions" id="graphic-next-actions" hidden>
+        <button class="btn-primary" id="go-schedule">Schedule post →</button>
+      </div>
+    </section>
+
+    <!-- STEP 5: Schedule -->
+    <section class="step-panel" id="step-5" hidden>
+      <h1 class="step-title">Schedule your post</h1>
+      <p class="step-desc">Select accounts, pick a time, and publish.</p>
+
+      <div class="schedule-row">
+        <div class="field">
+          <label class="field-label">Accounts</label>
+          <div class="accounts-picker" id="accounts-picker">
+            <div class="loading-row"><span class="spinner"></span> Loading accounts…</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="schedule-datetime">Date & time</label>
+          <input type="datetime-local" class="text-input" id="schedule-datetime" />
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn-primary" id="publish-btn">Schedule post</button>
+      </div>
+
+      <div id="publish-result" hidden></div>
+    </section>
+
+    <!-- Error banner -->
+    <div class="error-banner" id="error-banner" hidden role="alert"></div>
+
+  </div>
+</StudioLayout>
+
+<script define:vars={{ settings }}>
+  // State
+  let currentStep = 1;
+  let videoUrl = '';
+  let jobId = '';
+  let transcriptText = '';
+  let captions = { instagram: '', linkedin: '', firstComment: '' };
+  let selectedGraphic = '';
+  let pollTimer = null;
+
+  const s = settings;
+
+  // Navigation helpers
+  function goToStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.hidden = true);
+    document.getElementById(`step-${n}`).hidden = false;
+    currentStep = n;
+    document.querySelectorAll('.step-indicator').forEach(el => {
+      const stepN = parseInt(el.dataset.step);
+      el.classList.toggle('step-indicator--done',   stepN < n);
+      el.classList.toggle('step-indicator--active', stepN === n);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showError(msg) {
+    const b = document.getElementById('error-banner');
+    b.textContent = msg;
+    b.hidden = false;
+    setTimeout(() => { b.hidden = true; }, 6000);
+  }
+
+  function hideError() {
+    document.getElementById('error-banner').hidden = true;
+  }
+
+  // --- STEP 1 ---
+  document.getElementById('tab-url').addEventListener('click', () => {
+    document.getElementById('tab-url').classList.add('toggle-btn--active');
+    document.getElementById('tab-upload').classList.remove('toggle-btn--active');
+    document.getElementById('url-input-area').hidden = false;
+    document.getElementById('upload-input-area').hidden = true;
+  });
+
+  document.getElementById('tab-upload').addEventListener('click', () => {
+    document.getElementById('tab-upload').classList.add('toggle-btn--active');
+    document.getElementById('tab-url').classList.remove('toggle-btn--active');
+    document.getElementById('url-input-area').hidden = true;
+    document.getElementById('upload-input-area').hidden = false;
+  });
+
+  document.getElementById('start-transcription').addEventListener('click', async () => {
+    videoUrl = document.getElementById('video-url').value.trim();
+    if (!videoUrl) {
+      showError('Please enter a video URL.');
+      return;
+    }
+    hideError();
+    goToStep(2);
+    document.getElementById('transcription-status').textContent = 'Sending to AssemblyAI…';
+
+    try {
+      const res = await fetch('/api/content/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      jobId = data.jobId;
+      document.getElementById('transcription-status').textContent = 'Transcribing…';
+      pollTranscript();
+    } catch (err) {
+      showError(err.message);
+      goToStep(1);
+    }
+  });
+
+  function pollTranscript() {
+    const params = new URLSearchParams({
+      jobId,
+      orgName:   s.orgName,
+      dayNumber: s.dayNumber,
+    });
+
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/content/result?${params}`);
+        const data = await res.json();
+
+        if (data.status === 'completed') {
+          clearInterval(pollTimer);
+          transcriptText = data.transcript ?? '';
+          captions = {
+            instagram: data.instagram ?? '',
+            linkedin:  data.linkedin  ?? '',
+            firstComment: data.firstComment ?? '',
+          };
+
+          // Show flagged words
+          if (data.flagged?.length) {
+            const el = document.getElementById('flagged-words-notice');
+            document.getElementById('flagged-list').textContent = data.flagged.map(w => w.text).join(', ');
+            el.hidden = false;
+          }
+
+          document.getElementById('transcript-text').value = transcriptText;
+          document.getElementById('progress-area').hidden = true;
+          document.getElementById('transcript-area').hidden = false;
+          document.getElementById('step-2').querySelector('h1').textContent = 'Review transcript';
+          document.getElementById('transcription-status').textContent = 'Done. Edit if needed.';
+        } else if (data.status === 'error') {
+          clearInterval(pollTimer);
+          showError(data.error ?? 'Transcription failed.');
+          goToStep(1);
+        }
+      } catch (err) {
+        clearInterval(pollTimer);
+        showError(err.message);
+        goToStep(1);
+      }
+    }, 3000);
+  }
+
+  document.getElementById('use-transcript').addEventListener('click', () => {
+    // Pre-fill captions from API result or let user go straight through
+    document.getElementById('caption-instagram').value    = captions.instagram;
+    document.getElementById('caption-linkedin').value     = captions.linkedin;
+    document.getElementById('caption-first-comment').value = captions.firstComment;
+    goToStep(3);
+  });
+
+  // --- STEP 3 ---
+  document.querySelectorAll('.cap-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cap = btn.dataset.cap;
+      document.querySelectorAll('.cap-tab').forEach(b => b.classList.remove('cap-tab--active'));
+      btn.classList.add('cap-tab--active');
+      document.querySelectorAll('.caption-panel').forEach(p => {
+        p.hidden = (p.dataset.capPanel !== cap);
+      });
+    });
+  });
+
+  document.getElementById('regen-captions').addEventListener('click', async () => {
+    const transcript = document.getElementById('transcript-text').value.trim();
+    if (!transcript) { showError('No transcript to regenerate from.'); return; }
+
+    document.getElementById('regen-captions').textContent = 'Regenerating…';
+    document.getElementById('regen-captions').disabled = true;
+
+    const params = new URLSearchParams({
+      jobId,
+      orgName:   s.orgName,
+      dayNumber: s.dayNumber,
+    });
+
+    try {
+      const res = await fetch(`/api/content/result?${params}`);
+      const data = await res.json();
+      if (data.instagram) {
+        document.getElementById('caption-instagram').value = data.instagram;
+        document.getElementById('caption-linkedin').value  = data.linkedin ?? '';
+        document.getElementById('caption-first-comment').value = data.firstComment ?? '';
+      }
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      document.getElementById('regen-captions').textContent = '↺ Regenerate';
+      document.getElementById('regen-captions').disabled = false;
+    }
+  });
+
+  document.getElementById('go-graphic').addEventListener('click', () => {
+    // Pre-populate graphic prompt from transcript
+    const t = document.getElementById('transcript-text').value.trim();
+    if (t) {
+      document.getElementById('graphic-prompt').value =
+        `A compelling, cinematic photo to accompany this video: "${t.slice(0, 120)}"`;
+    }
+    goToStep(4);
+  });
+
+  // --- STEP 4 ---
+  document.getElementById('gen-graphic').addEventListener('click', async () => {
+    const prompt = document.getElementById('graphic-prompt').value.trim();
+    if (!prompt) { showError('Please describe the image you want.'); return; }
+
+    const btn = document.getElementById('gen-graphic');
+    btn.textContent = 'Generating…';
+    btn.disabled = true;
+    document.getElementById('graphic-grid').hidden = true;
+    document.getElementById('graphic-next-actions').hidden = true;
+
+    try {
+      const res = await fetch('/api/studio/graphic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const grid = document.getElementById('graphic-grid');
+      grid.innerHTML = '';
+      (data.images ?? []).forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Generated graphic';
+        img.className = 'graphic-option';
+        img.addEventListener('click', () => {
+          document.querySelectorAll('.graphic-option').forEach(i => i.classList.remove('graphic-option--selected'));
+          img.classList.add('graphic-option--selected');
+          selectedGraphic = url;
+          document.getElementById('graphic-next-actions').hidden = false;
+        });
+        grid.appendChild(img);
+      });
+      grid.hidden = false;
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.textContent = 'Generate';
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('skip-graphic').addEventListener('click', () => {
+    selectedGraphic = '';
+    goToStep(5);
+    loadAccounts();
+  });
+
+  document.getElementById('go-schedule').addEventListener('click', () => {
+    goToStep(5);
+    loadAccounts();
+  });
+
+  // --- STEP 5 ---
+  async function loadAccounts() {
+    const picker = document.getElementById('accounts-picker');
+    try {
+      const res = await fetch('/api/studio/accounts');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (!data.accounts?.length) {
+        picker.innerHTML = '<p class="empty-state">No accounts connected. <a href="/studio/connect">Connect accounts →</a></p>';
+        return;
+      }
+
+      picker.innerHTML = data.accounts.map(acc => `
+        <label class="account-check">
+          <input type="checkbox" name="account" value="${acc.id}" data-platform="${acc.platform}" checked />
+          <span class="check-platform">${acc.platform}</span>
+          <span class="check-username">@${acc.username}</span>
+        </label>
+      `).join('');
+    } catch (err) {
+      picker.innerHTML = `<p class="error-state">${err.message}</p>`;
+    }
+  }
+
+  // Set default datetime to tomorrow at 9am
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(9, 0, 0, 0);
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('schedule-datetime').value =
+    `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}T09:00`;
+
+  document.getElementById('publish-btn').addEventListener('click', async () => {
+    const checked = [...document.querySelectorAll('[name="account"]:checked')];
+    if (!checked.length) { showError('Select at least one account.'); return; }
+
+    const scheduledFor = document.getElementById('schedule-datetime').value;
+    if (!scheduledFor) { showError('Pick a date and time.'); return; }
+
+    const instagramCaption = document.getElementById('caption-instagram').value.trim();
+    const linkedinCaption  = document.getElementById('caption-linkedin').value.trim();
+
+    const platforms = checked.map(cb => ({
+      accountId: cb.value,
+      caption: cb.dataset.platform?.toLowerCase() === 'linkedin' ? linkedinCaption : instagramCaption,
+    }));
+
+    const btn = document.getElementById('publish-btn');
+    btn.textContent = 'Scheduling…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/content/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl, platforms, scheduledFor: new Date(scheduledFor).toISOString() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const result = document.getElementById('publish-result');
+      result.innerHTML = `
+        <div class="success-card">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" stroke="var(--ok)" stroke-width="1.5"/>
+            <path d="M7 12l3 3 7-7" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <strong>Scheduled!</strong>
+            <p>Your post is scheduled for ${new Date(scheduledFor).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}.</p>
+          </div>
+          <a href="/studio/dashboard" class="btn-ghost-sm">View calendar →</a>
+        </div>
+      `;
+      result.hidden = false;
+      btn.hidden = true;
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      if (!document.getElementById('publish-btn').hidden) {
+        btn.textContent = 'Schedule post';
+        btn.disabled = false;
+      }
+    }
+  });
+
+  // Init
+  goToStep(1);
+</script>
+
+<style>
+  .create-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2.5rem var(--gutter);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  /* Steps bar */
+  .steps-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-pill);
+    padding: 0.375rem;
+    overflow-x: auto;
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-pill);
+    transition: background var(--dur-fast);
+    flex-shrink: 0;
+  }
+
+  .step-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: var(--fw-bold);
+    color: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  .step-label {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+
+  .step-indicator--active .step-num {
+    background: var(--ae-coral);
+    color: var(--text-on-accent);
+  }
+  .step-indicator--active .step-label { color: var(--text-body); }
+
+  .step-indicator--done .step-num {
+    background: var(--ok);
+    color: var(--ink-900);
+  }
+  .step-indicator--done .step-label { color: var(--text-muted); }
+
+  /* Step panels */
+  .step-panel {
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .step-title { font-size: var(--fs-h2); }
+  .step-desc { color: var(--text-muted); font-size: var(--fs-sm); }
+
+  /* Toggle */
+  .input-toggle { display: flex; gap: 0.25rem; }
+
+  .toggle-btn {
+    padding: 0.4rem 1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    background: none;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .toggle-btn:hover { color: var(--text-body); }
+  .toggle-btn--active {
+    background: var(--surface-hover);
+    color: var(--text-strong);
+    border-color: var(--border-strong);
+  }
+
+  .text-input {
+    width: 100%;
+    background: var(--ink-800);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.875rem;
+    color: var(--text-strong);
+    font-size: var(--fs-body);
+    transition: border-color var(--dur-fast);
+  }
+  .text-input::placeholder { color: var(--text-faint); }
+  .text-input:focus { outline: none; border-color: var(--ae-coral); }
+
+  .input-hint { font-size: var(--fs-xs); color: var(--text-faint); }
+
+  /* Dropzone */
+  .dropzone {
+    border: 2px dashed var(--border-mid);
+    border-radius: var(--radius-md);
+    padding: 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.625rem;
+    text-align: center;
+    transition: border-color var(--dur-fast);
+  }
+  .dropzone:hover { border-color: var(--border-strong); }
+
+  .dropzone-text { font-size: var(--fs-sm); color: var(--text-muted); }
+  .dropzone-browse { color: var(--ae-coral); cursor: pointer; text-decoration: underline; }
+  .dropzone-hint { font-size: var(--fs-xs); color: var(--text-faint); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .upload-notice { font-size: var(--fs-xs); color: var(--text-faint); }
+
+  /* Step actions */
+  .step-actions { display: flex; align-items: center; gap: 0.875rem; flex-wrap: wrap; }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1.5rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    box-shadow: var(--glow-cta);
+    transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+  }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1.25rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    background: transparent;
+    color: var(--text-body);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: border-color var(--dur-fast), color var(--dur-fast);
+  }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-strong); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-ghost {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color var(--dur-fast);
+  }
+  .btn-ghost:hover { color: var(--text-strong); }
+
+  .btn-ghost-sm {
+    font-size: var(--fs-sm);
+    color: var(--ae-coral);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-ghost-sm:hover { color: var(--accent-soft); }
+
+  /* Progress */
+  .progress-area { display: flex; justify-content: center; padding: 2rem; }
+
+  .spinner-lg {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border-mid);
+    border-top-color: var(--ae-coral);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Transcript */
+  .transcript-hd { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+  .section-label {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .flagged-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--fs-xs);
+    color: var(--warn);
+  }
+
+  .text-area {
+    width: 100%;
+    background: var(--ink-800);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 0.875rem;
+    color: var(--text-strong);
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color var(--dur-fast);
+  }
+  .text-area:focus { outline: none; border-color: var(--ae-coral); }
+
+  /* Caption tabs */
+  .caption-tabs {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .cap-tab {
+    padding: 0.5rem 1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .cap-tab:hover { color: var(--text-body); }
+  .cap-tab--active { color: var(--text-strong); border-bottom-color: var(--ae-coral); }
+
+  /* Graphic grid */
+  .graphic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .graphic-option {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+  }
+  .graphic-option:hover { transform: scale(1.02); }
+  .graphic-option--selected { border-color: var(--ae-coral); }
+
+  /* Schedule */
+  .schedule-row { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .field-label {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-body);
+  }
+
+  .accounts-picker { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .account-check {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.875rem;
+    background: var(--ink-800);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color var(--dur-fast);
+  }
+  .account-check:has(input:checked) { border-color: var(--ae-coral); }
+
+  .account-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ae-red);
+    flex-shrink: 0;
+  }
+
+  .check-platform {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--text-faint);
+    width: 70px;
+    flex-shrink: 0;
+  }
+
+  .check-username { font-size: var(--fs-sm); color: var(--text-body); }
+
+  .loading-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    padding: 0.5rem 0;
+  }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-mid);
+    border-top-color: var(--ae-coral);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .empty-state, .error-state {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+  }
+  .empty-state a { color: var(--ae-coral); }
+  .error-state { color: var(--error); }
+
+  /* Success */
+  .success-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: rgba(79, 191, 139, 0.08);
+    border: 1px solid rgba(79, 191, 139, 0.2);
+    border-radius: var(--radius-md);
+  }
+
+  .success-card strong { display: block; color: var(--ok); font-weight: var(--fw-bold); margin-bottom: 0.2rem; }
+  .success-card p { font-size: var(--fs-sm); color: var(--text-muted); }
+
+  /* Error banner */
+  .error-banner {
+    padding: 0.75rem 1rem;
+    background: rgba(252, 44, 48, 0.1);
+    border: 1px solid rgba(252, 44, 48, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--error);
+    font-size: var(--fs-sm);
+  }
+</style>

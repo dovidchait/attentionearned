@@ -1,0 +1,208 @@
+---
+import '../styles/tokens.css';
+import { UserButton } from '@clerk/astro/components';
+
+interface Props {
+  title: string;
+  activePage?: 'dashboard' | 'create' | 'connect' | 'settings';
+}
+
+const { title, activePage } = Astro.props;
+const { userId } = Astro.locals.auth();
+
+const nav = [
+  { href: '/studio/dashboard', label: 'Calendar', icon: 'calendar', id: 'dashboard' },
+  { href: '/studio/create',    label: 'Create',   icon: 'plus',     id: 'create' },
+  { href: '/studio/connect',   label: 'Accounts', icon: 'link',     id: 'connect' },
+  { href: '/studio/settings',  label: 'Settings', icon: 'sliders',  id: 'settings' },
+];
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="/mark.svg" />
+  <title>{title} — Studio | Attention Earned</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <style is:global>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      font-size: var(--fs-body);
+      line-height: var(--lh-body);
+      color: var(--text-body);
+      background-color: var(--ink-950);
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4 {
+      font-family: var(--font-display);
+      font-weight: var(--fw-black);
+      line-height: var(--lh-tight);
+      color: var(--text-strong);
+      letter-spacing: var(--tracking-display);
+    }
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 3px;
+      border-radius: var(--radius-xs);
+    }
+    img, video { max-width: 100%; display: block; }
+    input, textarea, select, button {
+      font-family: var(--font-sans);
+      font-size: var(--fs-body);
+    }
+  </style>
+</head>
+<body class="studio-shell">
+  <aside class="studio-sidebar">
+    <a href="/studio" class="sidebar-logo" aria-label="Studio home">
+      <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      <span class="sidebar-product">Studio</span>
+    </a>
+
+    <nav class="sidebar-nav" aria-label="Studio navigation">
+      {nav.map(({ href, label, icon, id }) => (
+        <a
+          href={href}
+          class:list={['sidebar-link', { 'sidebar-link--active': activePage === id }]}
+          aria-current={activePage === id ? 'page' : undefined}
+        >
+          <svg class="sidebar-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            {icon === 'calendar' && (
+              <path d="M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm0 4h10M5 2v1M11 2v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            )}
+            {icon === 'plus' && (
+              <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            )}
+            {icon === 'link' && (
+              <path d="M6.5 9.5a3.536 3.536 0 0 0 5 0l2-2a3.536 3.536 0 0 0-5-5L7 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9.5 6.5a3.536 3.536 0 0 0-5 0l-2 2a3.536 3.536 0 0 0 5 5L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            )}
+            {icon === 'sliders' && (
+              <path d="M3 4h2m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm4 0h6M3 8h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm4 0h2M3 12h2m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm4 0h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            )}
+          </svg>
+          {label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="sidebar-foot">
+      {userId && <UserButton />}
+    </div>
+  </aside>
+
+  <main class="studio-main">
+    <slot />
+  </main>
+</body>
+</html>
+
+<style>
+  .studio-shell {
+    display: flex;
+    min-height: 100dvh;
+  }
+
+  .studio-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--ink-900);
+    border-right: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .sidebar-logo img { height: 16px; width: auto; }
+
+  .sidebar-product {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    background: var(--accent-quiet);
+    color: var(--ae-coral);
+    padding: 0.15em 0.5em;
+    border-radius: var(--radius-xs);
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 1rem 0.75rem;
+    flex: 1;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+
+  .sidebar-link:hover {
+    background: var(--surface-hover);
+    color: var(--text-strong);
+  }
+
+  .sidebar-link--active {
+    background: var(--accent-quiet);
+    color: var(--ae-coral);
+  }
+
+  .sidebar-icon {
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
+
+  .sidebar-foot {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .studio-main {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 768px) {
+    .studio-shell { flex-direction: column; }
+    .studio-sidebar {
+      width: 100%;
+      height: auto;
+      position: static;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    .sidebar-logo { padding: 0.75rem 1rem; border-bottom: none; border-right: 1px solid var(--border-subtle); }
+    .sidebar-nav { flex-direction: row; padding: 0.5rem; flex: 1; gap: 2px; }
+    .sidebar-link { flex-direction: column; gap: 2px; font-size: 10px; padding: 0.4rem 0.5rem; white-space: nowrap; }
+    .sidebar-foot { padding: 0.5rem 0.75rem; border-top: none; border-left: 1px solid var(--border-subtle); display: flex; align-items: center; }
+  }
+</style>

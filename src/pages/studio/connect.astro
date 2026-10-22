@@ -1,0 +1,309 @@
+---
+export const prerender = false;
+
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { clerkClient } from '@clerk/astro/server';
+
+const { userId } = Astro.locals.auth();
+if (!userId) return Astro.redirect('/studio/login');
+
+// Ensure Zernio profile is provisioned
+const clerk = clerkClient(Astro);
+const user = await clerk.users.getUser(userId!);
+const profileId = (user.privateMetadata as Record<string, unknown>)?.zernioProfileId as string | undefined;
+
+const platforms = [
+  { id: 'instagram', label: 'Instagram', color: '#E1306C' },
+  { id: 'linkedin',  label: 'LinkedIn',  color: '#0A66C2' },
+  { id: 'tiktok',    label: 'TikTok',    color: '#010101' },
+  { id: 'facebook',  label: 'Facebook',  color: '#1877F2' },
+  { id: 'youtube',   label: 'YouTube',   color: '#FF0000' },
+];
+---
+
+<StudioLayout title="Connected accounts" activePage="connect">
+  <div class="page-wrap">
+    <header class="page-hd">
+      <div>
+        <h1 class="page-title">Connected accounts</h1>
+        <p class="page-sub">Connect your social accounts to schedule posts directly.</p>
+      </div>
+    </header>
+
+    {!profileId && (
+      <div class="notice notice--warn" id="provision-notice">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 2l6 12H2L8 2z" stroke="var(--warn)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 6v4M8 11.5v.5" stroke="var(--warn)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Setting up your account… <button class="notice-retry" id="provision-btn">Retry</button>
+      </div>
+    )}
+
+    <section class="accounts-section">
+      <h2 class="section-title">Your accounts</h2>
+      <div class="accounts-list" id="accounts-list">
+        <div class="loading-row">
+          <span class="spinner"></span> Loading connected accounts…
+        </div>
+      </div>
+    </section>
+
+    <section class="connect-section">
+      <h2 class="section-title">Add a new account</h2>
+      <div class="platform-grid">
+        {platforms.map(({ id, label, color }) => (
+          <button
+            class="platform-card"
+            data-platform={id}
+            data-color={color}
+            onclick={`connectPlatform('${id}')`}
+          >
+            <span class="platform-dot" style={`background:${color}`}></span>
+            <span class="platform-label">{label}</span>
+            <span class="platform-arrow">→</span>
+          </button>
+        ))}
+      </div>
+    </section>
+
+    <div class="toast" id="toast" aria-live="polite"></div>
+  </div>
+</StudioLayout>
+
+<script define:vars={{ profileId }}>
+  const profileId_ = profileId;
+
+  async function ensureProfile() {
+    if (profileId_) return profileId_;
+    const res = await fetch('/api/studio/provision', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    document.getElementById('provision-notice')?.remove();
+    return data.profileId;
+  }
+
+  async function loadAccounts() {
+    const list = document.getElementById('accounts-list');
+    try {
+      const res = await fetch('/api/studio/accounts');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (!data.accounts?.length) {
+        list.innerHTML = '<p class="empty-state">No accounts connected yet. Add one below.</p>';
+        return;
+      }
+
+      list.innerHTML = data.accounts.map(acc => `
+        <div class="account-row">
+          <span class="account-platform">${acc.platform}</span>
+          <span class="account-username">@${acc.username}</span>
+        </div>
+      `).join('');
+    } catch (err) {
+      list.innerHTML = `<p class="error-state">${err.message}</p>`;
+    }
+  }
+
+  async function connectPlatform(platform) {
+    try {
+      await ensureProfile();
+      const res = await fetch(`/api/studio/connect-url?platform=${platform}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      window.location.href = data.connectUrl;
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.dataset.type = type;
+    t.dataset.visible = 'true';
+    setTimeout(() => { delete t.dataset.visible; }, 4000);
+  }
+
+  document.getElementById('provision-btn')?.addEventListener('click', async () => {
+    try {
+      await ensureProfile();
+      loadAccounts();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  loadAccounts();
+  if (!profileId_) {
+    fetch('/api/studio/provision', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.profileId) { document.getElementById('provision-notice')?.remove(); } })
+      .catch(() => {});
+  }
+</script>
+
+<style>
+  .page-wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2.5rem var(--gutter);
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  .page-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .page-title { font-size: var(--fs-h2); margin-bottom: 0.25rem; }
+  .page-sub { color: var(--text-muted); font-size: var(--fs-sm); }
+
+  .notice {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    background: rgba(233,185,73,0.1);
+    border: 1px solid rgba(233,185,73,0.2);
+    color: var(--warn);
+  }
+
+  .notice-retry {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--warn);
+    font-weight: var(--fw-bold);
+    text-decoration: underline;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .section-title {
+    font-size: var(--fs-label);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 1rem;
+  }
+
+  .accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .account-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 1rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+  }
+
+  .account-platform {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    width: 80px;
+  }
+
+  .account-username { font-size: var(--fs-sm); color: var(--text-body); }
+
+  .platform-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .platform-card {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 1rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    color: var(--text-body);
+  }
+
+  .platform-card:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+    color: var(--text-strong);
+  }
+
+  .platform-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .platform-label { flex: 1; font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+
+  .platform-arrow { color: var(--text-faint); font-size: var(--fs-xs); }
+
+  .loading-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    padding: 1rem 0;
+  }
+
+  .empty-state, .error-state {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    padding: 1rem 0;
+  }
+  .error-state { color: var(--error); }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-mid);
+    border-top-color: var(--ae-coral);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    background: var(--ink-700);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-pill);
+    padding: 0.6rem 1.25rem;
+    font-size: var(--fs-sm);
+    color: var(--text-body);
+    opacity: 0;
+    transition: opacity var(--dur-base), transform var(--dur-base) var(--ease-out);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 90vw;
+  }
+
+  .toast[data-visible] {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast[data-type="error"] { color: var(--error); border-color: rgba(252,44,48,.3); }
+</style>

@@ -1,0 +1,137 @@
+---
+export const prerender = false;
+
+import Base from '../../../layouts/Base.astro';
+
+const { userId } = Astro.locals.auth();
+if (!userId) {
+  return Astro.redirect('/studio/login');
+}
+
+const platform = Astro.url.searchParams.get('platform') ?? '';
+const connectToken = Astro.url.searchParams.get('connect_token') ?? '';
+const error = Astro.url.searchParams.get('error') ?? '';
+
+// If Zernio returned an error, show it
+const hasError = !!error;
+
+// Auto-POST the connect-select step for platforms that need it
+// Facebook needs select_page, LinkedIn needs select_profile, others may not need a step
+const NEEDS_SELECT: Record<string, string> = {
+  facebook: 'select_page',
+  linkedin: 'select_profile',
+};
+const selectStep = NEEDS_SELECT[platform.toLowerCase()];
+
+let selectError = '';
+let selectSuccess = false;
+
+if (!hasError && connectToken && selectStep) {
+  try {
+    const res = await fetch(new URL('/api/studio/connect-url', Astro.url), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: Astro.request.headers.get('Cookie') ?? '' },
+      body: JSON.stringify({ platform, connectToken, step: selectStep }),
+    });
+    selectSuccess = res.ok;
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({})) as { error?: string };
+      selectError = d.error ?? 'Unknown error during account selection.';
+    }
+  } catch {
+    selectError = 'Network error completing account connection.';
+  }
+} else if (!hasError && connectToken && !selectStep) {
+  // No select step needed — direct connection is complete
+  selectSuccess = true;
+}
+
+const connected = !hasError && selectSuccess;
+---
+
+<Base title="Connecting account..." noNav noFooter>
+  <div class="callback-wrap">
+    <a href="/studio" class="callback-logo">
+      <img src="/wordmark-white.svg" alt="Attention Earned" height="18" />
+    </a>
+
+    {connected ? (
+      <div class="callback-card callback-card--ok">
+        <div class="callback-icon callback-icon--ok">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="14" cy="14" r="13" stroke="var(--ok)" stroke-width="1.5"/>
+            <path d="M8 14l4 4 8-8" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="callback-title">
+          {platform ? `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected` : 'Account connected'}
+        </h1>
+        <p class="callback-body">Your account is ready to post to.</p>
+        <a href="/studio/connect" class="callback-btn">Back to accounts</a>
+      </div>
+    ) : (
+      <div class="callback-card callback-card--err">
+        <div class="callback-icon callback-icon--err">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="14" cy="14" r="13" stroke="var(--error)" stroke-width="1.5"/>
+            <path d="M10 10l8 8M18 10l-8 8" stroke="var(--error)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h1 class="callback-title">Connection failed</h1>
+        <p class="callback-body">{error || selectError || 'Something went wrong. Please try again.'}</p>
+        <a href="/studio/connect" class="callback-btn">Back to accounts</a>
+      </div>
+    )}
+  </div>
+</Base>
+
+<style>
+  .callback-wrap {
+    min-height: 100dvh;
+    background: var(--ink-950);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem var(--gutter);
+  }
+
+  .callback-logo img { height: 20px; width: auto; }
+
+  .callback-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .callback-icon { display: flex; }
+
+  .callback-title { font-size: var(--fs-h3); }
+
+  .callback-body { color: var(--text-muted); font-size: var(--fs-sm); }
+
+  .callback-btn {
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.5rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    border-radius: var(--radius-pill);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .callback-btn:hover { transform: translateY(-1px); }
+</style>

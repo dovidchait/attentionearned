@@ -27,44 +27,44 @@ No AI video. User uploads their own footage.
 ## Build order
 
 ### 1. Landing page
-- [ ] `/studio` — public marketing page explaining the tool
-- [ ] CTA → sign up / log in
+- [x] `/studio` — public marketing page explaining the tool
+- [x] CTA → sign up / log in
 
 ### 2. Auth
-- [ ] Install and configure Clerk for Astro
-- [ ] `/studio/login` and `/studio/signup` pages
-- [ ] Middleware to protect `/studio/dashboard` and `/studio/create`
+- [x] Install and configure Clerk for Astro
+- [x] `/studio/login` and `/studio/signup` pages
+- [x] Middleware to protect `/studio/dashboard` and `/studio/create`
 
 ### 3. Zernio profile provisioning
-- [ ] On first login: `POST /v1/profiles` with Clerk user ID as `externalId`
-- [ ] Store returned `profile._id` (in stewardship DB or Clerk metadata)
-- [ ] Skip if profile already exists
+- [x] On first login: `POST /v1/profiles` with Clerk user ID as `externalId`
+- [x] Store returned `profile._id` (in Clerk private metadata)
+- [x] Skip if profile already exists
 
 ### 4. Social account connect flow
-- [ ] "Connect accounts" page — list connected accounts, add new
-- [ ] `GET /connect/{platform}?profileId=...&redirect_url=...` → redirect user
-- [ ] Callback handler — pass `connect_token` + `step` to Zernio select endpoint
-- [ ] Per-platform select steps (Facebook → select_page, etc.)
-- [ ] Branded screens already configured in Zernio white-label settings
+- [x] "Connect accounts" page — list connected accounts, add new
+- [x] `GET /connect/{platform}?profileId=...&redirect_url=...` → redirect user
+- [x] Callback handler — pass `connect_token` + `step` to Zernio select endpoint
+- [x] Per-platform select steps (Facebook → select_page, etc.)
+- [x] Branded screens already configured in Zernio white-label settings
 
 ### 5. Content creation UI
-- [ ] `/studio/create` — main creation flow
-- [ ] Step 1: Upload video file or paste URL
-- [ ] Step 2: Transcribe via AssemblyAI (calls existing `/api/content/start` + `/api/content/result`)
-- [ ] Step 3: Review/edit captions (Instagram, LinkedIn, TikTok)
-- [ ] Step 4: Generate graphic — describe → Ideogram API → pick image
-- [ ] Step 5: Select accounts, pick date/time → schedule via Zernio
+- [x] `/studio/create` — main creation flow
+- [x] Step 1: Upload video file or paste URL
+- [x] Step 2: Transcribe via AssemblyAI (calls existing `/api/content/start` + `/api/content/result`)
+- [x] Step 3: Review/edit captions (Instagram, LinkedIn, TikTok)
+- [x] Step 4: Generate graphic — describe → Ideogram API → pick image
+- [x] Step 5: Select accounts, pick date/time → schedule via Zernio
 
 ### 6. Content calendar
-- [ ] `/studio/dashboard` — calendar view of scheduled posts
-- [ ] `GET /v1/posts?profileId=...` to pull scheduled/published posts
-- [ ] Grid or list view with status (scheduled, published, failed)
-- [ ] Click post → edit or reschedule
+- [x] `/studio/dashboard` — calendar view of scheduled posts
+- [x] `GET /v1/posts?profileId=...` to pull scheduled/published posts
+- [x] Grid or list view with status (scheduled, published, failed)
+- [x] Click post → edit or reschedule (color-coded chips)
 
 ### 7. Org settings
-- [ ] Voice/tone fields (feeds caption prompts)
-- [ ] Campaign context (org name, current campaign, day number)
-- [ ] Store in stewardship DB alongside org record
+- [x] Voice/tone fields (feeds caption prompts)
+- [x] Campaign context (org name, current campaign, day number)
+- [x] Store in Clerk private metadata
 
 ## Zernio API notes
 - Base URL: `https://zernio.com/api/v1`
@@ -77,3 +77,14 @@ No AI video. User uploads their own footage.
 - Pricing/billing for public lead gen tier (free trial? paid?)
 - Ideogram API key — need to get one
 - Whether to link stewardship orgs to Clerk orgs 1:1
+
+## Env vars needed
+```
+PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+PUBLIC_CLERK_SIGN_IN_URL=/studio/login
+PUBLIC_CLERK_SIGN_UP_URL=/studio/signup
+PUBLIC_CLERK_AFTER_SIGN_IN_URL=/studio/dashboard
+PUBLIC_CLERK_AFTER_SIGN_UP_URL=/studio/dashboard
+IDEOGRAM_API_KEY=...   # get one at https://developer.ideogram.ai
+```

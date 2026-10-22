@@ -1,0 +1,373 @@
+---
+export const prerender = false;
+
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { clerkClient } from '@clerk/astro/server';
+
+const { userId } = Astro.locals.auth();
+if (!userId) return Astro.redirect('/studio/login');
+
+// Get current month for initial load
+const now = new Date();
+const year  = parseInt(Astro.url.searchParams.get('year')  ?? String(now.getFullYear()), 10);
+const month = parseInt(Astro.url.searchParams.get('month') ?? String(now.getMonth() + 1), 10);
+
+const monthStart = new Date(year, month - 1, 1);
+const monthEnd   = new Date(year, month, 0, 23, 59, 59);
+
+const monthLabel = monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+// Prev/next month links
+const prevDate  = new Date(year, month - 2, 1);
+const nextDate  = new Date(year, month, 1);
+const prevHref  = `/studio/dashboard?year=${prevDate.getFullYear()}&month=${prevDate.getMonth() + 1}`;
+const nextHref  = `/studio/dashboard?year=${nextDate.getFullYear()}&month=${nextDate.getMonth() + 1}`;
+
+// Build calendar grid
+const firstWeekday = monthStart.getDay(); // 0=Sun
+const daysInMonth  = monthEnd.getDate();
+
+// Ensure profile exists
+const clerk = clerkClient(Astro);
+const user = await clerk.users.getUser(userId!);
+const profileId = (user.privateMetadata as Record<string, unknown>)?.zernioProfileId as string | undefined;
+
+// Fetch posts for this month (server-side)
+interface ZernioPost {
+  _id: string;
+  content?: string;
+  scheduledFor?: string;
+  status?: string;
+  platforms?: Array<{ platform?: string }>;
+}
+
+let posts: ZernioPost[] = [];
+if (profileId) {
+  const apiKey = import.meta.env.ZERNIO_API_KEY?.trim();
+  if (apiKey) {
+    try {
+      const base = import.meta.env.ZERNIO_API_BASE ?? 'https://zernio.com/api/v1';
+      const params = new URLSearchParams({
+        profileId,
+        from: monthStart.toISOString(),
+        to:   monthEnd.toISOString(),
+        limit: '100',
+      });
+      const res = await fetch(`${base}/posts?${params}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (res.ok) {
+        const data = await res.json() as { data?: ZernioPost[]; posts?: ZernioPost[] } | ZernioPost[];
+        posts = Array.isArray(data)
+          ? data
+          : ((data as { data?: ZernioPost[] }).data ?? (data as { posts?: ZernioPost[] }).posts ?? []);
+      }
+    } catch { /* ignore */ }
+  }
+}
+
+// Index posts by day-of-month
+const postsByDay = new Map<number, ZernioPost[]>();
+for (const post of posts) {
+  if (post.scheduledFor) {
+    const d = new Date(post.scheduledFor);
+    if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+      const day = d.getDate();
+      const arr = postsByDay.get(day) ?? [];
+      arr.push(post);
+      postsByDay.set(day, arr);
+    }
+  }
+}
+
+// Calendar cell array: nulls for leading blank days, then 1..daysInMonth
+const cells: (number | null)[] = [
+  ...Array.from({ length: firstWeekday }, () => null),
+  ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+];
+
+// Pad to full weeks
+while (cells.length % 7 !== 0) cells.push(null);
+
+const todayDay = now.getFullYear() === year && now.getMonth() + 1 === month ? now.getDate() : -1;
+
+const STATUS_COLOR: Record<string, string> = {
+  scheduled: 'var(--ae-coral)',
+  published: 'var(--ok)',
+  failed:    'var(--error)',
+};
+---
+
+<StudioLayout title="Content calendar" activePage="dashboard">
+  <div class="page-wrap">
+    <header class="cal-hd">
+      <div class="cal-title-row">
+        <h1 class="page-title">{monthLabel}</h1>
+        <nav class="cal-nav">
+          <a href={prevHref} class="cal-nav-btn" aria-label="Previous month">←</a>
+          <a href={nextHref} class="cal-nav-btn" aria-label="Next month">→</a>
+        </nav>
+      </div>
+      <a href="/studio/create" class="btn-create">+ New post</a>
+    </header>
+
+    {!profileId && (
+      <div class="notice notice--warn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 2l6 12H2L8 2z" stroke="var(--warn)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 6v4M8 11.5v.5" stroke="var(--warn)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        No social accounts connected yet. <a href="/studio/connect" class="notice-link">Connect accounts →</a>
+      </div>
+    )}
+
+    <div class="cal-grid-wrap">
+      <div class="cal-weekdays" aria-hidden="true">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+          <span class="cal-wd">{d}</span>
+        ))}
+      </div>
+
+      <div class="cal-grid">
+        {cells.map((day) => {
+          const dayPosts = day ? (postsByDay.get(day) ?? []) : [];
+          return (
+            <div
+              class:list={[
+                'cal-cell',
+                { 'cal-cell--empty': !day },
+                { 'cal-cell--today': day === todayDay },
+                { 'cal-cell--has-posts': dayPosts.length > 0 },
+              ]}
+            >
+              {day && (
+                <>
+                  <span class="cal-day-num">{day}</span>
+                  <div class="cal-posts">
+                    {dayPosts.slice(0, 3).map((post) => {
+                      const status = post.status ?? 'scheduled';
+                      const platform = post.platforms?.[0]?.platform ?? '';
+                      const color = STATUS_COLOR[status] ?? STATUS_COLOR.scheduled;
+                      return (
+                        <div
+                          class="cal-post-chip"
+                          style={`border-left-color:${color}`}
+                          title={post.content?.slice(0, 80) ?? 'Post'}
+                        >
+                          {platform && <span class="chip-platform">{platform}</span>}
+                          <span class="chip-time">
+                            {post.scheduledFor
+                              ? new Date(post.scheduledFor).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                              : ''}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {dayPosts.length > 3 && (
+                      <span class="cal-post-more">+{dayPosts.length - 3} more</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    {posts.length === 0 && profileId && (
+      <div class="empty-month">
+        <p>No posts scheduled for {monthLabel}.</p>
+        <a href="/studio/create" class="btn-create-ghost">Create your first post →</a>
+      </div>
+    )}
+  </div>
+</StudioLayout>
+
+<style>
+  .page-wrap {
+    padding: 2.5rem var(--gutter);
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .cal-hd {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .cal-title-row { display: flex; align-items: center; gap: 1rem; }
+
+  .page-title { font-size: var(--fs-h2); }
+
+  .cal-nav { display: flex; gap: 0.25rem; }
+
+  .cal-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    color: var(--text-muted);
+    font-size: var(--fs-body);
+    transition: background var(--dur-fast), color var(--dur-fast);
+  }
+  .cal-nav-btn:hover { background: var(--surface-hover); color: var(--text-strong); }
+
+  .btn-create {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--glow-cta);
+    transition: transform var(--dur-fast) var(--ease-out);
+    white-space: nowrap;
+  }
+  .btn-create:hover { transform: translateY(-1px); }
+
+  .notice {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    background: rgba(233,185,73,0.08);
+    border: 1px solid rgba(233,185,73,0.2);
+    color: var(--warn);
+  }
+
+  .notice-link { color: var(--warn); text-decoration: underline; font-weight: var(--fw-bold); }
+
+  .cal-grid-wrap {
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .cal-wd {
+    padding: 0.625rem 0.5rem;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    text-align: center;
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .cal-cell {
+    min-height: 100px;
+    padding: 0.5rem;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    position: relative;
+    transition: background var(--dur-fast);
+  }
+
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-cell--empty { background: rgba(0,0,0,0.15); }
+  .cal-cell--today { background: var(--accent-quiet); }
+  .cal-cell--today .cal-day-num { color: var(--ae-coral); }
+
+  .cal-day-num {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    color: var(--text-faint);
+    line-height: 1;
+    padding: 0.1rem 0.2rem;
+    border-radius: 3px;
+    align-self: flex-start;
+  }
+
+  .cal-posts { display: flex; flex-direction: column; gap: 3px; }
+
+  .cal-post-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.35rem;
+    border-left: 3px solid var(--ae-coral);
+    background: rgba(255,255,255,0.04);
+    border-radius: 0 3px 3px 0;
+    font-size: 10px;
+    cursor: pointer;
+    transition: background var(--dur-fast);
+    overflow: hidden;
+  }
+
+  .cal-post-chip:hover { background: rgba(255,255,255,0.08); }
+
+  .chip-platform {
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  .chip-time { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .cal-post-more {
+    font-size: 10px;
+    color: var(--text-faint);
+    padding: 0.1rem 0.2rem;
+  }
+
+  .empty-month {
+    text-align: center;
+    padding: 3rem 0;
+    color: var(--text-muted);
+  }
+
+  .btn-create-ghost {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: var(--fs-sm);
+    color: var(--ae-coral);
+    transition: color var(--dur-fast);
+  }
+  .btn-create-ghost:hover { color: var(--accent-soft); }
+
+  @media (max-width: 600px) {
+    .cal-cell { min-height: 60px; }
+    .cal-post-chip { display: none; }
+    .cal-cell--has-posts::after {
+      content: '';
+      position: absolute;
+      bottom: 0.4rem;
+      right: 0.4rem;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ae-coral);
+    }
+  }
+</style>

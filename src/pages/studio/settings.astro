@@ -1,0 +1,240 @@
+---
+export const prerender = false;
+
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { clerkClient } from '@clerk/astro/server';
+
+const { userId } = Astro.locals.auth();
+if (!userId) return Astro.redirect('/studio/login');
+
+const clerk = clerkClient(Astro);
+const user = await clerk.users.getUser(userId!);
+const meta = (user.privateMetadata as Record<string, unknown>) ?? {};
+
+const settings = {
+  orgName:      (meta.orgName as string)      ?? '',
+  campaignName: (meta.campaignName as string) ?? '',
+  dayNumber:    (meta.dayNumber as string)    ?? '1',
+  voiceTone:    (meta.voiceTone as string)    ?? 'Story-first. Human. No hype or corporate speak.',
+};
+---
+
+<StudioLayout title="Settings" activePage="settings">
+  <div class="page-wrap">
+    <header class="page-hd">
+      <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-sub">These feed into your caption prompts automatically.</p>
+      </div>
+    </header>
+
+    <form class="settings-form" id="settings-form" novalidate>
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Organization</legend>
+
+        <div class="field">
+          <label class="field-label" for="orgName">Organization name</label>
+          <input
+            class="field-input"
+            type="text"
+            id="orgName"
+            name="orgName"
+            value={settings.orgName}
+            placeholder="e.g. Maple Street Soup Kitchen"
+            autocomplete="organization"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="voiceTone">Voice & tone</label>
+          <textarea
+            class="field-input field-input--ta"
+            id="voiceTone"
+            name="voiceTone"
+            rows="3"
+            placeholder="Describe how your org communicates. e.g. Warm, direct, story-first. No corporate speak."
+          >{settings.voiceTone}</textarea>
+          <p class="field-hint">Captions use this to match your voice.</p>
+        </div>
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Current campaign</legend>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="campaignName">Campaign name</label>
+            <input
+              class="field-input"
+              type="text"
+              id="campaignName"
+              name="campaignName"
+              value={settings.campaignName}
+              placeholder="e.g. 30-day impact series"
+            />
+          </div>
+
+          <div class="field field--narrow">
+            <label class="field-label" for="dayNumber">Day #</label>
+            <input
+              class="field-input"
+              type="number"
+              id="dayNumber"
+              name="dayNumber"
+              value={settings.dayNumber}
+              min="1"
+              max="365"
+              placeholder="1"
+            />
+            <p class="field-hint">Appears in captions as Day X/30.</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="save-btn">Save settings</button>
+        <span class="save-status" id="save-status" aria-live="polite"></span>
+      </div>
+    </form>
+  </div>
+</StudioLayout>
+
+<script>
+  const form = document.getElementById('settings-form') as HTMLFormElement;
+  const saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
+  const saveStatus = document.getElementById('save-status') as HTMLElement;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    saveStatus.textContent = '';
+
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const res = await fetch('/api/studio/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? 'Save failed.');
+      }
+
+      saveStatus.dataset.ok = 'true';
+      saveStatus.textContent = 'Saved.';
+      setTimeout(() => { saveStatus.textContent = ''; }, 2500);
+    } catch (err) {
+      saveStatus.dataset.ok = 'false';
+      saveStatus.textContent = (err as Error).message;
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save settings';
+    }
+  });
+</script>
+
+<style>
+  .page-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 2.5rem var(--gutter);
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  .page-hd {}
+  .page-title { font-size: var(--fs-h2); margin-bottom: 0.25rem; }
+  .page-sub { color: var(--text-muted); font-size: var(--fs-sm); }
+
+  .settings-form { display: flex; flex-direction: column; gap: 2rem; }
+
+  .fieldset {
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .fieldset-legend {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 0 0.25rem;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 0.375rem; }
+  .field--narrow { max-width: 120px; }
+
+  .field-row { display: flex; gap: 1rem; align-items: flex-start; }
+
+  .field-label {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-body);
+  }
+
+  .field-input {
+    background: var(--ink-800);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.875rem;
+    color: var(--text-strong);
+    font-size: var(--fs-sm);
+    transition: border-color var(--dur-fast);
+    width: 100%;
+  }
+
+  .field-input::placeholder { color: var(--text-faint); }
+
+  .field-input:focus {
+    outline: none;
+    border-color: var(--ae-coral);
+  }
+
+  .field-input--ta { resize: vertical; min-height: 80px; }
+
+  .field-hint {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .btn-save {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1.75rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    box-shadow: var(--glow-cta);
+    transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
+  }
+  .btn-save:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .save-status {
+    font-size: var(--fs-sm);
+    color: var(--ok);
+  }
+  .save-status[data-ok="false"] { color: var(--error); }
+</style>

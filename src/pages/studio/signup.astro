@@ -1,0 +1,46 @@
+---
+export const prerender = false;
+
+import Base from '../../layouts/Base.astro';
+import { SignUp } from '@clerk/astro/components';
+
+const { userId } = Astro.locals.auth();
+if (userId) {
+  return Astro.redirect('/studio/dashboard');
+}
+---
+
+<Base title="Create your Studio account" noNav noFooter>
+  <div class="auth-wrap">
+    <a href="/studio" class="auth-back">
+      <img src="/wordmark-white.svg" alt="Attention Earned" height="18" />
+    </a>
+    <div class="auth-card">
+      <SignUp
+        signInUrl="/studio/login"
+        forceRedirectUrl="/studio/dashboard"
+      />
+    </div>
+  </div>
+</Base>
+
+<style>
+  .auth-wrap {
+    min-height: 100dvh;
+    background: var(--ink-950);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem var(--gutter);
+    gap: 2rem;
+  }
+
+  .auth-back { display: flex; }
+  .auth-back img { height: 20px; width: auto; }
+
+  .auth-card {
+    width: 100%;
+    max-width: 420px;
+  }
+</style>

@@ -4,6 +4,7 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import vercel from '@astrojs/vercel';
+import clerk from '@clerk/astro';
 
 const UNLISTED_SLUGS = [
   'cinematography-work-samples',
@@ -26,6 +27,7 @@ const UNLISTED_SLUGS = [
 export default defineConfig({
   site: 'https://www.attentionearned.com',
   integrations: [
+    clerk(),
     mdx(),
     sitemap({
       filter: (page) =>
