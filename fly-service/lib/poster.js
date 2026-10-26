@@ -7,6 +7,7 @@ import { notify, brand } from './notify.js';
 import { keywordOf, KEYWORD_REPLIES } from './keywords.js';
 import { findMediaLinks, removeLinks, guessContentType, downloadLink } from './links.js';
 import * as store from './store.js';
+import { resolveStyle, processVideo, ffmpegAvailable } from './subtitles.js';
 
 // ============================================================================
 // POSTING PIPELINE (channel-agnostic)
@@ -161,12 +162,39 @@ function friendlyMediaError(error, channel) {
 async function publish({ channel, message, user, command, caption, targets, skipped, route }) {
   const apiKey = apiKeyFor(user);
 
+  // 0. Subtitles: decide whether to burn in
+  // command.subtitles: true = on, false = off, null = use user default
+  const subtitlesOn = command.subtitles ?? Boolean(user.subtitles?.enabled);
+  let subtitlePreview = null; // Buffer; wire approval flow later
+
   // 1. Media -> Zernio storage (attachments and links)
   const mediaItems = [];
   for (const item of message.media) {
     const label = item.link ? 'Link' : `Attachment ${item.index + 1}`;
     try {
-      const file = item.link ? await downloadLink(item.link) : await channel.downloadMedia(item);
+      let file = item.link ? await downloadLink(item.link) : await channel.downloadMedia(item);
+      if (subtitlesOn && file.contentType.startsWith('video/') && process.env.OPENAI_API_KEY) {
+        try {
+          const hasffmpeg = await ffmpegAvailable();
+          if (hasffmpeg) {
+            const aspectRatio = guessAspectRatio(file.buffer, file.contentType);
+            const style = resolveStyle(user.subtitles?.style, aspectRatio);
+            const result = await processVideo(file.buffer, file.contentType, {
+              style,
+              vocabulary: user.subtitles?.vocabulary || [],
+              aspectRatio,
+              filename: file.filename
+            });
+            file = { ...file, buffer: result.videoBuffer };
+            if (!subtitlePreview) subtitlePreview = result.previewBuffer;
+            console.log(`🎬 Subtitles burned into ${label}`);
+          } else {
+            console.warn('⚠️  ffmpeg not found; skipping subtitle burn-in');
+          }
+        } catch (subErr) {
+          console.error(`⚠️  Subtitle error for ${label}: ${subErr.message} — posting original`);
+        }
+      }
       mediaItems.push(await uploadMedia(file.buffer, file.contentType, file.filename, apiKey));
     } catch (error) {
       console.error(`   ❌ Failed media ${item.index}:`, error.message);
@@ -243,6 +271,31 @@ async function publish({ channel, message, user, command, caption, targets, skip
     post = await waitForPost(post._id, apiKey);
   }
   await safeReply(route, whereItWent(platformResults(post, labels), skipped, title));
+}
+
+/**
+ * Quick aspect-ratio guess: probe ffprobe if available, otherwise default to
+ * landscape. Portrait = width < height.
+ */
+async function guessAspectRatio(buffer, contentType) {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const { writeFileSync, rmSync, mkdtempSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+    const execFileAsync = promisify(execFile);
+    const tmpDir = mkdtempSync(join(tmpdir(), 'tta-ar-'));
+    const ext = contentType.includes('quicktime') ? '.mov' : '.mp4';
+    const tmpFile = join(tmpDir, `v${ext}`);
+    writeFileSync(tmpFile, buffer);
+    const { stdout } = await execFileAsync('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', tmpFile]);
+    rmSync(tmpDir, { recursive: true, force: true });
+    const vs = JSON.parse(stdout).streams.find(s => s.codec_type === 'video');
+    return (vs && vs.width < vs.height) ? 'portrait' : 'landscape';
+  } catch {
+    return 'landscape';
+  }
 }
 
 function titleOf(caption = '') {
