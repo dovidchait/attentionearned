@@ -1,17 +1,61 @@
 {
+  "_comment": "IDs only, never keys. Each user's Zernio key comes from the env var named in apiKeyEnv (default ZERNIO_API_KEY). Account IDs: GET https://zernio.com/api/v1/accounts. default:false = only when named ('post to reddit'). group = personal|business, used by 'post to instagram business'.",
   "users": [
     {
-      "email": "david@attentionearned.com",
-      "phone": "+1YOURNUMBER",
-      "whatsapp": "+1YOURNUMBER",
-      "name": "David",
-      "profileId": "prof_YOURID",
-      "accounts": {
-        "instagram": "acc_YOURID",
-        "facebook": "acc_YOURID",
-        "linkedin": "acc_YOURID",
-        "twitter": "acc_YOURID"
-      }
+      "name": "David Chait",
+      "phone": "+13473610822",
+      "whatsapp": "+13473610822",
+      "email": "chaitd@outlook.com",
+      "emails": [],
+      "timezone": "America/New_York",
+      "apiKeyEnv": "ZERNIO_API_KEY",
+      "zernioProfileId": "68dad1bfe2de3b9d7f99ae26",
+      "accounts": [
+        {
+          "label": "IG @dovid_chait",
+          "platform": "instagram",
+          "accountId": "68dafe7838690b4b9b1927f4",
+          "group": "personal"
+        },
+        {
+          "label": "IG @attentionearned",
+          "platform": "instagram",
+          "accountId": "6a8f4e0f77555aae01c8e7b9",
+          "group": "business"
+        },
+        {
+          "label": "YouTube (attentionearned)",
+          "platform": "youtube",
+          "accountId": "68dafe8738690b4b9b1927f5",
+          "group": "business"
+        },
+        {
+          "label": "TikTok @dovidchait",
+          "platform": "tiktok",
+          "accountId": "68f2614d352ee82c85295ac1",
+          "group": "personal"
+        },
+        {
+          "label": "LinkedIn David Chait",
+          "platform": "linkedin",
+          "accountId": "6949a8d84207e06f4ca82571",
+          "group": "personal"
+        },
+        {
+          "label": "LinkedIn AttentionEarned",
+          "platform": "linkedin",
+          "accountId": "6949a9074207e06f4ca82572",
+          "group": "business"
+        },
+        {
+          "label": "Reddit u/movingfowards",
+          "platform": "reddit",
+          "accountId": "68f693128bbca9c10cbfe30b",
+          "group": "personal",
+          "default": false,
+          "disabled": "Reddit needs a subreddit for every post and Zernio has Reddit paused right now"
+        }
+      ]
     }
   ]
 }
