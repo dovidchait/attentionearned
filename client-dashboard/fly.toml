@@ -1,0 +1,32 @@
+# Fly.io deployment config for the client dashboard.
+# Deploy: fly deploy --app ae-client-dashboard (from this directory)
+# Secrets: fly secrets set DASHBOARD_JWT_SECRET=... ZERNIO_API_KEY=... --app ae-client-dashboard
+
+app = "ae-client-dashboard"
+primary_region = "ewr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "4000"
+  NODE_ENV = "production"
+
+# users.json: either bake a copy into the image at build time (simpler, restart to update),
+# or mount a Fly volume and set USERS_FILE=/data/users.json
+# See README for instructions.
+
+[[http_service]]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 150
+
+[[vm]]
+  size = "shared-cpu-1x"
