@@ -29,6 +29,8 @@ const raw: WorkEntry[] = [
     kind:'dropbox-direct', video:'https://dl.dropboxusercontent.com/scl/fi/s64kwfqv7706armqhdueh/Meoros-Orlando-how-far-we-come-v5-5-pm-10.27-dc.mov?rlkey=2h4o0nn1ghea5lako05atgecm', href:'https://attentionearned.com/meoros-girls-high-school-orlando/' },
   { slug:'meoros-2026', title:'Same School, Different Goal', client:'Meoros Girls High School', sector:'Nonprofit', words:250,
     kind:'dropbox-direct', video:'https://dl.dropboxusercontent.com/scl/fi/3xql5x9bvzwo8ibfwj8d2/MEO-Fundraiser-v04.4-2026-10-21-1-am-dc-Lower-volume.mov?rlkey=ey1vf603c4b84ui59fw3eqedm&st=yaaltxjz' },
+  { slug:'meoros-2026-teaser', title:'Meoros 2026: Teaser', client:'Meoros Girls High School', sector:'Short-form', words:80,
+    kind:'dropbox-direct', video:'https://dl.dropboxusercontent.com/scl/fi/2yfq0v6jtnuchnmnuvts3/Vertical-Bloopers-10.15-12-pm.mov?rlkey=h83j3ee8wfbuxqf9ddpd8x15l&st=cant84h0' },
   { slug:'chabad-cheder-building', title:'Chabad Cheder Building Campaign', client:'Chabad Cheder', sector:'Nonprofit', words:31,
     kind:'dropbox-direct', video:'https://dl.dropboxusercontent.com/scl/fi/7ye355lunjmt4v3yovmqb/cv-4.6-1.27-pm-6.5.25-dc.mov?rlkey=7fzsmdnfxdcul4tb2cgtncmq7' },
   { slug:'darchei-torah-50-year', title:'50 Year Documentary for Darchei Torah', client:'Darchei Torah', sector:'Nonprofit', words:22,
@@ -81,7 +83,7 @@ export const AE_WORK: WorkEntry[] = raw.map((w) => {
 
 export const AE_SECTORS = [
   'All', 'Corporate', 'Healthcare', 'Nonprofit', 'Film',
-  'Music video', 'Commercial', 'Fashion', 'Behind-the-scenes',
+  'Music video', 'Commercial', 'Fashion', 'Behind-the-scenes', 'Short-form',
 ];
 
 export function getMediaFor(w: WorkEntry): { type: 'video'; src: string } | { type: 'iframe'; src: string } | { type: 'link'; src: string } {
@@ -110,6 +112,7 @@ export const MDX_SLUG_MAP: Record<string, string> = {
   'oelbaum-50-year-dinner': 'rabbi-noach-issac-oelbaum-50-year-dinner',
   'meoros-orlando': 'meoros-girls-high-school-orlando',
   'meoros-2026': 'meoros-2026',
+  'meoros-2026-teaser': 'meoros-2026-teaser',
   'chabad-cheder-building': 'chabad-cheder-building-campaign',
   'darchei-torah-50-year': '50-year-documentary-for-darchai-torah',
   'turo-weisberg-honoree': 'turo-university-dr-weisberg-honoree-video',
