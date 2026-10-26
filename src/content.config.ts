@@ -15,6 +15,7 @@ const work = defineCollection({
       'commercial',
       'fashion',
       'behind-the-scenes',
+      'action-sports',
     ]),
     summary: z.string(),
     video: z.object({
