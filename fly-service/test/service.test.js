@@ -9,6 +9,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import twilio from 'twilio';
 
+// The service logs a lot; keep test output readable (TEST_VERBOSE=1 shows it)
+if (!process.env.TEST_VERBOSE) for (const k of ['log', 'warn', 'error']) console[k] = () => {};
+
 const PUBLIC_BASE = 'https://text-to-attention.fly.dev';
 const TOKEN = 'test-auth-token';
 const DAVID = '+13473610822';
