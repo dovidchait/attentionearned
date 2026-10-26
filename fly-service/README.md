@@ -1,6 +1,6 @@
 # fly-service: Text to Attention
 
-Text, WhatsApp or email a photo or video in, and it posts to your socials through
+WhatsApp, email (or, once the toll-free number is verified, text) a photo or video in, and it posts to your socials through
 [Zernio](https://zernio.com) (formerly Late.dev). You get a reply on the same channel
 with the live link for each platform, and which ones failed and why.
 
@@ -18,7 +18,11 @@ Email webhook   ─┘   (parse, verify,     (user, targets,      │
 
 - `index.js` routes and the calendar cron
 - `lib/channels.js` one object per channel (verify, parse, ack, send, downloadMedia). Adding Meta's WhatsApp Cloud API later is one more object here.
-- `lib/poster.js` the channel-agnostic pipeline and the Zernio webhook
+- `lib/poster.js` the channel-agnostic pipeline, STOP/HELP, and the Zernio webhook
+- `lib/notify.js` every outbound message: "Attention Earned:" prefix, opt-outs, WhatsApp's 24-hour rule and fallbacks
+- `lib/links.js` Dropbox / Google Drive / direct file links used as the media
+- `lib/store.js` opt-outs and last-message times (a small JSON file, see "Keep opt-outs")
+- `test/` unit tests with a fake Twilio, fake Zernio and fake Postmark (`npm test`)
 - `lib/zernio.js` the Zernio client (presigned upload, create post with an Idempotency-Key, get post, polling)
 - `lib/commands.js` the command parser and account selection
 - `users.json` who can post and to which Zernio accounts (IDs only, never keys)
@@ -34,6 +38,16 @@ Email webhook   ─┘   (parse, verify,     (user, targets,      │
 | `Schedule: 2026-11-02 10:00 EST` | scheduled (no zone = the user's timezone) |
 | `Post at tomorrow 9am` | scheduled |
 | `Add to queue` | next slot in the user's Zernio queue |
+
+| `HELP` | short help with editors@attentionearned.com and 347-361-0822 |
+| `STOP` / `START` | stop all messages on that channel / turn them back on |
+
+A Dropbox or Google Drive link (shared as "anyone with the link") or a direct `.mp4`/`.mov`/`.jpg` link in
+the message is used as the media, so big videos don't need to be attached. WhatsApp only passes files
+up to 16 MB; anything bigger gets a reply asking for a link. Email takes attachments up to Postmark's
+35 MB per message.
+
+Every message the service sends starts with "Attention Earned:", matching the toll-free verification samples.
 
 Accounts that can't take a post are skipped and named in the reply: Instagram and TikTok need
 media, YouTube needs a video, Reddit is off (see `users.json`).
@@ -52,8 +66,104 @@ Never put a key in this file.
 ## Environment
 
 See `.env.example`. Required for posting: `ZERNIO_API_KEY`, `TWILIO_ACCOUNT_SID`,
-`TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`. Email replies need `EMAILIT_API_KEY`.
-`LATE_API_KEY` is no longer used.
+`TWILIO_AUTH_TOKEN`. WhatsApp needs `TWILIO_WHATSAPP_FROM` (and `TWILIO_WA_TEMPLATE_POSTED_SID` for
+links that arrive after 24 h). Email needs `POSTMARK_SERVER_TOKEN`, `EMAIL_FROM` and
+`EMAIL_WEBHOOK_SECRET`. SMS is off until `SMS_ENABLED=true` (with `TWILIO_FROM_NUMBER`).
+`LATE_API_KEY` is no longer used. `GET /` shows which of these are set (true/false, never values).
+
+## WhatsApp (Twilio WhatsApp sender)
+
+No toll-free verification is needed for WhatsApp. Clients message the WhatsApp number, the service
+answers "Attention Earned: Got it. Posting now: ...", then sends the live links (or what failed and why)
+on WhatsApp.
+
+**WhatsApp's 24-hour rule.** Free-form replies are only allowed within 24 hours of the person's last
+WhatsApp message. Posts made "now" always report inside that window. A scheduled post that goes live
+later is sent as an approved template, one message per live link. If the template isn't set up yet, or
+something failed (a template can't carry the reason), the full report goes by email to the user's
+address in `users.json`, then by SMS only if `SMS_ENABLED=true`. Each fallback is logged.
+
+### 1. Test today with the Twilio WhatsApp Sandbox
+
+1. Twilio Console > Messaging > Try it out > Send a WhatsApp message. From your WhatsApp, send
+   `join <your-code>` to **+1 415 523 8886**.
+2. On that page's Sandbox settings, set "When a message comes in" to
+   `https://text-to-attention.fly.dev/whatsapp-webhook` (HTTP POST) and save.
+3. `fly secrets set -a text-to-attention TWILIO_WHATSAPP_FROM=+14155238886`
+4. WhatsApp a short video with a caption to the sandbox number. You should get "Got it" and then the links.
+
+(The sandbox can't use your own template, so only test inside 24 hours.)
+
+### 2. Register the real WhatsApp sender
+
+1. Twilio Console > Messaging > Senders > WhatsApp senders > Create new sender, pick the number.
+   - It can't be a number that already has WhatsApp on a phone (so not 347-361-0822 if that's on WhatsApp).
+   - The toll-free **+1 866-618-8109** works if it can receive Meta's verification code by SMS or
+     voice call. Twilio shows the code in the console for Twilio numbers. If the code doesn't show,
+     temporarily point the number's voice/SMS webhook somewhere you can read (e.g. a TwiML Bin or Studio
+     flow that records it), then put the webhooks back.
+2. Log in with Facebook when asked and connect (or create) the **Meta Business account** for Attention
+   Earned. Display name: **Attention Earned**.
+3. In the sender's settings set "Webhook URL for incoming messages" to
+   `https://text-to-attention.fly.dev/whatsapp-webhook` (POST). (The app is `text-to-attention` in
+   `fly.toml`, so the host is `text-to-attention.fly.dev`.)
+4. Once Meta approves it: `fly secrets set -a text-to-attention TWILIO_WHATSAPP_FROM=+18666188109`
+
+### 3. Submit the "post is live" template
+
+Twilio Console > Messaging > Content Template Builder > Create new:
+
+- Name: `post_live` · Language: English · Content type: **Text**
+- Body (paste exactly):
+
+  `Attention Earned: your post {{1}} is live here: {{2}}. Reply HELP for help or STOP to opt out.`
+
+- Variable samples: `{{1}}` = `"Gala thank-you" on IG @attentionearned`, `{{2}}` = `https://www.instagram.com/p/DQx2abc`
+- Submit for WhatsApp approval, category **Utility**.
+
+When it shows Approved, copy its Content SID (starts with `HX`) and run
+`fly secrets set -a text-to-attention TWILIO_WA_TEMPLATE_POSTED_SID=HX...`
+
+Meta rejects templates that start or end with a variable, so the text around `{{2}}` matters.
+
+### Opt-out on WhatsApp
+
+WhatsApp has no carrier STOP handling, so the service does it: `STOP` saves the opt-out and confirms
+once; after that nothing is posted or sent to that number until it sends `START`. On SMS, Twilio's own
+Opt-Out Management sends the STOP/START/HELP replies; the service only records them.
+
+## Email (Postmark in and out)
+
+Clients email a video (attachment, or a Dropbox/Drive link for big files) with the caption in the body.
+The service emails back "Got it", then the live links, threaded under their email. Only addresses in
+`users.json` get replies. Mail whose SPF check failed is refused, so nobody can post by faking a
+client's From address.
+
+1. Create a Postmark account and a server called `text-to-attention`.
+2. Sender: verify the domain `attentionearned.com` (Postmark gives DKIM and Return-Path DNS records to
+   add) or at least the single sender `post@attentionearned.com`.
+3. Server > Default Inbound Stream > Settings: set the webhook to
+   `https://text-to-attention.fly.dev/email-webhook?secret=<long random string>`. Note the inbound
+   address (`...@inbound.postmarkapp.com`).
+4. Give clients that address, or forward `post@attentionearned.com` to it (Google Workspace group or
+   alias with forwarding). If forwarding makes SPF fail (the log says "Email rejected: SPF"), point
+   clients at the Postmark address directly or set `EMAIL_REQUIRE_SPF=false`.
+5. `fly secrets set -a text-to-attention POSTMARK_SERVER_TOKEN=... EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_WEBHOOK_SECRET=<same random string>`
+
+The webhook also accepts a raw email (`Content-Type: message/rfc822`, e.g. from a Cloudflare Email
+Worker) and simple JSON (`from`, `subject`, `text`, `attachments[]`). `EMAILIT_API_KEY` still works
+for outbound if Postmark isn't set.
+
+## Keep opt-outs across deploys
+
+STOP opt-outs and WhatsApp last-message times are saved in `state.json`. Without a volume that file
+is wiped on each deploy (the 24-hour check then falls back to the time saved on the post itself, but
+opt-outs are lost). To keep them:
+
+```bash
+fly volumes create tta_data --region iad --size 1 -a text-to-attention
+# then uncomment the [mounts] block at the bottom of fly.toml and deploy
+```
 
 ## Deploy (Fly.io, app `text-to-attention`)
 
@@ -63,7 +173,11 @@ fly status -a text-to-attention          # is the app/machine there and running?
 
 fly secrets set -a text-to-attention \
   ZERNIO_API_KEY=... \
-  TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=+1...
+  TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... \
+  TWILIO_WHATSAPP_FROM=+1... TWILIO_WA_TEMPLATE_POSTED_SID=HX... \
+  POSTMARK_SERVER_TOKEN=... EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_WEBHOOK_SECRET=...
+# later, once the toll-free number is verified:
+# fly secrets set -a text-to-attention SMS_ENABLED=true TWILIO_FROM_NUMBER=+18666188109
 
 fly secrets unset -a text-to-attention LATE_API_KEY   # if it was set
 
@@ -72,8 +186,9 @@ fly machine start -a text-to-attention    # only if the machine is stopped
 curl https://text-to-attention.fly.dev/   # should say "posting": "zernio"
 ```
 
-Twilio console, on the number: Messaging webhook `https://text-to-attention.fly.dev/sms-webhook`,
-WhatsApp sender webhook `https://text-to-attention.fly.dev/whatsapp-webhook` (both POST).
+Twilio console: WhatsApp sender webhook `https://text-to-attention.fly.dev/whatsapp-webhook`; on the
+number (once SMS is on) Messaging webhook `https://text-to-attention.fly.dev/sms-webhook` (both POST).
+Postmark inbound webhook: `https://text-to-attention.fly.dev/email-webhook?secret=...`.
 
 Optional, for live links on scheduled/queued posts: in Zernio create a webhook for
 `post.published`, `post.partial`, `post.failed` pointing at
@@ -85,6 +200,7 @@ Optional, for live links on scheduled/queued posts: in Zernio create a webhook f
 ```bash
 cp .env.example .env   # fill in; .env is git-ignored
 npm install
+npm test               # fake Twilio, Zernio and Postmark on localhost; no real network
 node --env-file=.env index.js
 ```
 
@@ -92,7 +208,9 @@ Set `ZERNIO_BASE_URL` to point at a mock server for testing without posting.
 
 ## Known limits
 
-- WhatsApp replies via Twilio are free-form only within 24 h of the person's last message. A
-  scheduled post that goes live later than that needs an approved template to report back.
+- WhatsApp: free-form replies only within 24 h of the person's last message (template or email after
+  that, see above). Media up to 16 MB; bigger videos need a link.
+- Videos from links are held in memory while uploading (512 MB machine); `MAX_LINK_MEDIA_MB` (default
+  250) caps them.
 - Queue mode uses the user's `zernioProfileId`. AttentionEarned's IG and LinkedIn live in a
   second Zernio profile, so for them prefer posting now or scheduling.
