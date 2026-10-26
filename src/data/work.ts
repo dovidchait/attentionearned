@@ -60,6 +60,8 @@ const raw: WorkEntry[] = [
   { slug:'gourmet-glatt-reels', title:'Gourmet Glatt Reels', client:'Gourmet Glatt', sector:'Commercial', words:29,
     kind:'instagram', video:'https://www.instagram.com/reel/C5BUg9UL2Zn/' },
   { slug:'nexivity-ad', title:'Nexivity Ad', client:'Nexivity', sector:'Commercial', words:29, kind:'youtube', video:'XZzPeJ2xYkA' },
+  { slug:'kiteboarding', title:'Pulled Over', client:'', sector:'Action sports', words:69,
+    kind:'dropbox-direct', video:'https://dl.dropboxusercontent.com/scl/fi/yj2ntui0stf587t4hnwrn/kiteboard-mini-doc-web.mp4?rlkey=2292cpx9fpnku49y7mfqgl3ak' },
   { slug:'gabi-koyenov', title:'Gabi Koyenov', client:'', sector:'Behind-the-scenes', words:137, kind:'youtube', video:'KL4E2VWYOtQ' },
   { slug:'why-i-do-this', title:'Why I Do This', client:'', sector:'Behind-the-scenes', words:78, kind:'youtube', video:'LmnF9frWJas' },
   { slug:'devorahs-hope', title:"Devorah's Hope", client:'', sector:'Film', words:47,
@@ -81,7 +83,7 @@ export const AE_WORK: WorkEntry[] = raw.map((w) => {
 
 export const AE_SECTORS = [
   'All', 'Corporate', 'Healthcare', 'Nonprofit', 'Film',
-  'Music video', 'Commercial', 'Fashion', 'Behind-the-scenes',
+  'Music video', 'Commercial', 'Fashion', 'Behind-the-scenes', 'Action sports',
 ];
 
 export function getMediaFor(w: WorkEntry): { type: 'video'; src: string } | { type: 'iframe'; src: string } | { type: 'link'; src: string } {
@@ -128,6 +130,7 @@ export const MDX_SLUG_MAP: Record<string, string> = {
   'gibor': 'gebor',
   'gourmet-glatt-reels': 'gourmet-glatt-reels',
   'nexivity-ad': 'nexivity-ad',
+  'kiteboarding': 'kiteboarding',
   'why-i-do-this': 'why-i-do-this',
   'devorahs-hope': 'devorahs-hope',
   'maafa': 'maafa',
