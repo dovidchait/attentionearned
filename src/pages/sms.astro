@@ -1,0 +1,268 @@
+---
+import Base from '../layouts/Base.astro';
+
+const FORMSPREE = 'https://formspree.io/f/xrbnvoqj';
+const NUMBER_DISPLAY = '+1 (866) 618-8109';
+const NUMBER_SMS = 'sms:+18666188109';
+---
+
+<Base
+  title="Text updates from Attention Earned"
+  description="How to opt in to text messages from Attention Earned: post confirmations with live links, failure notices, and posting reminders. Reply STOP to opt out."
+>
+  <section class="sms-section container">
+    <div class="sms-header">
+      <h1>Text updates from Attention Earned</h1>
+      <p class="sms-intro">
+        Attention Earned makes videos for nonprofits and small businesses. Our
+        text-to-post service lets clients text or email a finished video and
+        caption to <a href={NUMBER_SMS}>{NUMBER_DISPLAY}</a>. We post it to their
+        social accounts and text back where it went.
+      </p>
+    </div>
+
+    <div class="sms-block">
+      <h2>What you'll get</h2>
+      <ul>
+        <li>Confirmations that your post is live, with a link for each platform</li>
+        <li>Notices if a post failed and why</li>
+        <li>Reminders about scheduled posts and calendar items you've set up with us</li>
+        <li>Replies to messages you send us</li>
+      </ul>
+      <p>
+        These are account and service messages only. No marketing blasts, and we
+        never sell or share your number.
+      </p>
+    </div>
+
+    <div class="sms-block">
+      <h2>How to opt in</h2>
+      <p class="sms-option"><strong>By text:</strong> text <strong>START</strong> or <strong>JOIN</strong> to <a href={NUMBER_SMS}>{NUMBER_DISPLAY}</a>. You'll get one confirmation text. Sending us a video or a message at that number also opts you in to replies about it.</p>
+      <p class="sms-option"><strong>Online:</strong> use the form below and check the box.</p>
+      <p class="sms-option"><strong>By phone:</strong> if you set up the service with David on a call, he'll ask whether you want text updates. Saying no is fine. You can still use every part of the service.</p>
+    </div>
+
+    <form class="sms-form" action={FORMSPREE} method="POST">
+      <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
+      <input type="hidden" name="_subject" value="SMS updates sign-up (attentionearned.com/sms)" />
+      <input type="hidden" name="form" value="sms-optin" />
+      <input type="hidden" name="_next" value="https://www.attentionearned.com/sms?sent=true" />
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="sms-name" class="field__label">Name</label>
+          <input id="sms-name" type="text" name="name" class="field__input" required autocomplete="name" placeholder="Jane Smith" />
+        </div>
+        <div class="field">
+          <label for="sms-org" class="field__label">Organization</label>
+          <input id="sms-org" type="text" name="organization" class="field__input" autocomplete="organization" placeholder="Optional" />
+        </div>
+        <div class="field">
+          <label for="sms-email" class="field__label">Email</label>
+          <input id="sms-email" type="email" name="email" class="field__input" required autocomplete="email" placeholder="jane@company.com" />
+        </div>
+        <div class="field">
+          <label for="sms-phone" class="field__label">Mobile number</label>
+          <input id="sms-phone" type="tel" name="phone" class="field__input" autocomplete="tel" placeholder="(555) 555-5555" />
+        </div>
+
+        <div class="field field--full">
+          <label class="consent">
+            <input type="checkbox" name="sms_consent" value="yes" />
+            <span>
+              Yes, text me at the number above. I agree to receive text messages
+              from Attention Earned: post confirmations with live links, failure
+              notices, and posting reminders. Message frequency varies. Msg &amp;
+              data rates may apply. Reply STOP to opt out, HELP for help. Consent
+              is not a condition of purchase or service.
+              See our <a href="/sms-terms">SMS Terms</a> and <a href="/privacy">Privacy Policy</a>.
+            </span>
+          </label>
+          <p class="consent-note">Optional. Leave it unchecked and we'll reach you by email.</p>
+        </div>
+
+        <div class="field field--full">
+          <button type="submit" class="btn-submit">Submit</button>
+        </div>
+      </div>
+    </form>
+
+    <p class="form-success" id="sms-success-msg" aria-live="polite" style="display:none">
+      Thanks, we got it. If you checked the box, a confirmation text is on its way.
+    </p>
+
+    <div class="sms-block sms-fine">
+      <h2>The fine print</h2>
+      <ul>
+        <li><strong>Who:</strong> Attention Earned (David Chait), Flushing, NY</li>
+        <li><strong>Number:</strong> {NUMBER_DISPLAY}</li>
+        <li><strong>Frequency:</strong> varies with how often you post, usually 1 to 10 messages a week</li>
+        <li><strong>Cost:</strong> Msg &amp; data rates may apply</li>
+        <li><strong>Opt out:</strong> reply STOP at any time. Reply HELP for help, or email <a href="mailto:editors@attentionearned.com">editors@attentionearned.com</a></li>
+        <li><strong>Consent is not a condition of purchase or service.</strong></li>
+        <li>Carriers are not liable for delayed or undelivered messages.</li>
+      </ul>
+      <p>
+        Read the full <a href="/sms-terms">SMS Terms</a> and our <a href="/privacy">Privacy Policy</a>.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  if (new URLSearchParams(window.location.search).get('sent') === 'true') {
+    const msg = document.getElementById('sms-success-msg');
+    if (msg) {
+      msg.style.display = 'block';
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete('sent');
+    window.history.replaceState({}, '', url);
+  }
+</script>
+
+<style>
+  .sms-section {
+    max-width: 820px;
+    padding-block: clamp(4rem, 8vw, 6rem) 6rem;
+  }
+
+  .sms-header { margin-bottom: 2.5rem; }
+
+  .sms-section h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    color: var(--text-strong);
+    margin-bottom: 0.875rem;
+  }
+
+  .sms-section h2 {
+    font-size: 1.35rem;
+    color: var(--text-strong);
+    margin-bottom: 0.75rem;
+  }
+
+  .sms-intro,
+  .sms-block p,
+  .sms-block li {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: var(--lh-body);
+  }
+
+  .sms-intro { max-width: 60ch; }
+
+  .sms-section a { text-decoration: underline; text-underline-offset: 2px; }
+
+  .sms-block { margin-bottom: 2.25rem; }
+
+  .sms-block ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .sms-block li { margin-bottom: 0.35rem; }
+
+  .sms-block strong { color: var(--text-strong); }
+
+  .sms-option { margin-bottom: 0.6rem; }
+
+  .sms-form { margin-bottom: 2.5rem; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field--full { grid-column: 1 / -1; }
+
+  .field__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .field__input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    color: var(--text-body);
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    appearance: none;
+  }
+
+  .field__input::placeholder { color: var(--text-faint); }
+
+  .field__input:focus {
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 3px rgba(252, 106, 106, 0.15);
+  }
+
+  .consent {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-body);
+    cursor: pointer;
+  }
+
+  .consent input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.2rem;
+    accent-color: var(--accent-soft);
+  }
+
+  .consent-note {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    margin-left: 1.85rem;
+  }
+
+  .btn-submit {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 2rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-bold);
+    color: var(--text-on-accent);
+    background: var(--grad-cta);
+    box-shadow: var(--glow-cta);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+    letter-spacing: 0.04em;
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
+  }
+
+  .form-success {
+    margin: -1rem 0 2.5rem;
+    padding: 1rem 1.25rem;
+    background: rgba(79, 191, 139, 0.1);
+    border: 1px solid rgba(79, 191, 139, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--ok);
+    font-size: var(--fs-sm);
+  }
+</style>
