@@ -1,0 +1,70 @@
+name: Deploy client dashboard to Fly
+
+# Deploys client-dashboard/ to its own Fly app on every push to main that
+# touches it (or users.json, which it reads), and from the Actions tab
+# (Run workflow). Creates the Fly app on the first run if it doesn't exist.
+#
+# Token: FLY_DASHBOARD_TOKEN (a Fly org token, so it can create the app), or
+# FLY_API_TOKEN if that token can already deploy this app.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client-dashboard/**'
+      - 'fly-service/users.json'
+      - '.github/workflows/dashboard-deploy.yml'
+  workflow_dispatch:
+
+env:
+  APP: text-to-attention-dashboard
+  FLY_ORG: ${{ vars.FLY_ORG || 'personal' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency: dashboard-deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test
+        working-directory: client-dashboard
+        run: |
+          npm ci
+          npm test
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create the Fly app if it doesn't exist
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN || secrets.FLY_API_TOKEN }}
+        run: |
+          if flyctl status -a "$APP" >/dev/null 2>&1; then
+            echo "Fly app $APP exists"
+          else
+            flyctl apps create "$APP" --org "$FLY_ORG" || echo "::warning::Could not create $APP (does the token have org access?)"
+          fi
+
+      - name: Generate DASHBOARD_JWT_SECRET once (never printed)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN || secrets.FLY_API_TOKEN }}
+        run: |
+          if flyctl secrets list -a "$APP" --json 2>/dev/null | grep -q '"DASHBOARD_JWT_SECRET"'; then
+            echo "DASHBOARD_JWT_SECRET already set"
+          else
+            flyctl secrets set -a "$APP" --stage DASHBOARD_JWT_SECRET="$(openssl rand -hex 32)" >/dev/null
+            echo "DASHBOARD_JWT_SECRET generated and staged"
+          fi
+
+      - name: Bundle users.json (IDs only, no keys)
+        run: cp fly-service/users.json client-dashboard/users.json
+
+      - name: Deploy
+        working-directory: client-dashboard
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN || secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only --ha=false -a "$APP"

@@ -68,33 +68,52 @@ Magic links are logged to stdout when no email backend is configured, so you can
 
 2. Set their Zernio key as a Fly secret:
    ```bash
-   fly secrets set ZERNIO_API_KEY_ORG=<their key> --app ae-client-dashboard
+   fly secrets set ZERNIO_API_KEY_ORG=<their key> --app text-to-attention-dashboard
    ```
 
-3. Redeploy: `fly deploy --app ae-client-dashboard`
+3. Redeploy: `fly deploy --app text-to-attention-dashboard`
 
 The client can then log in at `https://dashboard.attentionearned.com` with their email.
 
 ## Deployment on Fly.io
 
+### Auto-deploy (no terminal needed)
+
+`.github/workflows/dashboard-deploy.yml` deploys this folder to the Fly app `text-to-attention-dashboard`
+on every merge to main that touches `client-dashboard/` or `fly-service/users.json`, and from
+GitHub > Actions > "Deploy client dashboard to Fly" > Run workflow. On its first run it creates the
+Fly app, generates `DASHBOARD_JWT_SECRET` (never printed), bundles `fly-service/users.json` as
+`/app/users.json`, then deploys one machine.
+
+One-time setup:
+1. Fly dashboard > Tokens: create an **org token** and save it in GitHub > Settings > Secrets and
+   variables > Actions as `FLY_DASHBOARD_TOKEN` (the existing `FLY_API_TOKEN` is a deploy token for
+   `text-to-attention` only, so it can't create or deploy this app). If your Fly org isn't
+   `personal`, add a repository variable `FLY_ORG` with its slug.
+2. Run the workflow once (Actions tab), then in Fly dashboard > text-to-attention-dashboard > Secrets
+   add `ZERNIO_API_KEY` and `EMAILIT_API_KEY` (plus any per-client `ZERNIO_API_KEY_*`). Fly restarts
+   the app by itself.
+3. Open https://text-to-attention-dashboard.fly.dev and sign in with your email.
+
+
 ### First deploy
 
 ```bash
 cd client-dashboard
-fly launch --name ae-client-dashboard --no-deploy
+fly launch --name text-to-attention-dashboard --no-deploy
 # Review fly.toml, then:
 fly secrets set \
   DASHBOARD_JWT_SECRET=$(openssl rand -hex 32) \
   ZERNIO_API_KEY=<key> \
   EMAILIT_API_KEY=<key> \
-  --app ae-client-dashboard
+  --app text-to-attention-dashboard
 
 # Copy users.json into the image (baked) — simplest option:
 # The Dockerfile copies everything in the directory;
 # copy users.json here before deploying:
 cp ../fly-service/users.json .
 
-fly deploy --app ae-client-dashboard
+fly deploy --app text-to-attention-dashboard
 ```
 
 ### Updating users.json
@@ -102,7 +121,7 @@ fly deploy --app ae-client-dashboard
 After editing `fly-service/users.json`, copy and redeploy:
 ```bash
 cp ../fly-service/users.json .
-fly deploy --app ae-client-dashboard
+fly deploy --app text-to-attention-dashboard
 ```
 
 Or mount a Fly volume and set `USERS_FILE=/data/users.json` for zero-downtime updates.

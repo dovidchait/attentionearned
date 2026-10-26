@@ -1,6 +1,25 @@
 import fetch from 'node-fetch';
 
-const FROM = process.env.EMAIL_FROM || 'Attention Earned <dashboard@attentionearned.com>';
+const DEFAULT_FROM = 'Attention Earned <dashboard@attentionearned.com>';
+const EMAILIT_API_URL = (process.env.EMAILIT_API_URL || 'https://api.emailit.com/v2').replace(/\/$/, '');
+
+/** EMAIL_FROM as typed in a dashboard often carries stray spaces or quotes; clean it, else use the default. */
+export function cleanFrom(value) {
+  let s = String(value ?? '').trim();
+  while (s.length >= 2 && /^["'\u201C\u2018]/.test(s) && /["'\u201D\u2019]$/.test(s)) s = s.slice(1, -1).trim();
+  if (!s) return DEFAULT_FROM;
+  const addr = /^[^\s@<>",;]+@[^\s@<>",;]+\.[^\s@<>",;]+$/;
+  if (addr.test(s)) return s;
+  const m = s.match(/^([^<>]*?)\s*<\s*([^<>\s]+)\s*>$/);
+  if (m && addr.test(m[2])) {
+    const name = m[1].replace(/["<>]/g, '').trim();
+    return name ? `${name} <${m[2]}>` : m[2];
+  }
+  console.warn('⚠️  EMAIL_FROM is not a valid address; using the default sender');
+  return DEFAULT_FROM;
+}
+
+const FROM = cleanFrom(process.env.EMAIL_FROM);
 
 /**
  * Send a magic-link sign-in email.
@@ -27,7 +46,7 @@ export async function sendMagicLink(toEmail, link) {
 }
 
 async function sendViaEmailIt(to, subject, html, text) {
-  const res = await fetch('https://api.emailit.com/v1/emails', {
+  const res = await fetch(`${EMAILIT_API_URL}/emails`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.EMAILIT_API_KEY}`,
