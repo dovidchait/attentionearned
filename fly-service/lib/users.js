@@ -21,7 +21,7 @@ export function allUsers() {
   return usersConfig.users;
 }
 
-function normalizePhone(value) {
+export function normalizePhone(value) {
   return (value || '').replace(/^whatsapp:/, '').replace(/[^\d+]/g, '');
 }
 

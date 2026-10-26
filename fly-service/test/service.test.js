@@ -546,6 +546,76 @@ test('email from an unknown address gets no reply (no backscatter) and posts not
   assert.equal(posts().length, 0);
 });
 
+test('stale ALLOWED_SENDERS / ALLOWED_WHATSAPP_NUMBERS do not block people in users.json', async () => {
+  const saved = { ...process.env };
+  Object.assign(process.env, { ALLOWED_SENDERS: 'someone-else@example.com', ALLOWED_WHATSAPP_NUMBERS: '+15550000000' });
+  try {
+    fake.inbox.em_stale = inboundEmail('em_stale');
+    assert.equal((await emailitWebhook([received('em_stale')])).status, 200);
+    await until(() => posts().length === 1);
+    await until(() => fake.emailit.find(m => m.json.text.includes('Got it')));
+  } finally {
+    for (const k of ['ALLOWED_SENDERS', 'ALLOWED_WHATSAPP_NUMBERS', 'ENFORCE_ENV_ALLOWLIST']) {
+      if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k];
+    }
+  }
+});
+
+test('ENFORCE_ENV_ALLOWLIST=true: env lists are an extra filter, compared by address/number', async () => {
+  const { allowedByEnv } = await import('../lib/poster.js');
+  try {
+    process.env.ENFORCE_ENV_ALLOWLIST = 'true';
+    process.env.ALLOWED_SENDERS = ' "Chaitd@Outlook.com" , other@example.com';
+    process.env.ALLOWED_WHATSAPP_NUMBERS = '+1 (347) 361-0822';
+    assert.equal(allowedByEnv('email', 'David Chait <chaitd@outlook.com>'), true);
+    assert.equal(allowedByEnv('email', 'stranger@example.com'), false);
+    assert.equal(allowedByEnv('whatsapp', `whatsapp:${DAVID}`), true);
+    assert.equal(allowedByEnv('whatsapp', 'whatsapp:+15550000000'), false);
+    process.env.ALLOWED_SENDERS = 'someone-else@example.com';
+    fake.inbox.em_enf = inboundEmail('em_enf');
+    await emailitWebhook([received('em_enf')]);
+    await new Promise(r => setTimeout(r, 150));
+    assert.equal(posts().length, 0);
+    delete process.env.ENFORCE_ENV_ALLOWLIST;
+    assert.equal(allowedByEnv('email', 'stranger@example.com'), true); // not enforced: users.json alone decides
+  } finally {
+    for (const k of ['ALLOWED_SENDERS', 'ALLOWED_WHATSAPP_NUMBERS', 'ENFORCE_ENV_ALLOWLIST']) delete process.env[k];
+  }
+});
+
+test('EMAIL_FROM / EMAIL_REPLY_TO saved with quotes or junk still send from a valid address', async () => {
+  const { normalizeAddress, cleanEnvString } = await import('../lib/emailit.js');
+  assert.equal(cleanEnvString(' "Attention Earned <post@attentionearned.com>" '), 'Attention Earned <post@attentionearned.com>');
+  assert.equal(normalizeAddress("'post@attentionearned.com'"), 'post@attentionearned.com');
+  assert.equal(normalizeAddress('"Attention Earned" <post@attentionearned.com>'), 'Attention Earned <post@attentionearned.com>');
+  assert.equal(normalizeAddress('\u201CAttention Earned <post@attentionearned.com>\u201D'), 'Attention Earned <post@attentionearned.com>');
+  assert.equal(normalizeAddress('Attention Earned'), null);
+  assert.equal(normalizeAddress('a@b.com, c@d.com'), null);
+
+  const savedFrom = process.env.EMAIL_FROM;
+  try {
+    process.env.EMAIL_FROM = '"Attention Earned <post@attentionearned.com>"';
+    process.env.EMAIL_REPLY_TO = '"post@inbound.attentionearned.com"';
+    fake.inbox.em_q1 = inboundEmail('em_q1');
+    await emailitWebhook([received('em_q1')]);
+    const gotIt = await until(() => fake.emailit.find(m => m.json.text.includes('Got it')));
+    assert.equal(gotIt.json.from, 'Attention Earned <post@attentionearned.com>');
+    assert.equal(gotIt.json.reply_to, 'post@inbound.attentionearned.com');
+
+    fake.emailit.length = 0;
+    process.env.EMAIL_FROM = 'not an address';
+    process.env.EMAIL_REPLY_TO = 'nope';
+    fake.inbox.em_q2 = inboundEmail('em_q2', { message_id: '<q2@outlook.com>' });
+    await emailitWebhook([received('em_q2')]);
+    const gotIt2 = await until(() => fake.emailit.find(m => m.json.text.includes('Got it')));
+    assert.equal(gotIt2.json.from, 'Attention Earned <post@attentionearned.com>'); // DEFAULT_FROM
+    assert.equal(gotIt2.json.reply_to, 'post@inbound.attentionearned.com'); // falls back to the inbound address
+  } finally {
+    process.env.EMAIL_FROM = savedFrom;
+    delete process.env.EMAIL_REPLY_TO;
+  }
+});
+
 test('email STOP in a reply (quoted thread below) opts out of email', async () => {
   fake.inbox.em_stop = inboundEmail('em_stop', {
     subject: 'Re: Attention Earned: Got it',

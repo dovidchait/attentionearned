@@ -2,7 +2,7 @@ import twilio from 'twilio';
 import mailparser from 'mailparser';
 import fetch from 'node-fetch';
 import { extractEmail } from './users.js';
-import { sendEmailit, DEFAULT_FROM } from './emailit.js';
+import { sendEmailit, fromAddress, replyToAddress } from './emailit.js';
 
 // ============================================================================
 // CHANNELS (pluggable inbound/outbound)
@@ -192,7 +192,7 @@ function replySubject(subject) {
 }
 
 export async function sendEmail(to, subject, textBody, { replyTo, inReplyTo, references } = {}) {
-  const from = env('EMAIL_FROM') || DEFAULT_FROM;
+  const from = fromAddress(); // EMAIL_FROM trimmed/unquoted, DEFAULT_FROM if invalid
   const payload = {
     from,
     to,
@@ -323,7 +323,7 @@ const emailChannel = {
   async send(route, text) {
     const subject = replySubject(route.subject) || `Attention Earned: ${text.replace(/^Attention Earned:\s*/, '').split('\n')[0].slice(0, 100)}`;
     return sendEmail(route.to, subject, text, {
-      replyTo: env('EMAIL_REPLY_TO') || route.from || undefined,
+      replyTo: replyToAddress() || route.from || undefined,
       inReplyTo: route.inReplyTo || undefined,
       references: route.references || undefined
     });

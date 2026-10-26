@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { uploadMedia, createPost, waitForPost, isInFlight, platformResults } from './zernio.js';
 import { parseCommand, stripCommands, selectTargets } from './commands.js';
-import { findUser, apiKeyFor, accountLabels } from './users.js';
+import { findUser, apiKeyFor, accountLabels, extractEmail, normalizePhone } from './users.js';
 import { smsEnabled } from './channels.js';
 import { notify, brand } from './notify.js';
 import { keywordOf, KEYWORD_REPLIES } from './keywords.js';
@@ -21,9 +21,30 @@ const ALLOWLISTS = {
 
 const BIG_VIDEO_HINT = 'For videos over 16 MB, send a Dropbox or Google Drive link in your message instead.';
 
-function allowedByEnv(channelName, sender) {
-  const list = (process.env[ALLOWLISTS[channelName]] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  return list.length === 0 || list.includes(String(sender).toLowerCase());
+// users.json is the allowlist: a sender must be in it to post. The ALLOWED_*
+// env lists are an optional EXTRA filter, only used when
+// ENFORCE_ENV_ALLOWLIST=true (old values left in Fly secrets used to silently
+// block people who are in users.json).
+function envAllowlistEnforced() {
+  return String(process.env.ENFORCE_ENV_ALLOWLIST || '').trim().replace(/^["']|["']$/g, '').toLowerCase() === 'true';
+}
+
+function senderKey(channelName, value) {
+  const s = String(value || '').trim().replace(/^["']|["']$/g, '');
+  return channelName === 'email' ? extractEmail(s) : normalizePhone(s);
+}
+
+export function allowedByEnv(channelName, sender) {
+  if (!envAllowlistEnforced()) return true;
+  const list = (process.env[ALLOWLISTS[channelName]] || '').split(',').map(s => senderKey(channelName, s)).filter(Boolean);
+  return list.length === 0 || list.includes(senderKey(channelName, sender));
+}
+
+{
+  const setLists = Object.values(ALLOWLISTS).filter(name => String(process.env[name] || '').trim());
+  if (setLists.length && !envAllowlistEnforced()) {
+    console.log(`ℹ️  ${setLists.join(', ')} set but not used (users.json decides who can post; set ENFORCE_ENV_ALLOWLIST=true to also require them)`);
+  }
 }
 
 /**
@@ -78,7 +99,9 @@ export function inboundHandler(channel) {
       }
 
       if (!user || !allowedByEnv(channel.name, message.from)) {
-        console.log(`🚫 ${channel.name} sender ${message.from} is not in users.json`);
+        console.log(user
+          ? `🚫 ${channel.name} sender ${message.from} is in users.json (${user.name}) but not in ${ALLOWLISTS[channel.name]} (ENFORCE_ENV_ALLOWLIST=true)`
+          : `🚫 ${channel.name} sender ${message.from} is not in users.json`);
         return answer('Sorry, this number or address is not set up to post. Contact editors@attentionearned.com.');
       }
       if (!apiKeyFor(user)) {
