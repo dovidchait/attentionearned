@@ -1,0 +1,803 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Video Pipeline"
+  description="Selfie video to scheduled post — transcript, captions, first comment."
+  noindex={true}
+>
+  <section class="pipeline container">
+
+    <div class="pipeline__header">
+      <h1>Video Pipeline</h1>
+      <p class="pipeline__sub">Paste your video link. Get a transcript, catch misheard words, and draft captions ready to post.</p>
+    </div>
+
+    <form class="pform" id="pipelineForm">
+      <div class="field">
+        <label class="field__label" for="videoUrl">Video URL <span class="req">*</span></label>
+        <input
+          class="field__input"
+          type="url"
+          id="videoUrl"
+          name="videoUrl"
+          placeholder="YouTube, Dropbox (dl=1), Google Drive, or any direct .mp4 link"
+          required
+          autocomplete="off"
+        />
+        <span class="field__hint">Dropbox: change <code>?dl=0</code> to <code>?dl=1</code></span>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="orgName">Organization</label>
+          <input class="field__input" type="text" id="orgName" name="orgName" placeholder="e.g. Chabad of Miami" />
+        </div>
+        <div class="field field--short">
+          <label class="field__label" for="dayNumber">Day #</label>
+          <input class="field__input" type="number" id="dayNumber" name="dayNumber" placeholder="1" min="1" max="30" value="1" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="credits">People to credit</label>
+        <input class="field__input" type="text" id="credits" name="credits" placeholder="e.g. Rabbi Levi Goldstein, Sarah Cohen" />
+        <span class="field__hint">First names only — handles are never guessed</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="vocab">Domain-specific words</label>
+        <input class="field__input" type="text" id="vocab" name="vocab" placeholder="e.g. yeshiva, shiur, Shabbos, Chabad" />
+        <span class="field__hint">Comma-separated — boost transcription accuracy for specialist terms</span>
+      </div>
+
+      <div class="field" id="anthropicField">
+        <label class="field__label" for="anthropicKey">Anthropic API key</label>
+        <input class="field__input" type="password" id="anthropicKey" name="anthropicKey" placeholder="sk-ant-…" autocomplete="off" />
+        <span class="field__hint" id="anthropicHint"></span>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">
+        Process video
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 8H13M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </form>
+
+    <!-- Processing -->
+    <div class="status-panel" id="statusPanel" hidden>
+      <div class="status-panel__spinner" aria-hidden="true"></div>
+      <p id="statusText">Submitting…</p>
+    </div>
+
+    <!-- Error -->
+    <div class="error-panel" id="errorPanel" hidden>
+      <p id="errorText"></p>
+      <button class="btn-ghost" id="resetBtn">Try again</button>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="resultsPanel" hidden>
+
+      <div class="flagged-section" id="flaggedSection" hidden>
+        <h2 class="mono-label">
+          <span class="badge badge--warn">Review</span>
+          Low-confidence words
+        </h2>
+        <p class="hint-text">These scored below 40% confidence — correct them in the transcript before copying captions.</p>
+        <div class="flagged-list" id="flaggedList"></div>
+      </div>
+
+      <details class="card card--transcript">
+        <summary class="mono-label">Full transcript</summary>
+        <div class="transcript-body" id="transcriptText"></div>
+      </details>
+
+      <div class="card">
+        <div class="card__head">
+          <h2 class="mono-label">Instagram &amp; TikTok</h2>
+          <button class="btn-copy" data-target="instagramCaption">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+              <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M3 10V3a1 1 0 011-1h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span>Copy</span>
+          </button>
+        </div>
+        <textarea class="caption-area" id="instagramCaption" rows="8" spellcheck="true"></textarea>
+      </div>
+
+      <div class="card">
+        <div class="card__head">
+          <h2 class="mono-label">LinkedIn</h2>
+          <button class="btn-copy" data-target="linkedinCaption">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+              <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M3 10V3a1 1 0 011-1h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span>Copy</span>
+          </button>
+        </div>
+        <textarea class="caption-area" id="linkedinCaption" rows="8" spellcheck="true"></textarea>
+      </div>
+
+      <div class="card">
+        <div class="card__head">
+          <h2 class="mono-label">First comment</h2>
+          <button class="btn-copy" data-target="firstComment">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+              <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M3 10V3a1 1 0 011-1h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span>Copy</span>
+          </button>
+        </div>
+        <textarea class="caption-area caption-area--sm" id="firstComment" rows="2" spellcheck="true"></textarea>
+      </div>
+
+      <!-- Schedule -->
+      <div class="card card--schedule">
+        <div class="card__head">
+          <h2 class="mono-label">Schedule post</h2>
+        </div>
+        <div class="card__body">
+          <button class="btn-ghost" id="loadAccountsBtn" type="button">Load social accounts</button>
+
+          <div id="accountsArea" hidden>
+            <div class="field">
+              <label class="field__label">Select accounts</label>
+              <div class="accounts-list" id="accountsList"></div>
+            </div>
+            <div class="field">
+              <label class="field__label" for="scheduledFor">Schedule for</label>
+              <input class="field__input" type="datetime-local" id="scheduledFor" />
+            </div>
+            <button class="btn-submit" id="scheduleBtn" type="button">
+              Schedule post
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 8H13M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="sched-success" id="schedSuccess" hidden>
+            <span class="badge badge--ok">Scheduled</span>
+            <p id="schedSuccessText"></p>
+          </div>
+          <div class="sched-error" id="schedError" hidden>
+            <p id="schedErrorText"></p>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-ghost" id="startOverBtn">Process another video</button>
+    </div>
+
+  </section>
+</Base>
+
+<script>
+  const form = document.getElementById('pipelineForm') as HTMLFormElement;
+  const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+  const statusPanel = document.getElementById('statusPanel') as HTMLElement;
+  const statusText = document.getElementById('statusText') as HTMLElement;
+  const errorPanel = document.getElementById('errorPanel') as HTMLElement;
+  const errorText = document.getElementById('errorText') as HTMLElement;
+  const resultsPanel = document.getElementById('resultsPanel') as HTMLElement;
+  const flaggedSection = document.getElementById('flaggedSection') as HTMLElement;
+  const flaggedList = document.getElementById('flaggedList') as HTMLElement;
+  const transcriptText = document.getElementById('transcriptText') as HTMLElement;
+  const instagramCaption = document.getElementById('instagramCaption') as HTMLTextAreaElement;
+  const linkedinCaption = document.getElementById('linkedinCaption') as HTMLTextAreaElement;
+  const firstComment = document.getElementById('firstComment') as HTMLTextAreaElement;
+
+  let currentVideoUrl = '';
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let pollCount = 0;
+  const MAX_POLLS = 60;
+
+  // Free-use gate
+  const FREE_LIMIT = 2;
+  const STORAGE_KEY = 'npo_free_uses';
+
+  function getFreeUsesLeft(): number {
+    try { return Math.max(0, FREE_LIMIT - parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10)); }
+    catch { return FREE_LIMIT; }
+  }
+
+  function incrementFreeUses() {
+    try {
+      const used = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10);
+      localStorage.setItem(STORAGE_KEY, String(used + 1));
+    } catch { /* ignore */ }
+  }
+
+  function updateKeyFieldUI() {
+    const left = getFreeUsesLeft();
+    const hint = document.getElementById('anthropicHint') as HTMLElement;
+    const keyInput = document.getElementById('anthropicKey') as HTMLInputElement;
+    const field = document.getElementById('anthropicField') as HTMLElement;
+    if (left > 0) {
+      hint.innerHTML = `${left} free generation${left === 1 ? '' : 's'} remaining — or <a href="https://console.anthropic.com" target="_blank" rel="noopener">add your own key</a>`;
+      keyInput.required = false;
+      field.classList.remove('field--exhausted');
+    } else {
+      hint.innerHTML = `Free trial used — <a href="https://console.anthropic.com" target="_blank" rel="noopener">add your own Anthropic key</a> to continue`;
+      keyInput.required = true;
+      keyInput.placeholder = 'sk-ant-… (required)';
+      field.classList.add('field--exhausted');
+    }
+  }
+
+  updateKeyFieldUI();
+
+  function show(el: HTMLElement) { el.hidden = false; }
+  function hide(el: HTMLElement) { el.hidden = true; }
+
+  function reset() {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    pollCount = 0;
+    hide(statusPanel);
+    hide(errorPanel);
+    hide(resultsPanel);
+    show(form);
+    submitBtn.disabled = false;
+    submitBtn.firstChild!.textContent = 'Process video ';
+    (document.getElementById('schedSuccess') as HTMLElement).hidden = true;
+    (document.getElementById('schedError') as HTMLElement).hidden = true;
+  }
+
+  function showError(msg: string) {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    hide(statusPanel);
+    errorText.textContent = msg;
+    show(errorPanel);
+  }
+
+  function showResults(data: {
+    transcript: string;
+    flagged: Array<{ text: string; confidence: number }>;
+    instagram: string;
+    linkedin: string;
+    firstComment: string;
+  }) {
+    hide(statusPanel);
+    transcriptText.textContent = data.transcript;
+    instagramCaption.value = data.instagram;
+    linkedinCaption.value = data.linkedin;
+    firstComment.value = data.firstComment;
+    if (data.flagged.length > 0) {
+      flaggedList.innerHTML = data.flagged
+        .map(w => `<span class="flagged-word">${w.text} <em>${w.confidence}%</em></span>`)
+        .join('');
+      show(flaggedSection);
+    } else {
+      hide(flaggedSection);
+    }
+    show(resultsPanel);
+    resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function pollResult(jobId: string, orgName: string, dayNumber: string, credits: string, anthropicKey: string) {
+    pollCount++;
+    if (pollCount > MAX_POLLS) { showError('Timed out after 5 minutes. Please try again.'); return; }
+
+    const params = new URLSearchParams({ jobId, orgName, dayNumber, credits, ...(anthropicKey ? { anthropicKey } : {}) });
+    let data: { status: string; error?: string; transcript?: string; flagged?: Array<{ text: string; confidence: number }>; instagram?: string; linkedin?: string; firstComment?: string };
+
+    try {
+      const res = await fetch(`/api/content/result?${params}`);
+      data = await res.json();
+    } catch {
+      showError('Network error. Please try again.');
+      return;
+    }
+
+    if (data.status === 'error') { showError(data.error ?? 'Transcription failed.'); return; }
+    if (data.status === 'queued') { statusText.textContent = 'In queue…'; return; }
+    if (data.status === 'processing') { statusText.textContent = 'Transcribing…'; return; }
+
+    if (data.status === 'completed') {
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+      if (!anthropicKey) { incrementFreeUses(); updateKeyFieldUI(); }
+      showResults(data as Parameters<typeof showResults>[0]);
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    reset();
+
+    const fd = new FormData(form);
+    const videoUrl = (fd.get('videoUrl') as string).trim();
+    currentVideoUrl = videoUrl;
+    const orgName = (fd.get('orgName') as string).trim();
+    const dayNumber = (fd.get('dayNumber') as string).trim() || '1';
+    const credits = (fd.get('credits') as string).trim();
+    const vocab = (fd.get('vocab') as string).trim();
+    const wordBoost = vocab ? vocab.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const anthropicKey = (fd.get('anthropicKey') as string).trim();
+
+    if (!anthropicKey && getFreeUsesLeft() === 0) {
+      (document.getElementById('anthropicKey') as HTMLInputElement).focus();
+      return;
+    }
+
+    hide(form);
+    show(statusPanel);
+    statusText.textContent = 'Submitting…';
+
+    let jobId: string;
+    try {
+      const res = await fetch('/api/content/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl, wordBoost }),
+      });
+      const data = await res.json() as { jobId?: string; error?: string };
+      if (!res.ok || !data.jobId) { showError(data.error ?? 'Could not start transcription.'); show(form); return; }
+      jobId = data.jobId;
+    } catch {
+      showError('Network error. Please check your connection.');
+      show(form);
+      return;
+    }
+
+    statusText.textContent = 'In queue…';
+    pollInterval = setInterval(() => pollResult(jobId, orgName, dayNumber, credits, anthropicKey), 5000);
+    setTimeout(() => pollResult(jobId, orgName, dayNumber, credits, anthropicKey), 2000);
+  });
+
+  document.getElementById('resetBtn')!.addEventListener('click', () => { reset(); });
+  document.getElementById('startOverBtn')!.addEventListener('click', () => { reset(); show(form); });
+
+  // Copy buttons
+  document.querySelectorAll<HTMLButtonElement>('.btn-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const textarea = document.getElementById(btn.dataset.target!) as HTMLTextAreaElement;
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        const label = btn.querySelector('span')!;
+        label.textContent = 'Copied!';
+        btn.classList.add('btn-copy--ok');
+        setTimeout(() => { label.textContent = 'Copy'; btn.classList.remove('btn-copy--ok'); }, 2000);
+      });
+    });
+  });
+
+  // Zernio scheduling
+  const loadAccountsBtn = document.getElementById('loadAccountsBtn') as HTMLButtonElement;
+  const accountsArea = document.getElementById('accountsArea') as HTMLElement;
+  const accountsList = document.getElementById('accountsList') as HTMLElement;
+  const scheduledForInput = document.getElementById('scheduledFor') as HTMLInputElement;
+  const scheduleBtn = document.getElementById('scheduleBtn') as HTMLButtonElement;
+  const schedSuccess = document.getElementById('schedSuccess') as HTMLElement;
+  const schedSuccessText = document.getElementById('schedSuccessText') as HTMLElement;
+  const schedError = document.getElementById('schedError') as HTMLElement;
+  const schedErrorText = document.getElementById('schedErrorText') as HTMLElement;
+
+  function setDefaultSchedule() {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    scheduledForInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  loadAccountsBtn.addEventListener('click', async () => {
+    loadAccountsBtn.disabled = true;
+    loadAccountsBtn.textContent = 'Loading…';
+    try {
+      const res = await fetch('/api/content/accounts');
+      const data = await res.json() as { accounts?: Array<{ id: string; platform: string; username: string }>; error?: string };
+      if (!res.ok || data.error) { alert(data.error ?? 'Failed to load accounts.'); return; }
+      const accounts = data.accounts ?? [];
+      if (!accounts.length) { alert('No active accounts found.'); return; }
+      accountsList.innerHTML = accounts.map(a => `
+        <label class="account-item">
+          <input type="checkbox" class="account-checkbox" data-id="${a.id}" data-platform="${a.platform.toLowerCase()}" checked />
+          <span class="account-platform">${a.platform}</span>
+          <span class="account-name">${a.username}</span>
+        </label>
+      `).join('');
+      setDefaultSchedule();
+      accountsArea.hidden = false;
+    } catch {
+      alert('Network error loading accounts.');
+    } finally {
+      loadAccountsBtn.disabled = false;
+      loadAccountsBtn.textContent = 'Load social accounts';
+    }
+  });
+
+  scheduleBtn.addEventListener('click', async () => {
+    if (!currentVideoUrl) { alert('No video URL — process a video first.'); return; }
+    if (!scheduledForInput.value) { alert('Pick a schedule time.'); return; }
+    const checkboxes = accountsList.querySelectorAll<HTMLInputElement>('.account-checkbox:checked');
+    if (!checkboxes.length) { alert('Select at least one account.'); return; }
+
+    const igCaption = instagramCaption.value;
+    const liCaption = linkedinCaption.value;
+    const platforms = Array.from(checkboxes).map(cb => ({
+      accountId: cb.dataset.id!,
+      caption: cb.dataset.platform === 'linkedin' ? liCaption : igCaption,
+    }));
+
+    scheduleBtn.disabled = true;
+    scheduleBtn.firstChild!.textContent = 'Scheduling… ';
+    schedSuccess.hidden = true;
+    schedError.hidden = true;
+
+    try {
+      const res = await fetch('/api/content/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: currentVideoUrl, platforms, scheduledFor: new Date(scheduledForInput.value).toISOString() }),
+      });
+      const data = await res.json() as { success?: boolean; postIds?: string[]; errors?: string[]; error?: string };
+      if (!res.ok || data.error) { schedErrorText.textContent = data.error ?? 'Scheduling failed.'; schedError.hidden = false; return; }
+      const count = data.postIds?.length ?? 0;
+      schedSuccessText.textContent = `${count} post${count === 1 ? '' : 's'} scheduled.${data.errors?.length ? ' Some accounts failed — check Zernio.' : ''}`;
+      schedSuccess.hidden = false;
+    } catch {
+      schedErrorText.textContent = 'Network error. Please try again.';
+      schedError.hidden = false;
+    } finally {
+      scheduleBtn.disabled = false;
+      scheduleBtn.firstChild!.textContent = 'Schedule post ';
+    }
+  });
+</script>
+
+<style>
+  .pipeline {
+    max-width: 720px;
+    padding-block: clamp(4rem, 8vw, 6rem) 6rem;
+  }
+
+  .pipeline__header { margin-bottom: 2.75rem; }
+
+  .pipeline__header h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    margin-bottom: 0.875rem;
+  }
+
+  .pipeline__sub {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    line-height: var(--lh-body);
+    max-width: 60ch;
+  }
+
+  /* Form */
+  .pform { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: start;
+  }
+  .field--short { width: 100px; }
+
+  .field__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .req { color: var(--ae-red); }
+
+  .field__input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    color: var(--text-body);
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    appearance: none;
+  }
+  .field__input::placeholder { color: var(--text-faint); }
+  .field__input:focus {
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 3px rgba(252, 106, 106, 0.15);
+  }
+
+  .field__hint {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+  }
+  .field__hint code {
+    font-family: var(--font-mono);
+    background: var(--surface-inset);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .field__hint a { color: var(--accent-soft); text-decoration: underline; }
+
+  .field--exhausted .field__label::after { content: ' *'; color: var(--ae-red); }
+  .field--exhausted .field__input { border-color: rgba(252, 44, 48, 0.4); }
+
+  /* Buttons */
+  .btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 2rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-bold);
+    color: var(--text-on-accent);
+    background: var(--grad-cta);
+    box-shadow: var(--glow-cta);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+    letter-spacing: 0.04em;
+    align-self: flex-start;
+  }
+  .btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,0.7), 0 0 0 1px rgba(252,44,48,0.4);
+  }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.25rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .btn-ghost:hover { color: var(--text-body); border-color: var(--border-strong); }
+  .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    background: var(--surface-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .btn-copy:hover { color: var(--text-body); }
+  .btn-copy--ok { color: var(--ok) !important; border-color: var(--ok) !important; }
+
+  /* Status */
+  .status-panel {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+  }
+  .status-panel__spinner {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 2px solid var(--border-mid);
+    border-top-color: var(--ae-red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: rgba(252, 44, 48, 0.08);
+    border: 1px solid rgba(252, 44, 48, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--ae-coral);
+    font-size: var(--fs-sm);
+  }
+
+  /* Results */
+  .results {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    animation: aeRise 0.5s var(--ease-out) both;
+    margin-top: 2rem;
+  }
+
+  .mono-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .hint-text {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    margin-top: 0.5rem;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .badge--warn { background: rgba(233,185,73,0.15); color: var(--warn); border: 1px solid rgba(233,185,73,0.3); }
+  .badge--ok   { background: rgba(79,191,139,0.12); color: var(--ok);  border: 1px solid rgba(79,191,139,0.25); }
+
+  .flagged-section { display: flex; flex-direction: column; }
+
+  .flagged-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .flagged-word {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: rgba(233,185,73,0.1);
+    border: 1px solid rgba(233,185,73,0.25);
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-sm);
+    color: var(--warn);
+  }
+  .flagged-word em { font-style: normal; font-size: var(--fs-xs); opacity: 0.7; }
+
+  /* Cards */
+  .card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .card__body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .card--transcript summary {
+    padding: 0.875rem 1.25rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .card--transcript summary::-webkit-details-marker { display: none; }
+  .card--transcript summary::after {
+    content: '▸';
+    float: right;
+    color: var(--text-faint);
+    transition: transform var(--dur-fast);
+  }
+  .card--transcript[open] summary::after { transform: rotate(90deg); }
+
+  .transcript-body {
+    padding: 0.875rem 1.25rem 1.25rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-body);
+    white-space: pre-wrap;
+  }
+
+  .caption-area {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0.875rem 1.25rem;
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    resize: vertical;
+    outline: none;
+  }
+
+  /* Schedule card */
+  .accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .account-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--dur-fast);
+    font-size: var(--fs-body);
+    color: var(--text-body);
+    text-transform: none;
+    font-weight: var(--fw-regular);
+    letter-spacing: normal;
+  }
+  .account-item:hover { background: var(--surface-inset); }
+
+  .account-platform {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    min-width: 72px;
+  }
+
+  .sched-success {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(79,191,139,0.06);
+    border: 1px solid rgba(79,191,139,0.2);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+  }
+
+  .sched-error {
+    padding: 0.75rem 1rem;
+    background: rgba(252,44,48,0.08);
+    border: 1px solid rgba(252,44,48,0.25);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-sm);
+    color: var(--ae-coral);
+  }
+
+  @media (max-width: 560px) {
+    .field-row { grid-template-columns: 1fr; }
+    .field--short { width: 100%; }
+  }
+</style>
