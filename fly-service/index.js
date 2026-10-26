@@ -2,8 +2,9 @@ import express from 'express';
 import twilio from 'twilio';
 import cron from 'node-cron';
 import { google } from 'googleapis';
-import { channels } from './lib/channels.js';
+import { channels, smsEnabled } from './lib/channels.js';
 import { inboundHandler, handleZernioWebhook } from './lib/poster.js';
+import { emailWebhook } from './lib/emailit.js';
 import { allUsers } from './lib/users.js';
 
 const app = express();
@@ -24,7 +25,7 @@ if (!process.env.ZERNIO_API_KEY) console.warn('⚠️  ZERNIO_API_KEY is not set
 
 // Middleware (rawBody is kept for webhook signature checks)
 app.use(express.urlencoded({ extended: false }));
-app.use(express.json({ limit: '50mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
+app.use(express.json({ limit: '60mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.raw({ type: 'message/rfc822', limit: '50mb' }));
 
 // ============================================================================
@@ -42,7 +43,18 @@ app.get('/', (req, res) => {
       email: '/email-webhook',
       zernio: '/zernio-webhook'
     },
-    features: ['text', 'images', 'videos', 'scheduling', 'whatsapp', 'live-links-reply', 'calendar-reminders']
+    features: ['text', 'images', 'videos', 'media-links', 'scheduling', 'whatsapp', 'live-links-reply', 'calendar-reminders'],
+    // configuration only (true/false), never values
+    config: {
+      sms: smsEnabled(),
+      whatsappSender: Boolean(process.env.TWILIO_WHATSAPP_FROM),
+      whatsappTemplate: Boolean(process.env.TWILIO_WA_TEMPLATE_POSTED_SID),
+      twilioSignatureCheck: Boolean(process.env.TWILIO_AUTH_TOKEN) && process.env.TWILIO_SKIP_SIGNATURE_CHECK !== 'true',
+      emailOut: Boolean(process.env.EMAILIT_API_KEY),
+      emailInbound: Boolean(process.env.EMAILIT_WEBHOOK_SECRET),
+      zernio: Boolean(process.env.ZERNIO_API_KEY),
+      zernioWebhook: Boolean(process.env.ZERNIO_WEBHOOK_SECRET)
+    }
   });
 });
 
@@ -53,7 +65,8 @@ app.get('/', (req, res) => {
 
 app.post('/sms-webhook', inboundHandler(channels.sms));
 app.post('/whatsapp-webhook', inboundHandler(channels.whatsapp));
-app.post('/email-webhook', inboundHandler(channels.email));
+// Emailit's signed email.received webhook (or another forwarder with EMAIL_WEBHOOK_SECRET)
+app.post('/email-webhook', emailWebhook(inboundHandler(channels.email)));
 
 // Zernio post events (scheduled/queued posts going live)
 app.post('/zernio-webhook', handleZernioWebhook);
@@ -115,7 +128,7 @@ async function checkCalendarAndRemind() {
             hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
           });
           await twilioClient.messages.create({
-            body: `Reminder: "${title}" starts in ${window.label} at ${timeStr}`,
+            body: `Attention Earned reminder: "${title}" starts in ${window.label} at ${timeStr}`,
             from: REMINDER_FROM_NUMBER,
             to: REMINDER_TO_NUMBER,
           });
@@ -129,8 +142,10 @@ async function checkCalendarAndRemind() {
 }
 
 // Run every 5 minutes
-cron.schedule('*/5 * * * *', checkCalendarAndRemind);
-console.log('📅 Calendar reminder cron started (every 5 min)');
+if (process.env.NODE_ENV !== 'test') {
+  cron.schedule('*/5 * * * *', checkCalendarAndRemind);
+  console.log('📅 Calendar reminder cron started (every 5 min)');
+}
 
 // ============================================================================
 // ERROR HANDLING
@@ -148,8 +163,10 @@ process.on('unhandledRejection', (reason) => console.error('💥 Unhandled Rejec
 // START
 // ============================================================================
 
-app.listen(PORT, '0.0.0.0', () => {
+export default app;
+
+if (process.env.NODE_ENV !== 'test') app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Attention Earned service running on port ${PORT}`);
-  console.log(`📱 SMS: /sms-webhook | 💬 WhatsApp: /whatsapp-webhook | 📧 Email: /email-webhook | 🔔 Zernio: /zernio-webhook`);
+  console.log(`📱 SMS: /sms-webhook (${smsEnabled() ? 'on' : 'off'}) | 💬 WhatsApp: /whatsapp-webhook | 📧 Email: /email-webhook | 🔔 Zernio: /zernio-webhook`);
   console.log(`👥 Configured users: ${allUsers().length}`);
 });

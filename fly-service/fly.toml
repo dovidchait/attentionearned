@@ -15,3 +15,10 @@ primary_region = 'iad'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 512
+
+# Keeps opt-outs (STOP) and WhatsApp last-message times across deploys.
+# Create the volume first, then uncomment (see README "Keep opt-outs"):
+#   fly volumes create tta_data --region iad --size 1 -a text-to-attention
+# [mounts]
+#   source = 'tta_data'
+#   destination = '/data'

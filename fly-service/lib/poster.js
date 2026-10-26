@@ -2,7 +2,11 @@ import crypto from 'crypto';
 import { uploadMedia, createPost, waitForPost, isInFlight, platformResults } from './zernio.js';
 import { parseCommand, stripCommands, selectTargets } from './commands.js';
 import { findUser, apiKeyFor, accountLabels } from './users.js';
-import { reply } from './channels.js';
+import { smsEnabled } from './channels.js';
+import { notify, brand } from './notify.js';
+import { keywordOf, KEYWORD_REPLIES } from './keywords.js';
+import { findMediaLinks, removeLinks, guessContentType, downloadLink } from './links.js';
+import * as store from './store.js';
 
 // ============================================================================
 // POSTING PIPELINE (channel-agnostic)
@@ -10,91 +14,171 @@ import { reply } from './channels.js';
 // ============================================================================
 
 const ALLOWLISTS = {
-  sms: process.env.ALLOWED_NUMBERS,
-  whatsapp: process.env.ALLOWED_WHATSAPP_NUMBERS,
-  email: process.env.ALLOWED_SENDERS
+  sms: 'ALLOWED_NUMBERS',
+  whatsapp: 'ALLOWED_WHATSAPP_NUMBERS',
+  email: 'ALLOWED_SENDERS'
 };
 
+const BIG_VIDEO_HINT = 'For videos over 16 MB, send a Dropbox or Google Drive link in your message instead.';
+
 function allowedByEnv(channelName, sender) {
-  const list = (ALLOWLISTS[channelName] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const list = (process.env[ALLOWLISTS[channelName]] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   return list.length === 0 || list.includes(String(sender).toLowerCase());
 }
 
 /**
- * Express handler factory: app.post('/sms-webhook', inboundHandler(channels.sms))
+ * Express handler factory: app.post('/whatsapp-webhook', inboundHandler(channels.whatsapp))
  * Answers the webhook immediately (Twilio gives us 15s), then posts in the
  * background and sends the result on the same channel.
  */
 export function inboundHandler(channel) {
   return async (req, res) => {
-    let message;
     let route;
+    let user = null;
+    let message = null;
+    const isTwilio = channel.name !== 'email';
+
+    // Twilio channels answer inside the webhook response (TwiML). Email's webhook
+    // response reaches nobody, so email answers by sending an email, and only to
+    // people in users.json (never to unknown senders).
+    const answer = (text, { toStranger = false } = {}) => {
+      if (isTwilio || !text) return channel.ack(res, text ? brand(text) : '');
+      channel.ack(res, text);
+      if (message?.from && (user || toStranger)) {
+        channel.send({ channel: 'email', to: message.from, from: message.to, inReplyTo: message.messageId, references: message.references, subject: message.subject }, brand(text))
+          .catch(error => console.error('❌ Email answer failed:', error.message));
+      }
+    };
+
     try {
       if (!channel.verify(req)) {
         console.error(`Invalid ${channel.name} webhook signature`);
         return res.status(403).send('Forbidden');
       }
+      if (channel.name === 'sms' && !smsEnabled()) {
+        console.log('📵 SMS is off (SMS_ENABLED is not true); ignoring inbound SMS');
+        return channel.ack(res, '');
+      }
 
       message = await channel.parse(req);
       console.log(`📨 ${channel.name} from ${message.from} with ${message.media.length} media`);
+      if (!message.from) return channel.ack(res, '');
+      store.recordInbound(channel.name, message.from);
+      user = findUser(channel.name, message.from);
 
-      const user = findUser(channel.name, message.from);
+      // STOP / START / HELP
+      const keyword = keywordOf(message.text) || (channel.name === 'email' && message.media.length === 0
+        ? keywordOf(message.subject) || keywordOf(message.text.split('\n')[0])
+        : null);
+      if (keyword) return handleKeyword(channel, message, keyword, answer, user);
+
+      if (store.isOptedOut(channel.name, message.from)) {
+        console.log(`🔕 ${message.from} is opted out of ${channel.name}; ignoring until they send START`);
+        return channel.ack(res, '');
+      }
+
       if (!user || !allowedByEnv(channel.name, message.from)) {
-        return channel.ack(res, 'Sorry, this number or address is not set up to post. Contact support.');
+        console.log(`🚫 ${channel.name} sender ${message.from} is not in users.json`);
+        return answer('Sorry, this number or address is not set up to post. Contact editors@attentionearned.com.');
       }
       if (!apiKeyFor(user)) {
         console.error(`No Zernio key in env ${user.apiKeyEnv || 'ZERNIO_API_KEY'} for ${user.name}`);
-        return channel.ack(res, 'Posting is not configured yet (missing Zernio key).');
+        return answer('Posting is not configured yet (missing Zernio key).');
       }
 
-      route = { channel: channel.name, to: message.from, from: message.to };
-      const command = parseCommand(message.subject, message.text, user.timezone || 'America/New_York');
-      const caption = stripCommands(message.text) || stripCommands(message.subject);
-      const mediaTypes = message.media.map(m => (m.contentType.startsWith('video/') ? 'video' : 'image'));
-      const { targets, skipped } = selectTargets(user, command, { caption, mediaTypes });
+      route = {
+        channel: channel.name,
+        to: message.from,
+        from: message.to,
+        lastInboundAt: Date.now(),
+        inReplyTo: channel.name === 'email' ? message.messageId : undefined,
+        references: channel.name === 'email' ? message.references || undefined : undefined,
+        subject: channel.name === 'email' ? message.subject || undefined : undefined
+      };
 
+      // A Dropbox / Drive / direct file link in the text counts as media
+      const links = findMediaLinks(`${message.text}\n${message.subject}`);
+      const text = removeLinks(message.text, links);
+      const subject = removeLinks(message.subject, links);
+      const media = [
+        ...message.media,
+        ...links.map((url, i) => ({ link: url, contentType: guessContentType(url), index: message.media.length + i }))
+      ];
+
+      const command = parseCommand(subject, text, user.timezone || 'America/New_York');
+      const caption = stripCommands(text) || stripCommands(subject);
+      const mediaTypes = media.map(m => (m.contentType.startsWith('video/') ? 'video' : 'image'));
+
+      if (media.length === 0 && !caption) {
+        return answer(channel.name === 'whatsapp'
+          ? `I didn't get a video or photo. WhatsApp only passes files up to 16 MB. ${BIG_VIDEO_HINT.replace('For videos over 16 MB, s', 'S')} Reply HELP for help.`
+          : 'Send a video or photo with your caption to post it. Reply HELP for help.');
+      }
+
+      const { targets, skipped } = selectTargets(user, command, { caption, mediaTypes });
       if (targets.length === 0) {
-        return channel.ack(res, ['Nothing to post to.', ...skipped.map(s => `${s.label}: ${s.reason}`)].join('\n'));
+        const lines = ['Nothing to post to.', ...skipped.map(s => `${s.label}: ${s.reason}`)];
+        if (media.length === 0 && channel.name === 'whatsapp') lines.push(BIG_VIDEO_HINT);
+        return answer(lines.join('\n'));
       }
 
       const names = targets.map(t => t.account.label || t.account.platform).join(', ');
       const when = command.publishingMode === 'schedule' ? `Scheduling for ${command.scheduledFor} (${command.timezone})`
         : command.publishingMode === 'queue' ? 'Adding to your queue'
         : 'Posting now';
-      channel.ack(res, `Got it. ${when}: ${names}. I'll send the links when they're live.`);
+      answer(`Got it. ${when}: ${names}. I'll send the links when they're live.`);
 
       // Background: the webhook has been answered
-      publish({ channel, message, user, command, caption, targets, skipped, route }).catch(async error => {
+      publish({ channel, message: { ...message, media }, user, command, caption, targets, skipped, route }).catch(async error => {
         console.error('💥 Publish error:', error);
         await safeReply(route, `❌ Post failed: ${error.message}`);
       });
     } catch (error) {
       console.error(`💥 Error processing ${channel.name} message:`, error);
-      if (!res.headersSent) channel.ack(res, '❌ Error posting. Please try again.');
+      if (!res.headersSent) answer('❌ Error posting. Please try again.');
       else if (route) await safeReply(route, `❌ Post failed: ${error.message}`);
     }
   };
 }
 
+function handleKeyword(channel, message, keyword, answer, user) {
+  if (keyword === 'stop') store.setOptedOut(channel.name, message.from, true);
+  if (keyword === 'start') store.setOptedOut(channel.name, message.from, false);
+  console.log(`🔑 ${keyword.toUpperCase()} from ${message.from} on ${channel.name}`);
+  // On SMS, Twilio's own Opt-Out Management sends the STOP/START/HELP replies
+  // (and blocks texts after STOP), so we only record it.
+  if (channel.name === 'sms') return answer('');
+  return answer(KEYWORD_REPLIES[keyword]);
+}
+
+function friendlyMediaError(error, channel) {
+  if (/^over \d+ MB/.test(error.message)) {
+    return `too big for ${channel.name === 'whatsapp' ? 'WhatsApp' : channel.name} (${error.message}). Send a Dropbox or Google Drive link instead`;
+  }
+  return `couldn't upload (${error.message})`;
+}
+
 async function publish({ channel, message, user, command, caption, targets, skipped, route }) {
   const apiKey = apiKeyFor(user);
 
-  // 1. Media -> Zernio storage
+  // 1. Media -> Zernio storage (attachments and links)
   const mediaItems = [];
   for (const item of message.media) {
+    const label = item.link ? 'Link' : `Attachment ${item.index + 1}`;
     try {
-      const file = await channel.downloadMedia(item);
+      const file = item.link ? await downloadLink(item.link) : await channel.downloadMedia(item);
       mediaItems.push(await uploadMedia(file.buffer, file.contentType, file.filename, apiKey));
     } catch (error) {
       console.error(`   ❌ Failed media ${item.index}:`, error.message);
-      skipped.push({ label: `Attachment ${item.index + 1}`, reason: `couldn't upload (${error.message})` });
+      skipped.push({ label, reason: item.link ? error.message : friendlyMediaError(error, channel) });
     }
   }
   if (message.media.length > 0 && mediaItems.length === 0) {
-    throw new Error('none of the attachments could be uploaded');
+    throw new Error(`none of the media could be used. ${skipped.filter(s => /^(Link|Attachment)/.test(s.label)).map(s => `${s.label}: ${s.reason}`).join('; ')}`.trim());
   }
 
   // 2. Build the post
+  const title = titleOf(caption);
   const postData = {
     content: caption || (mediaItems.length > 0 ? '📸' : ''),
     platforms: targets.map(t => {
@@ -108,6 +192,11 @@ async function publish({ channel, message, user, command, caption, targets, skip
       replyChannel: route.channel,
       replyTo: route.to,
       replyFrom: route.from || '',
+      // when the person last wrote in (WhatsApp 24h rule) and the email to thread under
+      replyLastInboundAt: String(route.lastInboundAt || ''),
+      replyRef: route.inReplyTo || '',
+      replySubject: (route.subject || '').slice(0, 150),
+      title,
       // 'inline' = this process reports the result itself; 'webhook' = /zernio-webhook does
       replyVia: command.publishingMode === 'now' ? 'inline' : 'webhook'
     }
@@ -145,14 +234,35 @@ async function publish({ channel, message, user, command, caption, targets, skip
   }
 
   // 4. Published inline. 201 = done, 207 = partial/failed/retrying (207 is a 2xx, so branch on it).
-  //    Video can still be processing on some platforms: wait for them, then report once.
+  //    Video can still be processing on some platforms: tell them, wait, then report once.
   if (isInFlight(post)) {
+    const processing = platformResults(post, labels).filter(r => !['published', 'failed', 'cancelled'].includes(r.status));
+    if (processing.length > 0 && processing.length === post.platforms.length) {
+      await safeReply(route, `⏳ Uploaded. ${processing.map(r => r.label).join(', ')} still processing the video, I'll send the links when they're live.`);
+    }
     post = await waitForPost(post._id, apiKey);
   }
-  await safeReply(route, formatWhereItWent(platformResults(post, labels), skipped));
+  await safeReply(route, whereItWent(platformResults(post, labels), skipped, title));
 }
 
-/** The "where it went" message: live links, failures with the reason, anything still processing. */
+function titleOf(caption = '') {
+  const first = String(caption).split('\n').find(l => l.trim())?.trim() || '';
+  return first.length > 60 ? `${first.slice(0, 57)}...` : first;
+}
+
+/** The "where it went" message, plus the links on their own (for WhatsApp templates). */
+export function whereItWent(results, skipped = [], title = '') {
+  const live = results.filter(r => r.status === 'published' && r.url);
+  const problems = results.some(r => r.status !== 'published' || !r.url) || (skipped && skipped.length > 0);
+  return {
+    text: formatWhereItWent(results, skipped),
+    links: live.map(r => ({ label: r.label, url: r.url })),
+    title,
+    complete: !problems
+  };
+}
+
+/** The "where it went" text: live links, failures with the reason, anything still processing. */
 export function formatWhereItWent(results, skipped = []) {
   const live = results.filter(r => r.status === 'published');
   const failed = results.filter(r => ['failed', 'cancelled'].includes(r.status));
@@ -181,11 +291,12 @@ function skippedLines(skipped) {
   return ['', '⏭️ Skipped:', ...skipped.map(s => `${s.label}: ${s.reason}`)];
 }
 
-export async function safeReply(route, text) {
+export async function safeReply(route, message) {
   try {
-    await reply(route, text);
+    return await notify(route, message);
   } catch (error) {
     console.error(`❌ Could not reply on ${route?.channel} to ${route?.to}:`, error.message);
+    return { sent: false, reason: error.message };
   }
 }
 
@@ -221,7 +332,15 @@ export async function handleZernioWebhook(req, res) {
   const meta = event.post?.metadata || {};
   if (meta.source !== 'text-to-attention' || meta.replyVia === 'inline' || !meta.replyChannel || !meta.replyTo) return;
 
-  const route = { channel: meta.replyChannel, to: meta.replyTo, from: meta.replyFrom || undefined };
+  const route = {
+    channel: meta.replyChannel,
+    to: meta.replyTo,
+    from: meta.replyFrom || undefined,
+    lastInboundAt: Number(meta.replyLastInboundAt) || 0,
+    inReplyTo: meta.replyRef || undefined,
+    subject: meta.replySubject || undefined
+  };
   const user = findUser(route.channel, route.to);
-  await safeReply(route, formatWhereItWent(platformResults(event.post, accountLabels(user))));
+  const title = meta.title || titleOf(event.post?.content);
+  await safeReply(route, whereItWent(platformResults(event.post, accountLabels(user)), [], title));
 }

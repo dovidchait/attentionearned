@@ -6,3 +6,5 @@ node_modules
 *.key
 service-account*.json
 .git
+data
+test
