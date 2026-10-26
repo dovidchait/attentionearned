@@ -11,7 +11,7 @@ It also runs the Google Calendar reminder texts (every 5 minutes).
 ```
 Twilio SMS/MMS  ─┐
 Twilio WhatsApp ─┼─> lib/channels.js ─> lib/poster.js ─> Zernio POST /posts
-Email webhook   ─┘   (parse, verify,     (user, targets,      │
+Emailit inbound ─┘   (parse, verify,     (user, targets,      │
                       reply)              upload, post)       v
          <──────── "where it went" reply <── per-platform status + platformPostUrl
 ```
@@ -22,7 +22,8 @@ Email webhook   ─┘   (parse, verify,     (user, targets,      │
 - `lib/notify.js` every outbound message: "Attention Earned:" prefix, opt-outs, WhatsApp's 24-hour rule and fallbacks
 - `lib/links.js` Dropbox / Google Drive / direct file links used as the media
 - `lib/store.js` opt-outs and last-message times (a small JSON file, see "Keep opt-outs")
-- `test/` unit tests with a fake Twilio, fake Zernio and fake Postmark (`npm test`)
+- `lib/emailit.js` Emailit: send (`POST /v2/emails`), the signed inbound webhook, fetching received mail
+- `test/` unit tests with a fake Twilio, fake Zernio and fake Emailit (`npm test`)
 - `lib/zernio.js` the Zernio client (presigned upload, create post with an Idempotency-Key, get post, polling)
 - `lib/commands.js` the command parser and account selection
 - `users.json` who can post and to which Zernio accounts (IDs only, never keys)
@@ -44,8 +45,8 @@ Email webhook   ─┘   (parse, verify,     (user, targets,      │
 
 A Dropbox or Google Drive link (shared as "anyone with the link") or a direct `.mp4`/`.mov`/`.jpg` link in
 the message is used as the media, so big videos don't need to be attached. WhatsApp only passes files
-up to 16 MB; anything bigger gets a reply asking for a link. Email takes attachments up to Postmark's
-35 MB per message.
+up to 16 MB; anything bigger gets a reply asking for a link. Email takes attachments as big as the
+client's mail provider allows (Gmail and Outlook: about 20-25 MB).
 
 Every message the service sends starts with "Attention Earned:", matching the toll-free verification samples.
 
@@ -67,8 +68,8 @@ Never put a key in this file.
 
 See `.env.example`. Required for posting: `ZERNIO_API_KEY`, `TWILIO_ACCOUNT_SID`,
 `TWILIO_AUTH_TOKEN`. WhatsApp needs `TWILIO_WHATSAPP_FROM` (and `TWILIO_WA_TEMPLATE_POSTED_SID` for
-links that arrive after 24 h). Email needs `POSTMARK_SERVER_TOKEN`, `EMAIL_FROM` and
-`EMAIL_WEBHOOK_SECRET`. SMS is off until `SMS_ENABLED=true` (with `TWILIO_FROM_NUMBER`).
+links that arrive after 24 h). Email needs `EMAILIT_API_KEY` (Full Access), `EMAILIT_WEBHOOK_SECRET`, `EMAIL_FROM`
+and `EMAIL_REPLY_TO`. SMS is off until `SMS_ENABLED=true` (with `TWILIO_FROM_NUMBER`).
 `LATE_API_KEY` is no longer used. `GET /` shows which of these are set (true/false, never values).
 
 ## WhatsApp (Twilio WhatsApp sender)
@@ -132,27 +133,41 @@ WhatsApp has no carrier STOP handling, so the service does it: `STOP` saves the 
 once; after that nothing is posted or sent to that number until it sends `START`. On SMS, Twilio's own
 Opt-Out Management sends the STOP/START/HELP replies; the service only records them.
 
-## Email (Postmark in and out)
+## Email (Emailit in and out)
 
-Clients email a video (attachment, or a Dropbox/Drive link for big files) with the caption in the body.
-The service emails back "Got it", then the live links, threaded under their email. Only addresses in
-`users.json` get replies. Mail whose SPF check failed is refused, so nobody can post by faking a
-client's From address.
+Clients email a video (attachment, or a Dropbox/Drive link for big files) with the caption in the body
+(or the subject). The service emails back "Got it", then the live links, as replies in the same thread
+(`Re: <their subject>`, `In-Reply-To`/`References`). Only addresses in `users.json` get replies. If the
+receiving server recorded SPF/DKIM/DMARC results (`Authentication-Results`) and they fail, the mail is
+refused, so nobody can post by faking a client's From address. Quoted text under a reply is ignored,
+so "STOP" as a reply works.
 
-1. Create a Postmark account and a server called `text-to-attention`.
-2. Sender: verify the domain `attentionearned.com` (Postmark gives DKIM and Return-Path DNS records to
-   add) or at least the single sender `post@attentionearned.com`.
-3. Server > Default Inbound Stream > Settings: set the webhook to
-   `https://text-to-attention.fly.dev/email-webhook?secret=<long random string>`. Note the inbound
-   address (`...@inbound.postmarkapp.com`).
-4. Give clients that address, or forward `post@attentionearned.com` to it (Google Workspace group or
-   alias with forwarding). If forwarding makes SPF fail (the log says "Email rejected: SPF"), point
-   clients at the Postmark address directly or set `EMAIL_REQUIRE_SPF=false`.
-5. `fly secrets set -a text-to-attention POSTMARK_SERVER_TOKEN=... EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_WEBHOOK_SECRET=<same random string>`
+Emailit receives mail for one subdomain of a verified domain: `anything@inbound.attentionearned.com`.
+Your normal mail (Google Workspace on `attentionearned.com`) is not touched.
 
-The webhook also accepts a raw email (`Content-Type: message/rfc822`, e.g. from a Cloudflare Email
-Worker) and simple JSON (`from`, `subject`, `text`, `attachments[]`). `EMAILIT_API_KEY` still works
-for outbound if Postmark isn't set.
+1. Emailit > Email API > Domains: `attentionearned.com` must be **verified** (it's the From domain).
+   On its DNS Setup tab, add the optional inbound record at your DNS provider:
+   `MX  inbound  inbound.emailitmail.com  priority 10`. Click Check DNS until it says OK.
+2. Emailit > API keys: the key in `EMAILIT_API_KEY` must have **Full Access** (a Sending Only key can
+   send but can't read received mail). Older keys without the `secret_` prefix still work.
+3. Emailit > Email API > Webhooks > Add webhook: URL `https://text-to-attention.fly.dev/email-webhook`.
+   Copy the secret (`whsec_...`, shown once). In its Settings turn off All events and tick only
+   `email.received`.
+4. `fly secrets set -a text-to-attention EMAILIT_WEBHOOK_SECRET=whsec_... EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_REPLY_TO=post@inbound.attentionearned.com`
+   (and `EMAILIT_API_KEY=...` if it isn't set already).
+5. Give clients `post@inbound.attentionearned.com`. Prefer a shorter address? In Google Workspace make
+   `post@attentionearned.com` a group or alias that forwards to `post@inbound.attentionearned.com`.
+   (If forwarding ever breaks the SPF/DKIM check, the log says "Email rejected: ..."; set
+   `EMAIL_REQUIRE_AUTH=false` or have clients use the inbound address directly.)
+6. Test: email a short video from an address in `users.json` to `post@inbound.attentionearned.com`. It
+   shows on Emailit's Incoming tab within seconds, and you get "Got it" back.
+
+Replies are sent From `EMAIL_FROM` with Reply-To `EMAIL_REPLY_TO`, so a client's reply comes back into
+Emailit. Each received email costs 1 Emailit credit, each reply 1 credit.
+
+Other forwarders (a Cloudflare Email Worker, etc.) can post a raw email (`Content-Type: message/rfc822`)
+or simple JSON (`from`, `subject`, `text`, `attachments[]`) to `/email-webhook?secret=<EMAIL_WEBHOOK_SECRET>`;
+without that secret set, only signed Emailit requests are accepted.
 
 ## Keep opt-outs across deploys
 
@@ -175,7 +190,8 @@ fly secrets set -a text-to-attention \
   ZERNIO_API_KEY=... \
   TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... \
   TWILIO_WHATSAPP_FROM=+1... TWILIO_WA_TEMPLATE_POSTED_SID=HX... \
-  POSTMARK_SERVER_TOKEN=... EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_WEBHOOK_SECRET=...
+  EMAILIT_API_KEY=... EMAILIT_WEBHOOK_SECRET=whsec_... \
+  EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_REPLY_TO=post@inbound.attentionearned.com
 # later, once the toll-free number is verified:
 # fly secrets set -a text-to-attention SMS_ENABLED=true TWILIO_FROM_NUMBER=+18666188109
 
@@ -188,7 +204,7 @@ curl https://text-to-attention.fly.dev/   # should say "posting": "zernio"
 
 Twilio console: WhatsApp sender webhook `https://text-to-attention.fly.dev/whatsapp-webhook`; on the
 number (once SMS is on) Messaging webhook `https://text-to-attention.fly.dev/sms-webhook` (both POST).
-Postmark inbound webhook: `https://text-to-attention.fly.dev/email-webhook?secret=...`.
+Emailit webhook (event `email.received`): `https://text-to-attention.fly.dev/email-webhook`.
 
 Optional, for live links on scheduled/queued posts: in Zernio create a webhook for
 `post.published`, `post.partial`, `post.failed` pointing at
@@ -200,7 +216,7 @@ Optional, for live links on scheduled/queued posts: in Zernio create a webhook f
 ```bash
 cp .env.example .env   # fill in; .env is git-ignored
 npm install
-npm test               # fake Twilio, Zernio and Postmark on localhost; no real network
+npm test               # fake Twilio, Zernio and Emailit on localhost; no real network
 node --env-file=.env index.js
 ```
 

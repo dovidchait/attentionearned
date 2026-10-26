@@ -45,7 +45,7 @@ export function inboundHandler(channel) {
       if (isTwilio || !text) return channel.ack(res, text ? brand(text) : '');
       channel.ack(res, text);
       if (message?.from && (user || toStranger)) {
-        channel.send({ channel: 'email', to: message.from, from: message.to, inReplyTo: message.messageId }, brand(text))
+        channel.send({ channel: 'email', to: message.from, from: message.to, inReplyTo: message.messageId, references: message.references, subject: message.subject }, brand(text))
           .catch(error => console.error('❌ Email answer failed:', error.message));
       }
     };
@@ -91,7 +91,9 @@ export function inboundHandler(channel) {
         to: message.from,
         from: message.to,
         lastInboundAt: Date.now(),
-        inReplyTo: channel.name === 'email' ? message.messageId : undefined
+        inReplyTo: channel.name === 'email' ? message.messageId : undefined,
+        references: channel.name === 'email' ? message.references || undefined : undefined,
+        subject: channel.name === 'email' ? message.subject || undefined : undefined
       };
 
       // A Dropbox / Drive / direct file link in the text counts as media
@@ -193,6 +195,7 @@ async function publish({ channel, message, user, command, caption, targets, skip
       // when the person last wrote in (WhatsApp 24h rule) and the email to thread under
       replyLastInboundAt: String(route.lastInboundAt || ''),
       replyRef: route.inReplyTo || '',
+      replySubject: (route.subject || '').slice(0, 150),
       title,
       // 'inline' = this process reports the result itself; 'webhook' = /zernio-webhook does
       replyVia: command.publishingMode === 'now' ? 'inline' : 'webhook'
@@ -334,7 +337,8 @@ export async function handleZernioWebhook(req, res) {
     to: meta.replyTo,
     from: meta.replyFrom || undefined,
     lastInboundAt: Number(meta.replyLastInboundAt) || 0,
-    inReplyTo: meta.replyRef || undefined
+    inReplyTo: meta.replyRef || undefined,
+    subject: meta.replySubject || undefined
   };
   const user = findUser(route.channel, route.to);
   const title = meta.title || titleOf(event.post?.content);

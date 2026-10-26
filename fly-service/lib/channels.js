@@ -2,6 +2,7 @@ import twilio from 'twilio';
 import mailparser from 'mailparser';
 import fetch from 'node-fetch';
 import { extractEmail } from './users.js';
+import { sendEmailit, DEFAULT_FROM } from './emailit.js';
 
 // ============================================================================
 // CHANNELS (pluggable inbound/outbound)
@@ -172,53 +173,86 @@ whatsapp.sendTemplate = async function sendTemplate(route, contentSid, variables
 };
 
 // ----------------------------------------------------------------------------
-// Email
-// Inbound: Postmark inbound webhook (JSON), raw message/rfc822 (e.g. a
-//          Cloudflare Email Worker), or simple JSON {from, subject, text, attachments}.
-// Outbound: Postmark (POSTMARK_SERVER_TOKEN) or Emailit (EMAILIT_API_KEY).
+// Email (Emailit in and out, see lib/emailit.js)
+// Inbound: Emailit's signed email.received webhook (lib/emailit.js fetches the
+//          message and hands it here as simple JSON), or, from any other
+//          forwarder, raw message/rfc822 or simple JSON {from, subject, text,
+//          attachments} with EMAIL_WEBHOOK_SECRET.
+// Outbound: Emailit POST /emails, threaded under the client's email.
 // ----------------------------------------------------------------------------
 
 function escapeHtml(text = '') {
   return text.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-export async function sendEmail(to, subject, textBody, { replyTo, inReplyTo } = {}) {
-  const from = env('EMAIL_FROM');
-  if (env('POSTMARK_SERVER_TOKEN')) {
-    if (!from) throw new Error('EMAIL_FROM is not set (must be a Postmark-verified sender)');
-    const payload = { From: from, To: to, Subject: subject, TextBody: textBody, MessageStream: env('POSTMARK_MESSAGE_STREAM') || 'outbound' };
-    if (replyTo) payload.ReplyTo = replyTo;
-    if (inReplyTo) payload.Headers = [{ Name: 'In-Reply-To', Value: inReplyTo }, { Name: 'References', Value: inReplyTo }];
-    const base = (env('POSTMARK_API_URL') || 'https://api.postmarkapp.com').replace(/\/$/, '');
-    const response = await fetchWithTimeout(`${base}/email`, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Postmark-Server-Token': env('POSTMARK_SERVER_TOKEN') },
-      body: JSON.stringify(payload)
-    }, 15000);
-    if (!response.ok) throw new Error(`Postmark error ${response.status}: ${(await response.text()).slice(0, 300)}`);
-    return response.json().catch(() => ({}));
-  }
-  if (env('EMAILIT_API_KEY')) {
-    const payload = { to: [{ email: to }], subject, text: textBody, html: `<pre style="font-family:inherit;white-space:pre-wrap">${escapeHtml(textBody)}</pre>` };
-    if (from) payload.from = from;
-    if (replyTo) payload.reply_to = replyTo;
-    const response = await fetchWithTimeout('https://api.emailit.com/v1/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env('EMAILIT_API_KEY')}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }, 15000);
-    if (!response.ok) throw new Error(`Emailit error: ${await response.text()}`);
-    return {};
-  }
-  throw new Error('Email is not configured (set POSTMARK_SERVER_TOKEN + EMAIL_FROM)');
+function replySubject(subject) {
+  const s = String(subject || '').trim();
+  if (!s) return '';
+  return /^re:/i.test(s) ? s : `Re: ${s}`;
 }
 
-function header(headers, name) {
-  return (headers || []).find(h => String(h.Name || h.name).toLowerCase() === name.toLowerCase())?.Value;
+export async function sendEmail(to, subject, textBody, { replyTo, inReplyTo, references } = {}) {
+  const from = env('EMAIL_FROM') || DEFAULT_FROM;
+  const payload = {
+    from,
+    to,
+    subject,
+    text: textBody,
+    html: `<pre style="font-family:inherit;white-space:pre-wrap">${escapeHtml(textBody)}</pre>`,
+    tracking: false
+  };
+  if (replyTo && extractEmail(replyTo) !== extractEmail(from)) payload.reply_to = replyTo;
+  if (inReplyTo) {
+    payload.headers = {
+      'In-Reply-To': inReplyTo,
+      'References': [references, inReplyTo].filter(Boolean).join(' ').trim()
+    };
+  }
+  return sendEmailit(payload);
 }
 
-function isPostmark(body) {
-  return body && (body.FromFull || body.TextBody !== undefined || body.MessageID || Array.isArray(body.Attachments));
+function headerValue(headers, name) {
+  if (!headers) return undefined;
+  if (Array.isArray(headers)) return headers.find(h => String(h.Name || h.name).toLowerCase() === name.toLowerCase())?.Value;
+  const key = Object.keys(headers).find(k => k.toLowerCase() === name.toLowerCase());
+  return key ? headers[key] : undefined;
+}
+
+/**
+ * A forged "From:" could post to someone's socials. When the receiving server
+ * recorded SPF/DKIM/DMARC results, refuse mail that fails them.
+ * Returns null when fine (or nothing to check), else the reason.
+ */
+export function authFailure(headers) {
+  const results = String(headerValue(headers, 'Authentication-Results') || '').toLowerCase();
+  const receivedSpf = String(headerValue(headers, 'Received-SPF') || '').toLowerCase().trim();
+  if (results) {
+    if (/\bdmarc=fail\b/.test(results)) return 'DMARC failed';
+    const spfPass = /\bspf=pass\b/.test(results);
+    const dkimPass = /\bdkim=pass\b/.test(results);
+    if (/\bspf=/.test(results) && !spfPass && !dkimPass) return 'SPF and DKIM did not pass';
+    return null;
+  }
+  if (receivedSpf && /^(fail|softfail)\b/.test(receivedSpf)) return `SPF ${receivedSpf.split(/\s/)[0]}`;
+  return null;
+}
+
+/** Drop the quoted thread under a reply ("On ... wrote:", "> ...", Outlook headers). */
+export function stripQuotedReply(text = '') {
+  const lines = String(text).replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const joined = `${line} ${lines[i + 1] || ''}`;
+    if (/^\s*On\s.+wrote:\s*$/i.test(line)) break;
+    if (/^\s*On\s/i.test(line) && line.length < 200 && /wrote:\s*$/i.test(lines[i + 1] || '')) break; // Gmail wraps the line
+    if (/^\s*-{2,}\s*Original Message\s*-{2,}/i.test(line)) break;
+    if (/^\s*From: .+/i.test(line) && i > 0 && lines[i - 1].trim() === '' && /^\s*(Sent|Date|To|Subject):/i.test(lines[i + 1] || '')) break;
+    if (/^\s*_{10,}\s*$/.test(line)) break; // Outlook separator
+    if (/^\s*>/.test(line)) continue;
+    out.push(line);
+  }
+  return out.join('\n').trim();
 }
 
 const emailChannel = {
@@ -226,15 +260,21 @@ const emailChannel = {
   maxMediaMb: 35,
 
   verify(req) {
-    // Shared secret: set EMAIL_WEBHOOK_SECRET and add ?secret=... to the inbound webhook URL
-    const secret = env('EMAIL_WEBHOOK_SECRET');
-    if (secret && req.query.secret !== secret && req.headers['x-webhook-secret'] !== secret) return false;
-    // A forged "From:" could post to someone's socials. When the inbound provider
-    // reports SPF (Postmark's Received-SPF header), require a pass.
-    if (String(env('EMAIL_REQUIRE_SPF') || 'true').toLowerCase() !== 'false' && isPostmark(req.body)) {
-      const spf = header(req.body.Headers, 'Received-SPF');
-      if (spf && !/^\s*pass\b/i.test(spf)) {
-        console.error(`Email rejected: SPF is "${spf.split(' ')[0]}" for ${req.body.From}`);
+    // Emailit requests are checked (HMAC signature) in lib/emailit.js before they get here.
+    if (!req.emailitVerified) {
+      // Any other forwarder: shared secret in ?secret=... or X-Webhook-Secret. Required:
+      // without it anyone could post as a client by typing their address.
+      const secret = env('EMAIL_WEBHOOK_SECRET');
+      if (!secret) {
+        console.error('Email webhook refused: not an Emailit request and EMAIL_WEBHOOK_SECRET is not set');
+        return false;
+      }
+      if (req.query?.secret !== secret && req.headers?.['x-webhook-secret'] !== secret) return false;
+    }
+    if (String(env('EMAIL_REQUIRE_AUTH') || 'true').toLowerCase() !== 'false' && req.body && !Buffer.isBuffer(req.body)) {
+      const reason = authFailure(req.body.headers);
+      if (reason) {
+        console.error(`Email rejected: ${reason} for ${req.body.from}`);
         return false;
       }
     }
@@ -244,21 +284,20 @@ const emailChannel = {
   async parse(req) {
     let data;
     const body = req.body;
-    if (req.headers['content-type']?.includes('message/rfc822') || Buffer.isBuffer(body)) {
+    if (req.headers?.['content-type']?.includes('message/rfc822') || Buffer.isBuffer(body)) {
       const parsed = await mailparser.simpleParser(body);
+      const reason = String(env('EMAIL_REQUIRE_AUTH') || 'true').toLowerCase() !== 'false'
+        ? authFailure({ 'Authentication-Results': parsed.headers.get('authentication-results'), 'Received-SPF': parsed.headers.get('received-spf') })
+        : null;
+      if (reason) {
+        console.error(`Email rejected: ${reason} for ${parsed.from?.text}`);
+        return { from: null, media: [] };
+      }
       data = {
         from: parsed.from?.text, to: parsed.to?.text, subject: parsed.subject, text: parsed.text,
         messageId: parsed.messageId,
+        references: Array.isArray(parsed.references) ? parsed.references.join(' ') : parsed.references,
         attachments: (parsed.attachments || []).map(a => ({ filename: a.filename, contentType: a.contentType, content: a.content }))
-      };
-    } else if (isPostmark(body)) {
-      data = {
-        from: body.FromFull?.Email || body.From,
-        to: body.OriginalRecipient || body.ToFull?.[0]?.Email || body.To,
-        subject: body.Subject,
-        text: body.StrippedTextReply || body.TextBody || '',
-        messageId: header(body.Headers, 'Message-ID') || body.MessageID,
-        attachments: (body.Attachments || []).map(a => ({ filename: a.Name, contentType: a.ContentType, content: a.Content }))
       };
     } else {
       data = body || {};
@@ -267,9 +306,10 @@ const emailChannel = {
     return {
       from: extractEmail(data.from || data.email || ''),
       to: data.to ? extractEmail(data.to) : null,
-      text: data.text || data['body-plain'] || '',
+      text: stripQuotedReply(data.text || data['body-plain'] || ''),
       subject: data.subject || '',
       messageId: data.messageId || data['Message-Id'] || null,
+      references: data.references || '',
       media: attachments
         .map((a, index) => ({ attachment: a, contentType: (a.contentType || a.type || 'application/octet-stream').toLowerCase(), index }))
         .filter(m => m.contentType.startsWith('image/') || m.contentType.startsWith('video/'))
@@ -281,10 +321,11 @@ const emailChannel = {
   },
 
   async send(route, text) {
-    const firstLine = text.split('\n')[0].slice(0, 120);
-    return sendEmail(route.to, firstLine, text, {
+    const subject = replySubject(route.subject) || `Attention Earned: ${text.replace(/^Attention Earned:\s*/, '').split('\n')[0].slice(0, 100)}`;
+    return sendEmail(route.to, subject, text, {
       replyTo: env('EMAIL_REPLY_TO') || route.from || undefined,
-      inReplyTo: route.inReplyTo || undefined
+      inReplyTo: route.inReplyTo || undefined,
+      references: route.references || undefined
     });
   },
 

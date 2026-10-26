@@ -1,5 +1,5 @@
 // Run: npm test  (node's built-in test runner; no real network: fake Zernio,
-// fake Twilio media/API and fake Postmark all run on 127.0.0.1)
+// fake Twilio media/API and fake Emailit all run on 127.0.0.1)
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -16,7 +16,8 @@ const SENDER = '+18666188109';
 const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tta-state-'));
 
 // ---------------------------------------------------------------- fakes ----
-const fake = { zernio: [], uploads: [], media: [], postmark: [], twilio: [], nextPost: null };
+const fake = { zernio: [], uploads: [], media: [], emailit: [], emailitReads: [], inbox: {}, twilio: [], nextPost: null };
+const EMAILIT_SECRET = 'whsec_' + 'ab'.repeat(32);
 
 function listen(handler) {
   return new Promise(resolve => {
@@ -33,7 +34,7 @@ function readBody(req) {
   });
 }
 
-let zernio, files, postmark, app, appServer, appUrl;
+let zernio, files, emailit, app, appServer, appUrl;
 let mod;
 
 function publishedPost(postData) {
@@ -89,11 +90,22 @@ before(async () => {
     res.writeHead(404); res.end();
   });
 
-  postmark = await listen(async (req, res) => {
+  // Fake Emailit API v2: POST /emails (outbound) and GET /emails/{id} (inbound message)
+  emailit = await listen(async (req, res) => {
     const body = await readBody(req);
-    fake.postmark.push({ path: req.url, token: req.headers['x-postmark-server-token'], json: JSON.parse(body) });
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ MessageID: 'pm-1', ErrorCode: 0 }));
+    if (req.method === 'POST' && req.url === '/v2/emails') {
+      fake.emailit.push({ path: req.url, auth: req.headers.authorization, json: JSON.parse(body) });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ object: 'email', id: `em_out${fake.emailit.length}`, message_id: `<out${fake.emailit.length}@attentionearned.com>`, status: 'pending' }));
+    }
+    const m = req.url.match(/^\/v2\/emails\/([A-Za-z0-9_]+)$/);
+    if (req.method === 'GET' && m) {
+      fake.emailitReads.push({ id: m[1], auth: req.headers.authorization });
+      const email = fake.inbox[m[1]];
+      res.writeHead(email ? 200 : 404, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify(email || { error: 'not_found' }));
+    }
+    res.writeHead(404); res.end('{}');
   });
 
   Object.assign(process.env, {
@@ -104,8 +116,9 @@ before(async () => {
     TWILIO_AUTH_TOKEN: TOKEN,
     TWILIO_WHATSAPP_FROM: SENDER,
     PUBLIC_BASE_URL: PUBLIC_BASE,
-    POSTMARK_SERVER_TOKEN: 'pm-test-token',
-    POSTMARK_API_URL: postmark.url,
+    EMAILIT_API_KEY: 'secret_emailit_test',
+    EMAILIT_API_URL: `${emailit.url}/v2`,
+    EMAILIT_WEBHOOK_SECRET: EMAILIT_SECRET,
     EMAIL_FROM: 'Attention Earned <post@attentionearned.com>',
     STATE_DIR: stateDir
   });
@@ -130,13 +143,15 @@ before(async () => {
 });
 
 after(() => {
-  for (const s of [zernio, files, postmark]) s.server.close();
+  for (const s of [zernio, files, emailit]) s.server.close();
   appServer.close();
   fs.rmSync(stateDir, { recursive: true, force: true });
 });
 
 beforeEach(() => {
-  for (const k of ['zernio', 'uploads', 'media', 'postmark', 'twilio']) fake[k].length = 0;
+  for (const k of ['zernio', 'uploads', 'media', 'emailit', 'emailitReads', 'twilio']) fake[k].length = 0;
+  fake.inbox = {};
+  delete process.env.EMAIL_WEBHOOK_SECRET;
   fake.nextPost = null;
   fs.rmSync(path.join(stateDir, 'state.json'), { force: true });
   mod.store._resetForTests();
@@ -323,7 +338,7 @@ test('24h window closed + template configured: live links go as the approved tem
     assert.equal(m.to, `whatsapp:${DAVID}`);
   }
   assert.deepEqual(JSON.parse(fake.twilio[0].contentVariables), { 1: '"Gala thank-you" on IG @dovid_chait', 2: 'https://instagram.com/p/abc' });
-  assert.equal(fake.postmark.length, 0); // nothing failed, so no email needed
+  assert.equal(fake.emailit.length, 0); // nothing failed, so no email needed
 });
 
 test('24h window closed + no template: falls back to email (not SMS)', async () => {
@@ -331,11 +346,12 @@ test('24h window closed + no template: falls back to email (not SMS)', async () 
     lastInboundAt: THREE_DAYS_AGO,
     platforms: [{ platform: 'instagram', accountId: IG_PERSONAL, status: 'published', publishedUrl: 'https://instagram.com/p/abc' }]
   }));
-  const mail = await until(() => fake.postmark[0]);
-  assert.equal(mail.token, 'pm-test-token');
-  assert.equal(mail.json.To, 'chaitd@outlook.com');
-  assert.match(mail.json.Subject, /^Attention Earned: /);
-  assert.ok(mail.json.TextBody.includes('https://instagram.com/p/abc'));
+  const mail = await until(() => fake.emailit[0]);
+  assert.equal(mail.auth, 'Bearer secret_emailit_test');
+  assert.equal(mail.json.to, 'chaitd@outlook.com');
+  assert.equal(mail.json.from, 'Attention Earned <post@attentionearned.com>');
+  assert.match(mail.json.subject, /^Attention Earned: /);
+  assert.ok(mail.json.text.includes('https://instagram.com/p/abc'));
   assert.equal(fake.twilio.length, 0); // no WhatsApp free-form, and SMS is off
 });
 
@@ -348,9 +364,9 @@ test('24h window closed with a failure: template for the live link, email for th
       { platform: 'linkedin', accountId: LI_PERSONAL, status: 'failed', error: 'video too long' }
     ]
   }));
-  await until(() => fake.postmark.length === 1 && fake.twilio.length === 1);
+  await until(() => fake.emailit.length === 1 && fake.twilio.length === 1);
   assert.equal(fake.twilio[0].contentSid, 'HXtemplate123');
-  assert.ok(fake.postmark[0].json.TextBody.includes('video too long'));
+  assert.ok(fake.emailit[0].json.text.includes('video too long'));
 });
 
 test('24h window closed, SMS only when SMS_ENABLED=true and email is not available', async () => {
@@ -364,7 +380,7 @@ test('24h window closed, SMS only when SMS_ENABLED=true and email is not availab
   const sms = await until(() => fake.twilio[0]);
   assert.equal(sms.to, DAVID);
   assert.match(sms.body, /^Attention Earned: /);
-  assert.equal(fake.postmark.length, 0);
+  assert.equal(fake.emailit.length, 0);
 });
 
 test('inside the 24h window a scheduled post reports free-form on WhatsApp', async () => {
@@ -419,54 +435,145 @@ test('share links become direct downloads', () => {
   assert.deepEqual(mod.links.findMediaLinks('see https://www.dropbox.com/s/x/a.mov?dl=0. and https://attentionearned.com/about'), ['https://www.dropbox.com/s/x/a.mov?dl=0']);
 });
 
-test('email in (Postmark, video attachment) -> post -> email reply with live links', async () => {
+// ---------------------------------------------------------------- email ----
+let evt = 0;
+function inboundEmail(id, overrides = {}) {
+  return {
+    object: 'email', id, type: 'inbound', status: 'received',
+    from: 'chaitd@outlook.com',
+    to: 'post@inbound.attentionearned.com',
+    subject: 'Shiur clip',
+    message_id: '<abc@outlook.com>',
+    headers: { 'From': 'David Chait <chaitd@outlook.com>', 'Message-ID': '<abc@outlook.com>', 'Authentication-Results': 'mx.emailit.com; spf=pass smtp.mailfrom=outlook.com; dkim=pass header.d=outlook.com; dmarc=pass' },
+    body: { text: 'Shiur clip\npost to linkedin', html: '<p>Shiur clip</p>' },
+    attachments: [{ filename: 'clip.mp4', content_type: 'video/mp4', size: 4096, content_id: null, content_disposition: 'attachment', content: Buffer.alloc(4096, 2).toString('base64') }],
+    ...overrides
+  };
+}
+
+async function emailitWebhook(events, { secret = EMAILIT_SECRET, timestamp, signature } = {}) {
+  const raw = JSON.stringify(events);
+  const ts = timestamp ?? Math.floor(Date.now() / 1000);
+  const sig = signature ?? crypto.createHmac('sha256', secret).update(`${ts}.${raw}`).digest('hex');
   const res = await fetch(`${appUrl}/email-webhook`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      FromFull: { Email: 'chaitd@outlook.com', Name: 'David Chait' },
-      From: 'chaitd@outlook.com',
-      OriginalRecipient: 'post@attentionearned.com',
-      Subject: 'Shiur clip',
-      TextBody: 'Shiur clip\npost to linkedin',
-      MessageID: 'pm-in-1',
-      Headers: [{ Name: 'Message-ID', Value: '<abc@outlook.com>' }, { Name: 'Received-SPF', Value: 'pass (outlook.com)' }],
-      Attachments: [{ Name: 'clip.mp4', ContentType: 'video/mp4', Content: Buffer.alloc(4096, 2).toString('base64'), ContentLength: 4096 }]
-    })
+    headers: { 'content-type': 'application/json', 'x-emailit-signature': sig, 'x-emailit-timestamp': String(ts) },
+    body: raw
   });
+  return { status: res.status, text: await res.text() };
+}
+
+function received(id) {
+  return { event_id: `evt_${Date.now()}${++evt}`, type: 'email.received', object: { id, object: 'email' }, data: { object: { id, object: 'email', from: 'chaitd@outlook.com', to: 'post@inbound.attentionearned.com' } } };
+}
+
+test('email in (Emailit webhook, video attachment) -> post -> threaded email reply with live links', async () => {
+  fake.inbox.em_in1 = inboundEmail('em_in1');
+  const res = await emailitWebhook([received('em_in1')]);
   assert.equal(res.status, 200);
-  const live = await until(() => fake.postmark.find(m => m.json.TextBody.includes('Live')));
-  const gotIt = fake.postmark.find(m => m.json.TextBody.includes('Got it'));
+  assert.equal(fake.emailitReads[0].auth, 'Bearer secret_emailit_test');
+  const live = await until(() => fake.emailit.find(m => m.json.text.includes('Live')));
+  const gotIt = fake.emailit.find(m => m.json.text.includes('Got it'));
   assert.ok(gotIt, 'sends a "Got it" email');
-  assert.equal(live.json.To, 'chaitd@outlook.com');
-  assert.match(live.json.Subject, /^Attention Earned: ✅ Live/);
-  assert.deepEqual(live.json.Headers[0], { Name: 'In-Reply-To', Value: '<abc@outlook.com>' });
-  assert.equal(live.json.ReplyTo, 'post@attentionearned.com');
+  assert.match(gotIt.json.text, /^Attention Earned: Got it\./);
+  assert.equal(live.json.to, 'chaitd@outlook.com');
+  assert.equal(live.json.from, 'Attention Earned <post@attentionearned.com>');
+  assert.equal(live.json.subject, 'Re: Shiur clip');
+  assert.equal(live.json.headers['In-Reply-To'], '<abc@outlook.com>');
+  assert.match(live.json.headers.References, /<abc@outlook\.com>/);
+  assert.equal(live.json.reply_to, 'post@inbound.attentionearned.com'); // replies come back to Emailit
+  assert.equal(live.json.tracking, false);
   const post = posts()[0].json;
   assert.equal(post.content, 'Shiur clip');
   assert.equal(post.metadata.replyChannel, 'email');
+  assert.equal(post.metadata.replySubject, 'Shiur clip');
   assert.equal(fake.uploads[0].bytes, 4096);
   assert.deepEqual(post.platforms.map(p => p.platform), ['linkedin', 'linkedin']);
 });
 
-test('email with a failed SPF check (forged From) is refused', async () => {
-  const res = await fetch(`${appUrl}/email-webhook`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ From: 'chaitd@outlook.com', TextBody: 'x', Subject: 'x', MessageID: 'm2', Headers: [{ Name: 'Received-SPF', Value: 'fail (spoofed)' }], Attachments: [] })
-  });
-  assert.equal(res.status, 403);
+test('Emailit webhook: a batch posts each email once, retries are skipped, other events ignored', async () => {
+  fake.inbox.em_b1 = inboundEmail('em_b1', { subject: 'One', body: { text: 'One\npost to linkedin personal' } });
+  fake.inbox.em_b2 = inboundEmail('em_b2', { subject: 'Two', message_id: '<two@outlook.com>', body: { text: 'Two\npost to linkedin personal' } });
+  const batch = [received('em_b1'), { event_id: 'evt_x', type: 'email.delivered', data: { object: { id: 'em_out' } } }, received('em_b2')];
+  assert.equal((await emailitWebhook(batch)).status, 200);
+  await until(() => posts().length === 2);
+  assert.equal((await emailitWebhook(batch)).status, 200); // Emailit retrying the same batch
+  await new Promise(r => setTimeout(r, 150));
+  assert.equal(posts().length, 2);
+  assert.deepEqual(posts().map(p => p.json.content).sort(), ['One', 'Two']);
+});
+
+test('Emailit webhook: bad or stale signature, or no secret configured, is refused', async () => {
+  fake.inbox.em_sig = inboundEmail('em_sig');
+  assert.equal((await emailitWebhook([received('em_sig')], { secret: 'whsec_wrong' })).status, 401);
+  assert.equal((await emailitWebhook([received('em_sig')], { timestamp: Math.floor(Date.now() / 1000) - 3600 })).status, 401);
+  const saved = process.env.EMAILIT_WEBHOOK_SECRET;
+  delete process.env.EMAILIT_WEBHOOK_SECRET;
+  try {
+    assert.equal((await emailitWebhook([received('em_sig')], { secret: saved })).status, 401);
+  } finally {
+    process.env.EMAILIT_WEBHOOK_SECRET = saved;
+  }
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(fake.emailitReads.length, 0);
   assert.equal(posts().length, 0);
 });
 
-test('email from an unknown address gets no reply (no backscatter) and posts nothing', async () => {
-  await fetch(`${appUrl}/email-webhook`, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ From: 'stranger@example.com', TextBody: 'post this', Subject: 'hi', MessageID: 'm3', Headers: [], Attachments: [] })
-  });
-  await new Promise(r => setTimeout(r, 100));
-  assert.equal(fake.postmark.length, 0);
+test('Emailit API error while fetching the email -> 500 so Emailit retries', async () => {
+  const res = await emailitWebhook([received('em_missing')]);
+  assert.equal(res.status, 500);
   assert.equal(posts().length, 0);
+});
+
+test('email that fails SPF/DKIM/DMARC (forged From) is refused', async () => {
+  fake.inbox.em_forged = inboundEmail('em_forged', {
+    headers: { 'From': 'chaitd@outlook.com', 'Authentication-Results': 'mx.emailit.com; spf=fail smtp.mailfrom=outlook.com; dkim=none; dmarc=fail' }
+  });
+  assert.equal((await emailitWebhook([received('em_forged')])).status, 200); // acknowledged so Emailit doesn't retry
+  await new Promise(r => setTimeout(r, 150));
+  assert.equal(posts().length, 0);
+  assert.equal(fake.emailit.length, 0);
+});
+
+test('email from an unknown address gets no reply (no backscatter) and posts nothing', async () => {
+  fake.inbox.em_stranger = inboundEmail('em_stranger', { from: 'stranger@example.com', headers: { From: 'stranger@example.com' } });
+  await emailitWebhook([received('em_stranger')]);
+  await new Promise(r => setTimeout(r, 150));
+  assert.equal(fake.emailit.length, 0);
+  assert.equal(posts().length, 0);
+});
+
+test('email STOP in a reply (quoted thread below) opts out of email', async () => {
+  fake.inbox.em_stop = inboundEmail('em_stop', {
+    subject: 'Re: Attention Earned: Got it',
+    body: { text: 'STOP\n\nOn Mon, Oct 26, 2026 at 1:40 PM Attention Earned <post@attentionearned.com> wrote:\n> Attention Earned: Got it. Posting now' },
+    attachments: []
+  });
+  await emailitWebhook([received('em_stop')]);
+  await until(() => mod.store.isOptedOut('email', 'chaitd@outlook.com'));
+  const reply = await until(() => fake.emailit[0]);
+  assert.match(reply.json.text, /^Attention Earned: /);
+  assert.equal(posts().length, 0);
+});
+
+test('other forwarders (no Emailit signature) need EMAIL_WEBHOOK_SECRET', async () => {
+  const body = JSON.stringify({ from: 'chaitd@outlook.com', subject: 'hi', text: 'Forwarded\npost to linkedin personal', attachments: [] });
+  const refused = await fetch(`${appUrl}/email-webhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  assert.equal(refused.status, 403);
+  process.env.EMAIL_WEBHOOK_SECRET = 'fwd-secret';
+  const wrong = await fetch(`${appUrl}/email-webhook?secret=nope`, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  assert.equal(wrong.status, 403);
+  const ok = await fetch(`${appUrl}/email-webhook?secret=fwd-secret`, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  assert.equal(ok.status, 200);
+  await until(() => posts().length === 1);
+  assert.equal(posts()[0].json.content, 'Forwarded');
+});
+
+test('quoted reply text is stripped', () => {
+  const { stripQuotedReply } = mod.channels;
+  assert.equal(stripQuotedReply('New caption\n\nOn Mon, Oct 26, 2026 at 1:40 PM\nAttention Earned <post@attentionearned.com> wrote:\n> old'), 'New caption');
+  assert.equal(stripQuotedReply('Hi\n-----Original Message-----\nFrom: x'), 'Hi');
+  assert.equal(stripQuotedReply('line one\nline two'), 'line one\nline two');
 });
 
 test('SMS is off unless SMS_ENABLED=true; when on, replies start with "Attention Earned:"', async () => {

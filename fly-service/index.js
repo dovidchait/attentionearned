@@ -4,6 +4,7 @@ import cron from 'node-cron';
 import { google } from 'googleapis';
 import { channels, smsEnabled } from './lib/channels.js';
 import { inboundHandler, handleZernioWebhook } from './lib/poster.js';
+import { emailWebhook } from './lib/emailit.js';
 import { allUsers } from './lib/users.js';
 
 const app = express();
@@ -49,7 +50,8 @@ app.get('/', (req, res) => {
       whatsappSender: Boolean(process.env.TWILIO_WHATSAPP_FROM),
       whatsappTemplate: Boolean(process.env.TWILIO_WA_TEMPLATE_POSTED_SID),
       twilioSignatureCheck: Boolean(process.env.TWILIO_AUTH_TOKEN) && process.env.TWILIO_SKIP_SIGNATURE_CHECK !== 'true',
-      emailOut: Boolean(process.env.POSTMARK_SERVER_TOKEN || process.env.EMAILIT_API_KEY),
+      emailOut: Boolean(process.env.EMAILIT_API_KEY),
+      emailInbound: Boolean(process.env.EMAILIT_WEBHOOK_SECRET),
       zernio: Boolean(process.env.ZERNIO_API_KEY),
       zernioWebhook: Boolean(process.env.ZERNIO_WEBHOOK_SECRET)
     }
@@ -63,7 +65,8 @@ app.get('/', (req, res) => {
 
 app.post('/sms-webhook', inboundHandler(channels.sms));
 app.post('/whatsapp-webhook', inboundHandler(channels.whatsapp));
-app.post('/email-webhook', inboundHandler(channels.email));
+// Emailit's signed email.received webhook (or another forwarder with EMAIL_WEBHOOK_SECRET)
+app.post('/email-webhook', emailWebhook(inboundHandler(channels.email)));
 
 // Zernio post events (scheduled/queued posts going live)
 app.post('/zernio-webhook', handleZernioWebhook);
