@@ -1,0 +1,25 @@
+{
+  "name": "client-dashboard",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Client-facing dashboard for Text to Attention — manage Zernio accounts, schedule posts, view analytics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "jose": "^5.9.6",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
