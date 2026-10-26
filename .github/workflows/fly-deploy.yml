@@ -1,0 +1,22 @@
+name: Deploy text-to-attention to Fly
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fly-service/**'
+      - '.github/workflows/fly-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency: fly-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        working-directory: fly-service
+        run: flyctl deploy --remote-only -a text-to-attention
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
