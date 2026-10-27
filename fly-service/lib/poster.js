@@ -7,7 +7,8 @@ import { notify, brand } from './notify.js';
 import { keywordOf, KEYWORD_REPLIES } from './keywords.js';
 import { findMediaLinks, removeLinks, guessContentType, downloadLink } from './links.js';
 import * as store from './store.js';
-import { resolveStyle, processVideo, ffmpegAvailable } from './subtitles.js';
+import { processVideo, ffmpegAvailable } from './subtitles.js';
+export { withSubtitles };
 
 // ============================================================================
 // POSTING PIPELINE (channel-agnostic)
@@ -173,27 +174,9 @@ async function publish({ channel, message, user, command, caption, targets, skip
     const label = item.link ? 'Link' : `Attachment ${item.index + 1}`;
     try {
       let file = item.link ? await downloadLink(item.link) : await channel.downloadMedia(item);
-      if (subtitlesOn && file.contentType.startsWith('video/') && process.env.OPENAI_API_KEY) {
-        try {
-          const hasffmpeg = await ffmpegAvailable();
-          if (hasffmpeg) {
-            const aspectRatio = guessAspectRatio(file.buffer, file.contentType);
-            const style = resolveStyle(user.subtitles?.style, aspectRatio);
-            const result = await processVideo(file.buffer, file.contentType, {
-              style,
-              vocabulary: user.subtitles?.vocabulary || [],
-              aspectRatio,
-              filename: file.filename
-            });
-            file = { ...file, buffer: result.videoBuffer };
-            if (!subtitlePreview) subtitlePreview = result.previewBuffer;
-            console.log(`🎬 Subtitles burned into ${label}`);
-          } else {
-            console.warn('⚠️  ffmpeg not found; skipping subtitle burn-in');
-          }
-        } catch (subErr) {
-          console.error(`⚠️  Subtitle error for ${label}: ${subErr.message} — posting original`);
-        }
+      if (subtitlesOn && file.contentType.startsWith('video/')) {
+        file = await withSubtitles(file, user, label);
+        if (file.subtitlePreview && !subtitlePreview) subtitlePreview = file.subtitlePreview;
       }
       mediaItems.push(await uploadMedia(file.buffer, file.contentType, file.filename, apiKey));
     } catch (error) {
@@ -274,27 +257,40 @@ async function publish({ channel, message, user, command, caption, targets, skip
 }
 
 /**
- * Quick aspect-ratio guess: probe ffprobe if available, otherwise default to
- * landscape. Portrait = width < height.
+ * Burn the brand's captions into one video. Each brand uses its own style
+ * from users.json (user.subtitles.style); a brand with no style gets the
+ * neutral default look, never another brand's. Any failure posts the
+ * original video and logs why.
  */
-async function guessAspectRatio(buffer, contentType) {
+async function withSubtitles(file, user, label) {
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn(`⚠️  OPENAI_API_KEY not set; posting ${label} without subtitles`);
+    return file;
+  }
+  if (!(await ffmpegAvailable())) {
+    console.warn(`⚠️  ffmpeg not found; posting ${label} without subtitles`);
+    return file;
+  }
+  if (!user.subtitles?.style) {
+    console.warn(`⚠️  ${user.name || 'this user'} has no subtitle style yet; using the neutral default look`);
+  }
   try {
-    const { execFile } = await import('node:child_process');
-    const { promisify } = await import('node:util');
-    const { writeFileSync, rmSync, mkdtempSync } = await import('node:fs');
-    const { join } = await import('node:path');
-    const { tmpdir } = await import('node:os');
-    const execFileAsync = promisify(execFile);
-    const tmpDir = mkdtempSync(join(tmpdir(), 'tta-ar-'));
-    const ext = contentType.includes('quicktime') ? '.mov' : '.mp4';
-    const tmpFile = join(tmpDir, `v${ext}`);
-    writeFileSync(tmpFile, buffer);
-    const { stdout } = await execFileAsync('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', tmpFile]);
-    rmSync(tmpDir, { recursive: true, force: true });
-    const vs = JSON.parse(stdout).streams.find(s => s.codec_type === 'video');
-    return (vs && vs.width < vs.height) ? 'portrait' : 'landscape';
-  } catch {
-    return 'landscape';
+    const result = await processVideo(file.buffer, file.contentType, {
+      rawStyle: user.subtitles?.style || null,
+      vocabulary: user.subtitles?.vocabulary || [],
+      filename: file.filename
+    });
+    console.log(`🎬 Subtitles burned into ${label} (${result.aspectRatio})`);
+    return {
+      ...file,
+      buffer: result.videoBuffer,
+      contentType: 'video/mp4',
+      filename: String(file.filename || 'video').replace(/\.[^.]+$/, '') + '.mp4',
+      subtitlePreview: result.previewBuffer
+    };
+  } catch (subErr) {
+    console.error(`⚠️  Subtitle error for ${label}: ${subErr.message} — posting original`);
+    return file;
   }
 }
 
