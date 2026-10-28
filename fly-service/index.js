@@ -53,7 +53,8 @@ app.get('/', (req, res) => {
       emailOut: Boolean(process.env.EMAILIT_API_KEY),
       emailInbound: Boolean(process.env.EMAILIT_WEBHOOK_SECRET),
       zernio: Boolean(process.env.ZERNIO_API_KEY),
-      zernioWebhook: Boolean(process.env.ZERNIO_WEBHOOK_SECRET)
+      zernioWebhook: Boolean(process.env.ZERNIO_WEBHOOK_SECRET),
+      envAllowlistEnforced: String(process.env.ENFORCE_ENV_ALLOWLIST || '').trim().toLowerCase() === 'true'
     }
   });
 });

@@ -16,6 +16,63 @@ import fetch from 'node-fetch';
 
 const env = name => process.env[name];
 export const DEFAULT_FROM = 'Attention Earned <post@attentionearned.com>';
+
+// ---------------------------------------------------------------------------
+// Address env values (EMAIL_FROM, EMAIL_REPLY_TO) are pasted into dashboards by
+// hand, so they often arrive with stray spaces or the quotes from a shell
+// command saved as part of the value ("Attention Earned <post@...>" with the
+// quotes). Emailit refuses those with 400 "Invalid from email address", so we
+// clean them up here and fall back to a safe default instead of failing.
+// ---------------------------------------------------------------------------
+const BARE_ADDRESS = /^[^\s@<>",;]+@[^\s@<>",;]+\.[^\s@<>",;]+$/;
+const warned = new Set();
+
+/** Trim and remove matching surrounding quotes ("x", 'x', “x”), repeatedly. */
+export function cleanEnvString(value) {
+  let s = String(value ?? '').trim();
+  for (;;) {
+    const m = s.match(/^(["'\u201C\u2018])([\s\S]*)(["'\u201D\u2019])$/);
+    if (!m || s.length < 2) return s;
+    s = m[2].trim();
+  }
+}
+
+/**
+ * "addr@x.com" or "Name <addr@x.com>" (quotes around the name allowed) -> a clean
+ * address string, or null when it isn't one.
+ */
+export function normalizeAddress(value) {
+  const s = cleanEnvString(value);
+  if (!s) return null;
+  if (BARE_ADDRESS.test(s)) return s;
+  const m = s.match(/^([^<>]*?)\s*<\s*([^<>\s]+)\s*>$/);
+  if (!m || !BARE_ADDRESS.test(m[2])) return null;
+  const name = cleanEnvString(m[1]).replace(/["<>]/g, '').trim();
+  return name ? `${name} <${m[2]}>` : m[2];
+}
+
+/** Read an address env var; blank -> fallback; invalid -> fallback plus one warning. */
+export function addressFromEnv(name, fallback) {
+  const raw = env(name);
+  if (raw === undefined || String(raw).trim() === '') return fallback;
+  const clean = normalizeAddress(raw);
+  if (clean) return clean;
+  if (!warned.has(name)) {
+    warned.add(name);
+    console.warn(`⚠️  ${name} is not a valid email address (expected addr@domain or "Name <addr@domain>"); using ${fallback || 'no value'} instead`);
+  }
+  return fallback;
+}
+
+/** The From for every outgoing email: EMAIL_FROM cleaned up, else DEFAULT_FROM. */
+export function fromAddress() {
+  return addressFromEnv('EMAIL_FROM', DEFAULT_FROM);
+}
+
+/** Reply-To from EMAIL_REPLY_TO cleaned up, or undefined when unset/invalid. */
+export function replyToAddress() {
+  return addressFromEnv('EMAIL_REPLY_TO', undefined);
+}
 const TOLERANCE_SECONDS = 300;
 
 function apiBase() {

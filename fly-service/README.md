@@ -64,12 +64,19 @@ Zernio accounts (`accountId` from `GET https://zernio.com/api/v1/accounts`). A c
 own Zernio account gets `"apiKeyEnv": "ZERNIO_API_KEY_CLIENTNAME"` and that secret on Fly.
 Never put a key in this file.
 
+`users.json` is the allowlist: a sender who isn't in it can't post (and gets no email back).
+The old `ALLOWED_NUMBERS` / `ALLOWED_WHATSAPP_NUMBERS` / `ALLOWED_SENDERS` secrets are ignored
+unless `ENFORCE_ENV_ALLOWLIST=true`; then they are an extra filter on top of `users.json`, and the
+log says which check refused a sender.
+
 ## Environment
 
 See `.env.example`. Required for posting: `ZERNIO_API_KEY`, `TWILIO_ACCOUNT_SID`,
 `TWILIO_AUTH_TOKEN`. WhatsApp needs `TWILIO_WHATSAPP_FROM` (and `TWILIO_WA_TEMPLATE_POSTED_SID` for
 links that arrive after 24 h). Email needs `EMAILIT_API_KEY` (Full Access), `EMAILIT_WEBHOOK_SECRET`, `EMAIL_FROM`
-and `EMAIL_REPLY_TO`. SMS is off until `SMS_ENABLED=true` (with `TWILIO_FROM_NUMBER`).
+and `EMAIL_REPLY_TO` (both optional-ish: surrounding quotes/spaces are stripped, and an invalid
+`EMAIL_FROM` falls back to `Attention Earned <post@attentionearned.com>` with a warning in the log;
+in the Fly dashboard type values without quotes). SMS is off until `SMS_ENABLED=true` (with `TWILIO_FROM_NUMBER`).
 `LATE_API_KEY` is no longer used. `GET /` shows which of these are set (true/false, never values).
 
 ## WhatsApp (Twilio WhatsApp sender)
