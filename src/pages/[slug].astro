@@ -6,6 +6,7 @@ import type { GetStaticPaths } from 'astro';
 export const getStaticPaths: GetStaticPaths = async () => {
   const entries = await getCollection('pages');
   return entries
+    .filter(entry => entry.id !== 'about')
     .map(entry => ({
       params: { slug: entry.id },
       props: { entry },
