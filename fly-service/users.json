@@ -14,6 +14,7 @@
         "enabled": false,
         "style": {
           "font": "Lilita One",
+          "bold": false,
           "textColor": "#FBF8F1",
           "activeColor": "#FC2C30",
           "outlineColor": "#000000",

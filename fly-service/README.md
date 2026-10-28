@@ -222,11 +222,33 @@ node --env-file=.env index.js
 
 Set `ZERNIO_BASE_URL` to point at a mock server for testing without posting.
 
+## Subtitles (burned-in captions)
+
+Add "with subtitles" (or "with captions") to a message to burn captions into its videos; "no subtitles"
+turns them off. A user with `"subtitles": { "enabled": true }` gets them by default.
+
+- Each brand has its own look in `users.json` under `subtitles.style` (font, `bold`, `textColor`,
+  `activeColor`, `outlineColor`, `outlineWidth`, `shadow`, `allCaps`, `punctuation`, plus `landscape` /
+  `portrait` blocks with `size`, `marginV`, `maxWordsPerLine`). Sizes are for a 1080p frame and scale
+  to the clip. A brand with no style gets a plain white/yellow Arial look, never another brand's.
+  `proposeStyleFromSite(url)` drafts a style from a client's website for you to approve.
+- `subtitles.vocabulary` fixes names the transcriber gets wrong: `[{ "find": "Zernyo", "replace": "Zernio" }]`.
+- The spoken word is highlighted in `activeColor`, the rest of the line stays in `textColor`.
+- Transcription: the audio is pulled out as mono 32 kbps MP3 (about 0.24 MB a minute) before it goes to
+  Whisper, so Whisper's 25 MB limit is about 100 minutes of speech; longer audio is sent in chunks.
+- Fonts: the Docker image installs ffmpeg and the fonts in `Dockerfile` (Lilita One, Montserrat,
+  Poppins, Anton, Bebas Neue, Lato, plus Liberation Sans for Arial). Add a client's font to that list
+  when their style uses another one, or libass falls back to a default font.
+- Needs `OPENAI_API_KEY` (`fly secrets set -a text-to-attention OPENAI_API_KEY=...`). Without it, or if
+  burning fails, the original video is posted and the reason is logged.
+- Memory: burning a 1080p/4K phone clip needs well over 512 MB, so `fly.toml` sets the machine to 2 GB.
+  `FFMPEG_THREADS` (default 2) caps ffmpeg's threads.
+
 ## Known limits
 
 - WhatsApp: free-form replies only within 24 h of the person's last message (template or email after
   that, see above). Media up to 16 MB; bigger videos need a link.
-- Videos from links are held in memory while uploading (512 MB machine); `MAX_LINK_MEDIA_MB` (default
+- Videos from links are held in memory while uploading (2 GB machine); `MAX_LINK_MEDIA_MB` (default
   250) caps them.
 - Queue mode uses the user's `zernioProfileId`. AttentionEarned's IG and LinkedIn live in a
   second Zernio profile, so for them prefer posting now or scheduling.
