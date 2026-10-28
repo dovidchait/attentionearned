@@ -1,0 +1,292 @@
+---
+import Base from '../layouts/Base.astro';
+import CtaBand from '../components/CtaBand.astro';
+---
+
+<Base
+  title="Text to Attention"
+  description="Send your clips and a voice note by WhatsApp or email. We turn them into short captioned videos in your brand, schedule them to your social accounts, and send you the live links."
+>
+  <section class="page-hero">
+    <div class="inner">
+      <div class="kicker">Text to Attention</div>
+      <h1 class="hero-title">You film it. We get it posted.</h1>
+      <p class="hero-body">
+        Most small organizations have someone filming on a phone and nobody with
+        time to edit or post. Send us the clips and a voice note about what
+        happened. We turn them into short videos for your accounts and send you
+        the links when they're live.
+      </p>
+    </div>
+  </section>
+
+  <section class="steps-section">
+    <div class="inner">
+
+      <div class="offer-card offer-card--featured">
+        <div class="offer-card__num">01</div>
+        <div class="offer-card__body">
+          <h2 class="offer-card__title">Send the clips</h2>
+          <p class="offer-card__desc">
+            WhatsApp or email us your videos, or a Dropbox or Google Drive link
+            for big files. Add a voice note or a few lines: what the event was,
+            who's talking, what you want people to do.
+          </p>
+        </div>
+      </div>
+
+      <div class="offer-card">
+        <div class="offer-card__num">02</div>
+        <div class="offer-card__body">
+          <h2 class="offer-card__title">We edit and caption</h2>
+          <p class="offer-card__desc">
+            We cut the clips into short vertical videos and add captions in your
+            brand's colors and font, set up once with you. Your posts look like
+            your organization, not like everyone else's.
+          </p>
+        </div>
+      </div>
+
+      <div class="offer-card">
+        <div class="offer-card__num">03</div>
+        <div class="offer-card__body">
+          <h2 class="offer-card__title">Scheduled to your accounts</h2>
+          <p class="offer-card__desc">
+            The videos go out on your social accounts on a schedule, so there's
+            something new every week. When each post is live you get a message
+            back with the link for every platform, and a note if one didn't go
+            through.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="fit-section">
+    <div class="inner">
+      <h2 class="section-title">Who it's for</h2>
+      <p class="offer-card__desc">
+        Nonprofits and small organizations that have real moments on camera
+        (programs, events, volunteers, the people they serve) and no one on staff
+        to turn them into posts. If you need a fundraising film or a full
+        campaign, that's a different job. See the
+        <a href="/npo" class="proof-link">other ways we work with nonprofits</a>.
+      </p>
+      <p class="offer-card__for">
+        <span class="for-label">Text updates:</span>
+        To get post confirmations and live links by text,
+        <a href="/sms" class="proof-link">opt in here</a>.
+      </p>
+    </div>
+  </section>
+
+  <CtaBand
+    heading="Have footage sitting on a phone?"
+    accentPhrase="Tell us about it."
+    body="A short call covers your accounts, your brand look, and how often you want to post."
+    primaryLabel="Ask about Text to Attention"
+    primaryHref="/contact?ref=text-to-attention"
+    secondaryLabel="Text updates opt-in"
+    secondaryHref="/sms"
+  />
+</Base>
+
+<style>
+  .steps-section {
+    padding-bottom: 2.5rem;
+  }
+
+  .fit-section {
+    padding: 2.5rem 0 5rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .fit-section .inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .section-title {
+    font-size: 1.65rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.02em;
+    line-height: 1.18;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* Hero */
+  .page-hero {
+    padding: clamp(4.5rem, 9vw, 7rem) 0 2.5rem;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    margin-bottom: 20px;
+  }
+
+  .hero-title {
+    font-size: clamp(2.4rem, 1.6rem + 3vw, 3.6rem);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.05;
+    color: var(--text-strong);
+    margin: 0 0 22px;
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+
+  .hero-body {
+    font-size: 1.12rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    margin: 0;
+    max-width: 58ch;
+  }
+
+  /* Offers */
+  .offers-section {
+    padding-bottom: 5rem;
+  }
+
+  .offer-card {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 32px;
+    padding: 2.5rem 0;
+    border-top: 1px solid var(--border-subtle);
+    align-items: start;
+  }
+
+  .offer-card--featured {
+    border-top-color: var(--accent);
+  }
+
+  .offer-card__num {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    color: var(--text-faint);
+    padding-top: 6px;
+  }
+
+  .offer-card--featured .offer-card__num {
+    color: var(--accent-soft);
+  }
+
+  .offer-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .offer-card__title {
+    font-size: 1.65rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.02em;
+    line-height: 1.18;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .offer-card__desc {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-body);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .offer-card__for {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .for-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-right: 0.5rem;
+  }
+
+  .offer-card__proof {
+    margin: 0;
+  }
+
+  .proof-link {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    color: var(--accent-soft);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .proof-link:hover {
+    color: var(--accent);
+  }
+
+  .offer-card__footer {
+    padding-top: 0.25rem;
+  }
+
+  /* Button styles */
+  .ae-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .ae-btn--md {
+    font-size: var(--fs-sm);
+    padding: 0.65rem 1.4rem;
+    letter-spacing: 0.03em;
+  }
+
+  .ae-btn--primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .ae-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252, 44, 48, 0.7), 0 0 0 1px rgba(252, 44, 48, 0.4);
+  }
+
+  @media (max-width: 640px) {
+    .offer-card {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .offer-card__num {
+      padding-top: 0;
+    }
+  }
+</style>
