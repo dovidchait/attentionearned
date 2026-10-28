@@ -30,7 +30,7 @@ const TZ_ABBREVIATIONS = {
   UTC: 'UTC', GMT: 'UTC'
 };
 
-const COMMAND_PHRASE = /(?:post to|add to queue|post now|publish now|schedule:|post at)[^\n]*/gi;
+const COMMAND_PHRASE = /(?:post to|add to queue|post now|publish now|schedule:|post at|with (?:subtitles?|captions?|subs?)|no (?:subtitles?|captions?|subs?))[^\n]*/gi;
 
 export function parseCommand(subject = '', text = '', defaultTimezone = 'America/New_York') {
   const content = `${subject}\n${text}`;
@@ -77,7 +77,12 @@ export function parseCommand(subject = '', text = '', defaultTimezone = 'America
     if (scheduledFor) publishingMode = 'schedule';
   }
 
-  return { platforms: [...platforms], groups: [...groups], postToAll, publishingMode, scheduledFor, timezone };
+  // subtitles flag: "with subtitles/captions/subs" = on; "no subtitles/captions/subs" = off; absent = null (use user default)
+  let subtitles = null;
+  if (/\bwith\s+(?:subtitles?|captions?|subs?)\b/i.test(content)) subtitles = true;
+  else if (/\bno\s+(?:subtitles?|captions?|subs?)\b/i.test(content)) subtitles = false;
+
+  return { platforms: [...platforms], groups: [...groups], postToAll, publishingMode, scheduledFor, timezone, subtitles };
 }
 
 /** Remove command lines from the caption. */

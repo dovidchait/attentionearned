@@ -10,6 +10,25 @@
       "timezone": "America/New_York",
       "apiKeyEnv": "ZERNIO_API_KEY",
       "zernioProfileId": "68dad1bfe2de3b9d7f99ae26",
+      "subtitles": {
+        "enabled": false,
+        "style": {
+          "font": "Lilita One",
+          "textColor": "#FBF8F1",
+          "activeColor": "#FC2C30",
+          "outlineColor": "#000000",
+          "outlineWidth": 7,
+          "shadow": false,
+          "allCaps": true,
+          "punctuation": false,
+          "landscape": { "size": 84, "marginV": 190, "maxWordsPerLine": 4 },
+          "portrait":  { "size": 92, "marginV": 430, "maxWordsPerLine": 3 }
+        },
+        "vocabulary": [
+          { "find": "Zernyo",  "replace": "Zernio" },
+          { "find": "zernia",  "replace": "Zernio" }
+        ]
+      },
       "accounts": [
         {
           "label": "IG @dovid_chait",
