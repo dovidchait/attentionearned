@@ -1,0 +1,264 @@
+---
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Content Calendar — Studio"
+  description="View and manage your scheduled and published posts."
+  noNav={true}
+  noFooter={true}
+>
+  <div class="studio-shell">
+    <header class="studio-top">
+      <a href="/" class="studio-wordmark">
+        <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      </a>
+      <span class="studio-badge">Studio</span>
+      <nav class="studio-nav">
+        <a href="/studio">Home</a>
+        <a href="/studio/dashboard" aria-current="page">Calendar</a>
+        <a href="/studio/create">Create</a>
+        <a href="/studio/connect">Accounts</a>
+        <a href="/studio/settings">Settings</a>
+      </nav>
+      <a href="/studio/create" class="btn-primary ml-auto">+ New post</a>
+    </header>
+
+    <main class="dash-main">
+      <div class="dash-toolbar">
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-tab active" data-status="all">All</button>
+          <button class="filter-tab" data-status="scheduled">Scheduled</button>
+          <button class="filter-tab" data-status="published">Published</button>
+          <button class="filter-tab" data-status="failed">Failed</button>
+        </div>
+        <button class="btn-ghost" id="refreshBtn">Refresh</button>
+      </div>
+
+      <div id="postsList" class="posts-list">
+        <div class="loading-state">Loading posts…</div>
+      </div>
+    </main>
+  </div>
+</Base>
+
+<script>
+  const PROFILE_KEY = 'ae_studio_profile_id';
+  const profileId = (() => { try { return localStorage.getItem(PROFILE_KEY) ?? ''; } catch { return ''; } })();
+
+  const postsList = document.getElementById('postsList') as HTMLDivElement;
+  const filterTabs = document.querySelectorAll<HTMLButtonElement>('.filter-tab');
+  const refreshBtn = document.getElementById('refreshBtn') as HTMLButtonElement;
+
+  let currentStatus = 'all';
+
+  async function loadPosts() {
+    postsList.innerHTML = '<div class="loading-state">Loading…</div>';
+    try {
+      const params = new URLSearchParams({ limit: '100' });
+      if (profileId) params.set('profileId', profileId);
+      if (currentStatus !== 'all') params.set('status', currentStatus);
+
+      const res = await fetch(`/api/zernio/posts?${params.toString()}`);
+      const data = await res.json() as {
+        posts?: ZernioPost[];
+        error?: string;
+      };
+
+      if (!res.ok) throw new Error(data.error ?? 'Failed to load posts');
+      renderPosts(data.posts ?? []);
+    } catch (err) {
+      postsList.innerHTML = `<div class="error-state">${(err as Error).message}</div>`;
+    }
+  }
+
+  interface ZernioPost {
+    _id?: string;
+    id?: string;
+    content?: string;
+    scheduledFor?: string;
+    publishedAt?: string;
+    status?: string;
+    platforms?: Array<{
+      platform?: string;
+      status?: string;
+      platformPostUrl?: string;
+      accountId?: { username?: string } | string;
+    }>;
+    mediaItems?: Array<{ url?: string; type?: string }>;
+  }
+
+  function renderPosts(posts: ZernioPost[]) {
+    if (!posts.length) {
+      postsList.innerHTML = `
+        <div class="empty-state">
+          <p>No posts found.</p>
+          <a href="/studio/create" class="btn-primary">Create your first post</a>
+        </div>`;
+      return;
+    }
+
+    postsList.innerHTML = posts.map(post => {
+      const id = post._id ?? post.id ?? '';
+      const when = post.scheduledFor ?? post.publishedAt ?? '';
+      const date = when ? new Date(when).toLocaleString('en-US', {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      }) : '—';
+      const status = post.status ?? 'unknown';
+      const caption = (post.content ?? '').slice(0, 120);
+      const platforms = (post.platforms ?? [])
+        .map(p => p.platform)
+        .filter(Boolean)
+        .join(', ');
+      const thumb = post.mediaItems?.[0]?.url;
+
+      return `
+        <div class="post-row" data-id="${id}">
+          ${thumb ? `<div class="post-thumb" style="background-image:url('${thumb}')"></div>` : '<div class="post-thumb post-thumb--empty"></div>'}
+          <div class="post-body">
+            <p class="post-caption">${caption || '(no caption)'}${caption.length === 120 ? '…' : ''}</p>
+            <div class="post-meta">
+              <span class="post-platforms">${platforms || '—'}</span>
+              <span class="post-date">${date}</span>
+              <span class="status-badge status-badge--${status}">${status}</span>
+            </div>
+          </div>
+          <div class="post-actions">
+            ${status === 'scheduled' ? `<button class="btn-icon delete-btn" data-id="${id}" title="Cancel post">✕</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Wire delete buttons
+    postsList.querySelectorAll<HTMLButtonElement>('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pid = btn.dataset.id;
+        if (!pid || !confirm('Cancel this scheduled post?')) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/zernio/posts?postId=${encodeURIComponent(pid)}`, { method: 'DELETE' });
+          if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+          await loadPosts();
+        } catch (err) {
+          alert((err as Error).message);
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentStatus = tab.dataset.status ?? 'all';
+      loadPosts();
+    });
+  });
+
+  refreshBtn.addEventListener('click', loadPosts);
+
+  loadPosts();
+</script>
+
+<style>
+  .studio-shell { min-height: 100vh; background: var(--surface-base); }
+  .studio-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 24px; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;
+  }
+  .studio-badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); background: var(--surface-card);
+    border: 1px solid var(--border-mid); padding: 2px 8px; border-radius: 4px;
+  }
+  .studio-nav { display: flex; gap: 20px; }
+  .studio-nav a { font-size: 0.875rem; color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+  .studio-nav a:hover, .studio-nav a[aria-current] { color: var(--text-strong); }
+  .ml-auto { margin-left: auto; }
+
+  .dash-main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+
+  .dash-toolbar {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .filter-tabs { display: flex; gap: 4px; }
+  .filter-tab {
+    background: none; border: 1px solid var(--border-mid); color: var(--text-muted);
+    padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-tab.active, .filter-tab:hover { border-color: var(--accent); color: var(--text-strong); }
+  .filter-tab.active { background: var(--accent-quiet); }
+
+  .loading-state, .error-state {
+    text-align: center; padding: 60px 0; color: var(--text-muted); font-size: 0.9rem;
+  }
+  .error-state { color: var(--ae-coral); }
+
+  .empty-state {
+    text-align: center; padding: 60px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .empty-state p { color: var(--text-muted); }
+
+  .posts-list { display: flex; flex-direction: column; gap: 2px; }
+
+  .post-row {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface-card); border: 1px solid var(--border-subtle);
+    border-radius: 10px; padding: 14px 16px; transition: border-color 0.15s;
+  }
+  .post-row:hover { border-color: var(--border-mid); }
+
+  .post-thumb {
+    width: 56px; height: 56px; border-radius: 6px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+    background-color: var(--surface-inset);
+  }
+  .post-thumb--empty { background-color: var(--ink-700); }
+
+  .post-body { flex: 1; min-width: 0; }
+  .post-caption {
+    font-size: 0.875rem; color: var(--text-body); margin-bottom: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .post-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .post-platforms { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .post-date { font-size: 0.75rem; color: var(--text-faint); }
+
+  .status-badge {
+    font-size: 0.7rem; font-weight: var(--fw-semibold); text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 8px; border-radius: 4px;
+  }
+  .status-badge--scheduled { background: rgba(79,191,139,0.12); color: var(--ok); }
+  .status-badge--published { background: rgba(79,191,139,0.2); color: var(--ok); }
+  .status-badge--failed { background: rgba(252,44,48,0.1); color: var(--ae-coral); }
+  .status-badge--unknown, .status-badge--processing { background: rgba(233,185,73,0.12); color: var(--warn); }
+
+  .post-actions { flex-shrink: 0; }
+  .btn-icon {
+    background: none; border: 1px solid var(--border-mid); color: var(--text-faint);
+    width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-icon:hover { border-color: var(--ae-red); color: var(--ae-red); }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; background: var(--grad-cta); color: #fff;
+    font-weight: var(--fw-semibold); padding: 10px 22px; border-radius: 8px;
+    text-decoration: none; font-size: 0.9rem; border: none; cursor: pointer;
+    box-shadow: var(--glow-cta); transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; border: 1px solid var(--border-mid);
+    color: var(--text-body); font-weight: var(--fw-medium); padding: 8px 18px;
+    border-radius: 8px; background: none; cursor: pointer;
+    font-size: 0.875rem; transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); color: var(--text-strong); }
+</style>

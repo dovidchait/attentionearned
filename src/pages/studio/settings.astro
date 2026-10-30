@@ -1,0 +1,240 @@
+---
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Settings — Studio"
+  description="Configure your org's voice, campaign context, and preferences."
+  noNav={true}
+  noFooter={true}
+>
+  <div class="studio-shell">
+    <header class="studio-top">
+      <a href="/" class="studio-wordmark">
+        <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      </a>
+      <span class="studio-badge">Studio</span>
+      <nav class="studio-nav">
+        <a href="/studio">Home</a>
+        <a href="/studio/dashboard">Calendar</a>
+        <a href="/studio/create">Create</a>
+        <a href="/studio/connect">Accounts</a>
+        <a href="/studio/settings" aria-current="page">Settings</a>
+      </nav>
+    </header>
+
+    <main class="settings-main">
+      <h1>Settings</h1>
+      <p class="settings-sub">These values pre-fill the create flow so you don't type them every time.</p>
+
+      <form id="settingsForm" class="settings-form">
+        <section class="settings-section">
+          <h2>Organization</h2>
+          <div class="field">
+            <label for="orgName">Organization name</label>
+            <input type="text" id="orgName" name="orgName" placeholder="e.g. Greenfield Community Center" />
+          </div>
+          <div class="field">
+            <label for="profileId">Zernio profile ID</label>
+            <input type="text" id="profileId" name="profileId" placeholder="64f2…" autocomplete="off" />
+            <small>Your profile ID from the <a href="/studio/connect">Accounts</a> page.</small>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h2>Campaign context</h2>
+          <p class="section-note">
+            Used to fill in Day X/30 and other campaign-aware caption prompts.
+          </p>
+          <div class="field">
+            <label for="campaignName">Current campaign name</label>
+            <input type="text" id="campaignName" name="campaignName" placeholder="e.g. 30-day story sprint" />
+          </div>
+          <div class="field">
+            <label for="dayNumber">Current day number</label>
+            <input type="number" id="dayNumber" name="dayNumber" min="1" max="365" placeholder="1" />
+          </div>
+          <div class="field">
+            <label for="campaignTotal">Total days</label>
+            <input type="number" id="campaignTotal" name="campaignTotal" min="1" max="365" placeholder="30" />
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h2>Voice &amp; tone</h2>
+          <p class="section-note">
+            Pasted into the caption prompt to guide Claude's writing style.
+          </p>
+          <div class="field">
+            <label for="voiceNotes">Voice notes</label>
+            <textarea
+              id="voiceNotes"
+              name="voiceNotes"
+              rows="4"
+              placeholder="e.g. Warm but direct. No jargon. Lead with a specific moment, not a mission statement. We talk to donors like people, not wallets."
+            ></textarea>
+          </div>
+          <div class="field">
+            <label for="creditsDefault">Default people to mention (credits)</label>
+            <input
+              type="text"
+              id="creditsDefault"
+              name="creditsDefault"
+              placeholder="e.g. Sarah (director), Josh (volunteer)"
+            />
+            <small>First names only. Claude will add them to captions when relevant.</small>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h2>Ideogram graphics</h2>
+          <div class="field">
+            <label for="ideogramStyle">Default image style</label>
+            <select id="ideogramStyle" name="ideogramStyle">
+              <option value="REALISTIC">Realistic</option>
+              <option value="DESIGN">Design / Graphic</option>
+              <option value="ILLUSTRATION">Illustration</option>
+              <option value="RENDER_3D">3D Render</option>
+              <option value="ANIME">Anime</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ideogramAspect">Default aspect ratio</label>
+            <select id="ideogramAspect" name="ideogramAspect">
+              <option value="ASPECT_1_1">1:1 (Instagram square)</option>
+              <option value="ASPECT_9_16">9:16 (Reels / TikTok)</option>
+              <option value="ASPECT_16_9">16:9 (YouTube / LinkedIn)</option>
+              <option value="ASPECT_4_5">4:5 (Instagram portrait)</option>
+            </select>
+          </div>
+        </section>
+
+        <div class="settings-actions">
+          <button type="submit" class="btn-primary">Save settings</button>
+          <span id="saveStatus" class="status-line"></span>
+        </div>
+      </form>
+    </main>
+  </div>
+</Base>
+
+<script>
+  const SETTINGS_KEY = 'ae_studio_settings';
+
+  type Settings = {
+    orgName: string;
+    profileId: string;
+    campaignName: string;
+    dayNumber: string;
+    campaignTotal: string;
+    voiceNotes: string;
+    creditsDefault: string;
+    ideogramStyle: string;
+    ideogramAspect: string;
+  };
+
+  function loadSettings(): Settings {
+    try {
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') as Settings;
+    } catch {
+      return {} as Settings;
+    }
+  }
+
+  function saveSettings(s: Settings) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch { /* ok */ }
+  }
+
+  const form = document.getElementById('settingsForm') as HTMLFormElement;
+  const saveStatus = document.getElementById('saveStatus') as HTMLSpanElement;
+  const fields = ['orgName','profileId','campaignName','dayNumber','campaignTotal',
+                  'voiceNotes','creditsDefault','ideogramStyle','ideogramAspect'];
+
+  // Populate from saved values
+  const saved = loadSettings();
+  fields.forEach(id => {
+    const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+    if (el && saved[id as keyof Settings]) el.value = saved[id as keyof Settings];
+  });
+
+  // Also sync profileId from the profile key if set
+  const profileKeyVal = (() => { try { return localStorage.getItem('ae_studio_profile_id') ?? ''; } catch { return ''; } })();
+  const pidEl = document.getElementById('profileId') as HTMLInputElement;
+  if (!pidEl.value && profileKeyVal) pidEl.value = profileKeyVal;
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {} as Settings;
+    fields.forEach(id => {
+      const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (el) data[id as keyof Settings] = el.value;
+    });
+    saveSettings(data);
+
+    // Sync profileId to the standalone key
+    if (data.profileId) {
+      try { localStorage.setItem('ae_studio_profile_id', data.profileId); } catch { /* ok */ }
+    }
+
+    saveStatus.textContent = 'Saved.';
+    setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+  });
+</script>
+
+<style>
+  .studio-shell { min-height: 100vh; background: var(--surface-base); }
+  .studio-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 24px; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;
+  }
+  .studio-badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); background: var(--surface-card);
+    border: 1px solid var(--border-mid); padding: 2px 8px; border-radius: 4px;
+  }
+  .studio-nav { display: flex; gap: 20px; }
+  .studio-nav a { font-size: 0.875rem; color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+  .studio-nav a:hover, .studio-nav a[aria-current] { color: var(--text-strong); }
+
+  .settings-main { max-width: 680px; margin: 0 auto; padding: 48px 24px; }
+  .settings-main h1 {
+    font-size: 1.75rem; font-weight: var(--fw-bold); color: var(--text-strong); margin-bottom: 8px;
+  }
+  .settings-sub { color: var(--text-muted); margin-bottom: 40px; }
+
+  .settings-section { margin-bottom: 40px; }
+  .settings-section h2 {
+    font-size: 1rem; font-weight: var(--fw-semibold); color: var(--text-strong);
+    margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .section-note { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 16px; }
+
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block; font-size: 0.875rem; font-weight: var(--fw-medium);
+    color: var(--text-body); margin-bottom: 6px;
+  }
+  .field small { display: block; font-size: 0.775rem; color: var(--text-faint); margin-top: 5px; }
+  .field small a { color: var(--accent); text-decoration: none; }
+  .field small a:hover { text-decoration: underline; }
+
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%; background: var(--surface-card); border: 1px solid var(--border-mid);
+    color: var(--text-strong); padding: 10px 14px; border-radius: 8px;
+    font-size: 0.9rem; font-family: var(--font-sans); transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; }
+  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%236F685C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+  .settings-actions { display: flex; align-items: center; gap: 16px; padding-top: 16px; }
+  .status-line { font-size: 0.8rem; color: var(--ok); }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; background: var(--grad-cta); color: #fff;
+    font-weight: var(--fw-semibold); padding: 12px 28px; border-radius: 8px;
+    font-size: 0.95rem; border: none; cursor: pointer; box-shadow: var(--glow-cta); transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+</style>

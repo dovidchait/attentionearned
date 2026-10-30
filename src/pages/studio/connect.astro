@@ -1,0 +1,322 @@
+---
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+
+const connected = Astro.url.searchParams.get('connected') === '1';
+const connectError = Astro.url.searchParams.get('error');
+const connectToken = Astro.url.searchParams.get('connect_token');
+const selectStep = Astro.url.searchParams.get('step');
+const urlProfileId = Astro.url.searchParams.get('profileId') ?? '';
+---
+
+<Base
+  title="Connect Accounts — Studio"
+  description="Connect your social accounts to schedule posts."
+  noNav={true}
+  noFooter={true}
+>
+  <div class="studio-shell">
+    <header class="studio-top">
+      <a href="/" class="studio-wordmark">
+        <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      </a>
+      <span class="studio-badge">Studio</span>
+      <nav class="studio-nav">
+        <a href="/studio">Home</a>
+        <a href="/studio/dashboard">Calendar</a>
+        <a href="/studio/create">Create</a>
+        <a href="/studio/connect" aria-current="page">Accounts</a>
+        <a href="/studio/settings">Settings</a>
+      </nav>
+    </header>
+
+    <main class="connect-main">
+      <h1>Social accounts</h1>
+      <p class="connect-sub">Connect accounts once. They're available every time you create.</p>
+
+      {connected && (
+        <div class="alert alert--ok">Account connected successfully.</div>
+      )}
+      {connectError && (
+        <div class="alert alert--err">
+          Connection error: {connectError.replace(/_/g, ' ')}. Please try again.
+        </div>
+      )}
+
+      <!-- Profile setup (one-time) -->
+      <section class="setup-section" id="profileSetup">
+        <h2>Your profile</h2>
+        <p class="setup-note">
+          Your Zernio profile ID scopes your connected accounts.
+          It's stored in your browser — paste it from a previous session or provision a new one.
+        </p>
+        <div class="setup-row">
+          <input
+            type="text"
+            id="profileIdInput"
+            placeholder="profile_id (e.g. 64f2…)"
+            value={urlProfileId}
+            autocomplete="off"
+          />
+          <button class="btn-primary" id="provisionBtn">Provision new profile</button>
+        </div>
+        <p id="provisionStatus" class="status-line"></p>
+      </section>
+
+      <!-- Select step (if Zernio returned one, e.g. pick a Facebook page) -->
+      {selectStep && connectToken && (
+        <section class="select-section">
+          <h2>One more step</h2>
+          <p>Zernio needs you to pick a page or account to complete the connection.</p>
+          <div class="select-form" id="selectForm"
+            data-token={connectToken}
+            data-step={selectStep}
+          >
+            <input type="text" id="selectionInput" placeholder="Enter page ID or name" />
+            <button class="btn-primary" id="selectBtn">Confirm</button>
+          </div>
+          <p id="selectStatus" class="status-line"></p>
+        </section>
+      )}
+
+      <!-- Connected accounts list -->
+      <section class="accounts-section">
+        <h2>Connected accounts</h2>
+        <div id="accountsList" class="accounts-list">
+          <p class="loading">Enter your profile ID above and click "Load accounts".</p>
+        </div>
+        <button class="btn-ghost" id="loadAccountsBtn">Load accounts</button>
+      </section>
+
+      <!-- Add new account -->
+      <section class="add-section">
+        <h2>Add an account</h2>
+        <div class="platform-grid">
+          {['instagram','facebook','tiktok','linkedin','twitter','youtube','pinterest'].map(p => (
+            <button class="platform-btn" data-platform={p}>{p}</button>
+          ))}
+        </div>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<script>
+  const PROFILE_KEY = 'ae_studio_profile_id';
+
+  const profileInput = document.getElementById('profileIdInput') as HTMLInputElement;
+  const provisionBtn = document.getElementById('provisionBtn') as HTMLButtonElement;
+  const provisionStatus = document.getElementById('provisionStatus') as HTMLParagraphElement;
+  const loadAccountsBtn = document.getElementById('loadAccountsBtn') as HTMLButtonElement;
+  const accountsList = document.getElementById('accountsList') as HTMLDivElement;
+  const platformBtns = document.querySelectorAll<HTMLButtonElement>('.platform-btn');
+
+  // Restore saved profileId
+  const saved = (() => { try { return localStorage.getItem(PROFILE_KEY) ?? ''; } catch { return ''; } })();
+  if (!profileInput.value && saved) profileInput.value = saved;
+
+  function saveProfileId(id: string) {
+    profileInput.value = id;
+    try { localStorage.setItem(PROFILE_KEY, id); } catch { /* ok */ }
+  }
+
+  function profileId() { return profileInput.value.trim(); }
+
+  provisionBtn.addEventListener('click', async () => {
+    const orgName = prompt('Enter your org or account name for this profile:');
+    if (!orgName) return;
+    provisionBtn.disabled = true;
+    provisionStatus.textContent = 'Provisioning…';
+    try {
+      const res = await fetch('/api/zernio/provision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ externalId: `studio_${Date.now()}`, name: orgName }),
+      });
+      const data = await res.json() as { profileId?: string; error?: string };
+      if (!res.ok || !data.profileId) throw new Error(data.error ?? 'No profile ID returned');
+      saveProfileId(data.profileId);
+      provisionStatus.textContent = `Profile ready: ${data.profileId}`;
+    } catch (err) {
+      provisionStatus.textContent = `Error: ${(err as Error).message}`;
+    } finally {
+      provisionBtn.disabled = false;
+    }
+  });
+
+  loadAccountsBtn.addEventListener('click', async () => {
+    const pid = profileId();
+    if (!pid) { accountsList.innerHTML = '<p class="err">Enter a profile ID first.</p>'; return; }
+    accountsList.innerHTML = '<p class="loading">Loading…</p>';
+    try {
+      const res = await fetch(`/api/content/accounts?profileId=${encodeURIComponent(pid)}`);
+      const data = await res.json() as { accounts?: Array<{ id: string; platform: string; username: string }>; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to load accounts');
+      if (!data.accounts?.length) {
+        accountsList.innerHTML = '<p class="muted">No accounts connected yet. Add one below.</p>';
+        return;
+      }
+      accountsList.innerHTML = data.accounts.map(a => `
+        <div class="account-row">
+          <span class="account-platform">${a.platform}</span>
+          <span class="account-username">${a.username}</span>
+        </div>
+      `).join('');
+    } catch (err) {
+      accountsList.innerHTML = `<p class="err">${(err as Error).message}</p>`;
+    }
+  });
+
+  platformBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pid = profileId();
+      if (!pid) { alert('Enter or provision a profile ID first.'); return; }
+      const platform = btn.dataset.platform;
+      window.location.href = `/api/zernio/connect?platform=${platform}&profileId=${encodeURIComponent(pid)}`;
+    });
+  });
+
+  // Select step handler
+  const selectForm = document.getElementById('selectForm');
+  const selectBtn = document.getElementById('selectBtn') as HTMLButtonElement | null;
+  const selectStatus = document.getElementById('selectStatus') as HTMLParagraphElement | null;
+  const selectionInput = document.getElementById('selectionInput') as HTMLInputElement | null;
+
+  selectBtn?.addEventListener('click', async () => {
+    const token = selectForm?.dataset.token;
+    const step = selectForm?.dataset.step;
+    const selection = selectionInput?.value.trim();
+    if (!token || !step || !selection) return;
+    selectBtn.disabled = true;
+    if (selectStatus) selectStatus.textContent = 'Confirming…';
+    try {
+      const res = await fetch('/api/zernio/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectToken: token, step, selection, profileId: profileId() }),
+      });
+      const data = await res.json() as { nextStep?: string; done?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Select step failed');
+      if (data.done || !data.nextStep) {
+        window.location.href = `/studio/connect?connected=1&profileId=${encodeURIComponent(profileId())}`;
+      } else {
+        if (selectStatus) selectStatus.textContent = `Next step: ${data.nextStep}`;
+      }
+    } catch (err) {
+      if (selectStatus) selectStatus.textContent = `Error: ${(err as Error).message}`;
+      selectBtn.disabled = false;
+    }
+  });
+
+  // Auto-load accounts if we already have a profileId
+  if (profileId()) loadAccountsBtn.click();
+</script>
+
+<style>
+  .studio-shell { min-height: 100vh; background: var(--surface-base); }
+
+  .studio-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
+  }
+  .studio-badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted);
+    background: var(--surface-card); border: 1px solid var(--border-mid);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .studio-nav { display: flex; gap: 20px; margin-left: auto; }
+  .studio-nav a {
+    font-size: 0.875rem; color: var(--text-muted); text-decoration: none;
+    transition: color 0.15s;
+  }
+  .studio-nav a:hover, .studio-nav a[aria-current] { color: var(--text-strong); }
+
+  .connect-main {
+    max-width: 720px; margin: 0 auto; padding: 48px 24px;
+  }
+  .connect-main h1 {
+    font-size: 1.75rem; font-weight: var(--fw-bold); color: var(--text-strong);
+    margin-bottom: 8px;
+  }
+  .connect-sub { color: var(--text-muted); margin-bottom: 40px; }
+
+  .alert {
+    padding: 12px 16px; border-radius: 8px; margin-bottom: 24px;
+    font-size: 0.9rem;
+  }
+  .alert--ok { background: rgba(79,191,139,0.12); color: var(--ok); border: 1px solid rgba(79,191,139,0.25); }
+  .alert--err { background: rgba(252,44,48,0.1); color: var(--ae-coral); border: 1px solid rgba(252,44,48,0.2); }
+
+  section { margin-bottom: 48px; }
+  section h2 {
+    font-size: 1rem; font-weight: var(--fw-semibold); color: var(--text-strong);
+    margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .setup-note { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 12px; }
+
+  .setup-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .setup-row input {
+    flex: 1; min-width: 200px;
+    background: var(--surface-card); border: 1px solid var(--border-mid);
+    color: var(--text-strong); padding: 10px 14px; border-radius: 8px;
+    font-size: 0.9rem; font-family: var(--font-mono);
+  }
+  .setup-row input:focus { outline: none; border-color: var(--accent); }
+
+  .status-line { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; min-height: 1em; }
+
+  .accounts-list { margin-bottom: 12px; }
+  .account-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border-subtle);
+  }
+  .account-platform {
+    font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); min-width: 80px;
+  }
+  .account-username { font-size: 0.9rem; color: var(--text-body); }
+
+  .loading, .muted, .err { font-size: 0.875rem; color: var(--text-muted); }
+  .err { color: var(--ae-coral); }
+
+  .platform-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .platform-btn {
+    background: var(--surface-card); border: 1px solid var(--border-mid);
+    color: var(--text-body); padding: 8px 18px; border-radius: 8px;
+    font-size: 0.875rem; font-weight: var(--fw-medium);
+    text-transform: capitalize; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  }
+  .platform-btn:hover { border-color: var(--accent); color: var(--text-strong); }
+
+  .select-form { display: flex; gap: 10px; flex-wrap: wrap; }
+  .select-form input {
+    flex: 1; min-width: 200px;
+    background: var(--surface-card); border: 1px solid var(--border-mid);
+    color: var(--text-strong); padding: 10px 14px; border-radius: 8px; font-size: 0.9rem;
+  }
+  .select-form input:focus { outline: none; border-color: var(--accent); }
+
+  .btn-primary {
+    display: inline-flex; align-items: center;
+    background: var(--grad-cta); color: #fff;
+    font-weight: var(--fw-semibold); padding: 10px 22px;
+    border-radius: 8px; text-decoration: none; font-size: 0.9rem;
+    border: none; cursor: pointer; box-shadow: var(--glow-cta); transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center;
+    border: 1px solid var(--border-mid); color: var(--text-body);
+    font-weight: var(--fw-medium); padding: 10px 22px;
+    border-radius: 8px; background: none; cursor: pointer;
+    font-size: 0.9rem; transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); color: var(--text-strong); }
+</style>

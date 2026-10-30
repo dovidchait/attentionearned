@@ -1,0 +1,206 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Studio — Attention Earned"
+  description="Create, transcribe, caption, and schedule your video content in one flow."
+  noNav={true}
+  noFooter={true}
+>
+  <div class="studio-shell">
+    <header class="studio-top">
+      <a href="/" class="studio-wordmark">
+        <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      </a>
+      <span class="studio-badge">Studio</span>
+    </header>
+
+    <main class="studio-landing">
+      <section class="sl-hero">
+        <h1>Your content, start to post,<br />in one place.</h1>
+        <p class="sl-sub">
+          Upload a video clip. Get a transcript and captions. Generate a graphic.
+          Schedule to Instagram, LinkedIn, TikTok and more — all without leaving this page.
+        </p>
+        <div class="sl-actions">
+          <a href="/studio/create" class="btn-primary btn-lg">Start creating</a>
+          <a href="/studio/dashboard" class="btn-ghost btn-lg">View calendar</a>
+        </div>
+      </section>
+
+      <section class="sl-steps">
+        <div class="sl-step">
+          <span class="sl-step-num">01</span>
+          <h3>Upload &amp; transcribe</h3>
+          <p>Paste a video URL or upload a file. AssemblyAI turns the audio into text in under a minute.</p>
+        </div>
+        <div class="sl-step">
+          <span class="sl-step-num">02</span>
+          <h3>Captions, done</h3>
+          <p>Claude writes story-first captions for Instagram, LinkedIn, and TikTok — no hype, no hashtags.</p>
+        </div>
+        <div class="sl-step">
+          <span class="sl-step-num">03</span>
+          <h3>Generate a graphic</h3>
+          <p>Describe the image you want. Ideogram renders it. Pick the one that fits.</p>
+        </div>
+        <div class="sl-step">
+          <span class="sl-step-num">04</span>
+          <h3>Schedule &amp; go</h3>
+          <p>Choose your connected accounts and a time. Zernio posts it — you get a link when it's live.</p>
+        </div>
+      </section>
+
+      <section class="sl-cta">
+        <p>Connect your accounts once, use them every time.</p>
+        <a href="/studio/connect" class="btn-ghost">Connect social accounts →</a>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<style>
+  .studio-shell {
+    min-height: 100vh;
+    background: var(--surface-base);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .studio-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .studio-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .studio-landing {
+    flex: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 80px 24px 64px;
+    width: 100%;
+  }
+
+  .sl-hero {
+    text-align: center;
+    margin-bottom: 80px;
+  }
+
+  .sl-hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: var(--fw-bold);
+    color: var(--text-strong);
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+
+  .sl-sub {
+    font-size: 1.125rem;
+    color: var(--text-body);
+    max-width: 560px;
+    margin: 0 auto 36px;
+    line-height: 1.6;
+  }
+
+  .sl-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .sl-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    margin-bottom: 64px;
+  }
+
+  .sl-step {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 28px 24px;
+  }
+
+  .sl-step-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .sl-step h3 {
+    font-size: 1rem;
+    font-weight: var(--fw-semibold);
+    color: var(--text-strong);
+    margin-bottom: 8px;
+  }
+
+  .sl-step p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .sl-cta {
+    text-align: center;
+    padding: 40px 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .sl-cta p {
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  /* reuse site button tokens */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    background: var(--grad-cta);
+    color: #fff;
+    font-weight: var(--fw-semibold);
+    padding: 12px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    box-shadow: var(--glow-cta);
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-mid);
+    color: var(--text-body);
+    font-weight: var(--fw-medium);
+    padding: 12px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); color: var(--text-strong); }
+
+  .btn-lg { padding: 14px 32px; font-size: 1rem; }
+</style>

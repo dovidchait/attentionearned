@@ -14,6 +14,8 @@ interface PostBody {
   videoUrl: string;
   platforms: PlatformPost[];  // each entry is one account + its caption
   scheduledFor: string;       // ISO 8601
+  profileId?: string;
+  imageUrl?: string;          // optional graphic from Ideogram
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -27,7 +29,7 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'Invalid request body.' }, 400);
   }
 
-  const { videoUrl, platforms, scheduledFor } = body;
+  const { videoUrl, platforms, scheduledFor, profileId, imageUrl } = body;
 
   if (!videoUrl?.trim()) return json({ error: 'videoUrl is required.' }, 400);
   if (!platforms?.length) return json({ error: 'At least one platform/account is required.' }, 400);
@@ -51,12 +53,18 @@ export const POST: APIRoute = async ({ request }) => {
   const errors: string[] = [];
 
   for (const [caption, accountIds] of captionGroups) {
-    const payload = {
+    const mediaItems: Array<{ url: string; type: string }> = [
+      { url: videoUrl.trim(), type: 'video' },
+    ];
+    if (imageUrl?.trim()) mediaItems.push({ url: imageUrl.trim(), type: 'image' });
+
+    const payload: Record<string, unknown> = {
       content: caption,
-      mediaItems: [{ url: videoUrl.trim(), type: 'video' }],
+      mediaItems,
       platforms: accountIds.map((id) => ({ accountId: id })),
       scheduledFor,
     };
+    if (profileId?.trim()) payload.profileId = profileId.trim();
 
     let res: Response;
     try {

@@ -1,0 +1,785 @@
+---
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Create — Studio"
+  description="Upload, transcribe, caption, generate a graphic, and schedule in one flow."
+  noNav={true}
+  noFooter={true}
+>
+  <div class="studio-shell">
+    <header class="studio-top">
+      <a href="/" class="studio-wordmark">
+        <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      </a>
+      <span class="studio-badge">Studio</span>
+      <nav class="studio-nav">
+        <a href="/studio">Home</a>
+        <a href="/studio/dashboard">Calendar</a>
+        <a href="/studio/create" aria-current="page">Create</a>
+        <a href="/studio/connect">Accounts</a>
+        <a href="/studio/settings">Settings</a>
+      </nav>
+    </header>
+
+    <main class="create-main">
+      <!-- Step indicator -->
+      <div class="step-bar" id="stepBar">
+        <div class="step-item active" data-step="1"><span class="step-dot"></span>Video</div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="2"><span class="step-dot"></span>Transcript</div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="3"><span class="step-dot"></span>Captions</div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="4"><span class="step-dot"></span>Graphic</div>
+        <div class="step-connector"></div>
+        <div class="step-item" data-step="5"><span class="step-dot"></span>Schedule</div>
+      </div>
+
+      <!-- Step 1: Video -->
+      <section class="step-panel active" id="step1">
+        <h2>Upload or paste a video</h2>
+        <p class="step-desc">We'll transcribe the audio and generate captions from it.</p>
+
+        <div class="field">
+          <label for="videoUrl">Video URL</label>
+          <input type="url" id="videoUrl" placeholder="https://…" autocomplete="off" />
+          <small>Direct video URL (mp4, mov) or hosted link. Dropbox, S3, etc. work fine.</small>
+        </div>
+
+        <div class="divider-or"><span>or</span></div>
+
+        <div class="upload-zone" id="uploadZone">
+          <p>Drag &amp; drop a video file here</p>
+          <p class="upload-note">Upload is not yet implemented — paste a URL above for now.</p>
+        </div>
+
+        <div class="step-meta">
+          <div class="field-row">
+            <div class="field">
+              <label for="orgName">Organization name</label>
+              <input type="text" id="orgName" placeholder="e.g. Greenfield Center" />
+            </div>
+            <div class="field">
+              <label for="dayNumber">Day number</label>
+              <input type="number" id="dayNumber" min="1" max="365" placeholder="1" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="credits">People to mention (credits)</label>
+            <input type="text" id="credits" placeholder="e.g. Sarah, Josh" />
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-primary" id="startTranscriptBtn">Transcribe →</button>
+        </div>
+        <p id="step1Error" class="error-line"></p>
+      </section>
+
+      <!-- Step 2: Transcript / Waiting -->
+      <section class="step-panel" id="step2">
+        <h2>Transcribing…</h2>
+        <p class="step-desc">AssemblyAI is processing your video. This usually takes 1–3 minutes.</p>
+
+        <div class="transcript-status" id="transcriptStatus">
+          <div class="spinner"></div>
+          <span id="transcriptStatusText">Starting transcription…</span>
+        </div>
+
+        <div class="transcript-preview" id="transcriptPreview" hidden>
+          <h3>Transcript</h3>
+          <textarea id="transcriptText" rows="8" readonly></textarea>
+          <div id="flaggedWords" class="flagged-words"></div>
+        </div>
+
+        <div class="step-actions" id="step2Actions" hidden>
+          <button class="btn-ghost" id="backToStep1Btn">← Edit video</button>
+          <button class="btn-primary" id="goToCaptionsBtn">Review captions →</button>
+        </div>
+        <p id="step2Error" class="error-line"></p>
+      </section>
+
+      <!-- Step 3: Captions -->
+      <section class="step-panel" id="step3">
+        <h2>Review &amp; edit captions</h2>
+        <p class="step-desc">Claude wrote these from the transcript. Edit freely.</p>
+
+        <div class="captions-grid">
+          <div class="caption-block">
+            <label for="captionInstagram">Instagram / TikTok</label>
+            <textarea id="captionInstagram" rows="6" placeholder="Instagram caption will appear here…"></textarea>
+          </div>
+          <div class="caption-block">
+            <label for="captionLinkedin">LinkedIn</label>
+            <textarea id="captionLinkedin" rows="6" placeholder="LinkedIn caption will appear here…"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="firstComment">First comment (optional)</label>
+          <input type="text" id="firstComment" placeholder="e.g. attentionearned.com" />
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-ghost" id="backToStep2Btn">← Transcript</button>
+          <button class="btn-primary" id="goToGraphicBtn">Generate graphic →</button>
+          <button class="btn-ghost" id="skipGraphicBtn">Skip graphic →</button>
+        </div>
+      </section>
+
+      <!-- Step 4: Graphic -->
+      <section class="step-panel" id="step4">
+        <h2>Generate a graphic</h2>
+        <p class="step-desc">Describe the image you want. Ideogram will generate it.</p>
+
+        <div class="field">
+          <label for="imagePrompt">Image description</label>
+          <textarea id="imagePrompt" rows="3" placeholder="e.g. A warm community center with people gathering around a table, golden hour light, documentary style…"></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="imgStyle">Style</label>
+            <select id="imgStyle">
+              <option value="REALISTIC">Realistic</option>
+              <option value="DESIGN">Graphic Design</option>
+              <option value="ILLUSTRATION">Illustration</option>
+              <option value="RENDER_3D">3D Render</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="imgAspect">Aspect ratio</label>
+            <select id="imgAspect">
+              <option value="ASPECT_1_1">1:1 — Square</option>
+              <option value="ASPECT_9_16">9:16 — Stories/TikTok</option>
+              <option value="ASPECT_16_9">16:9 — YouTube/LinkedIn</option>
+              <option value="ASPECT_4_5">4:5 — Instagram portrait</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-ghost" id="backToStep3Btn">← Captions</button>
+          <button class="btn-primary" id="generateGraphicBtn">Generate image</button>
+        </div>
+
+        <div id="graphicResults" class="graphic-results" hidden></div>
+
+        <div class="step-actions" id="step4NextActions" hidden>
+          <button class="btn-ghost" id="skipImageBtn">Skip image →</button>
+          <button class="btn-primary" id="goToScheduleBtn">Schedule →</button>
+        </div>
+
+        <p id="step4Error" class="error-line"></p>
+        <p id="step4IdeogramNote" class="notice-line" hidden>
+          IDEOGRAM_API_KEY not configured — image generation is unavailable.
+          <button class="btn-text" id="skipToScheduleFromGraphicBtn">Skip to schedule →</button>
+        </p>
+      </section>
+
+      <!-- Step 5: Schedule -->
+      <section class="step-panel" id="step5">
+        <h2>Schedule your post</h2>
+        <p class="step-desc">Pick which accounts to post to and when.</p>
+
+        <div id="accountsLoading" class="loading-inline">Loading accounts…</div>
+
+        <div id="accountsSection" hidden>
+          <div class="field">
+            <label>Post to</label>
+            <div id="accountCheckboxes" class="account-checkboxes"></div>
+          </div>
+        </div>
+
+        <div id="accountsError" class="error-line" hidden></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="scheduleDate">Date</label>
+            <input type="date" id="scheduleDate" />
+          </div>
+          <div class="field">
+            <label for="scheduleTime">Time</label>
+            <input type="time" id="scheduleTime" />
+          </div>
+        </div>
+
+        <div class="post-preview" id="postPreview">
+          <h3>Preview</h3>
+          <div id="previewPlatforms" class="preview-platforms"></div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-ghost" id="backToStep4Btn">← Graphic</button>
+          <button class="btn-primary" id="postNowBtn">Schedule post</button>
+        </div>
+
+        <p id="step5Error" class="error-line"></p>
+        <div id="step5Success" class="success-panel" hidden>
+          <p class="success-msg">Posted! 🎉</p>
+          <div id="postLinks" class="post-links"></div>
+          <div class="success-actions">
+            <a href="/studio/dashboard" class="btn-ghost">View calendar</a>
+            <button class="btn-primary" id="startOverBtn">Create another</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<script>
+  // ── Types ──────────────────────────────────────────────────────────────────
+  interface Account { id: string; platform: string; username: string; }
+  interface CaptionData { instagram: string; linkedin: string; firstComment: string; }
+  interface Settings {
+    orgName?: string; profileId?: string; campaignName?: string;
+    dayNumber?: string; campaignTotal?: string; voiceNotes?: string;
+    creditsDefault?: string; ideogramStyle?: string; ideogramAspect?: string;
+  }
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let currentStep = 1;
+  let jobId = '';
+  let selectedImageUrl = '';
+  let transcriptDone = false;
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+  // ── Settings ───────────────────────────────────────────────────────────────
+  const SETTINGS_KEY = 'ae_studio_settings';
+  const PROFILE_KEY  = 'ae_studio_profile_id';
+
+  function getSettings(): Settings {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}'); } catch { return {}; }
+  }
+  function profileId(): string {
+    const s = getSettings();
+    if (s.profileId) return s.profileId;
+    try { return localStorage.getItem(PROFILE_KEY) ?? ''; } catch { return ''; }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function el<T extends HTMLElement>(id: string): T { return document.getElementById(id) as T; }
+
+  function goToStep(n: number) {
+    document.querySelectorAll<HTMLElement>('.step-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll<HTMLElement>('.step-item').forEach((item, i) => {
+      item.classList.toggle('active', i + 1 === n);
+      item.classList.toggle('done', i + 1 < n);
+    });
+    el(`step${n}`).classList.add('active');
+    currentStep = n;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function setError(id: string, msg: string) { el<HTMLParagraphElement>(id).textContent = msg; }
+  function clearError(id: string) { el<HTMLParagraphElement>(id).textContent = ''; }
+
+  // ── Pre-fill from settings ─────────────────────────────────────────────────
+  const settings = getSettings();
+  if (settings.orgName) (el('orgName') as HTMLInputElement).value = settings.orgName;
+  if (settings.dayNumber) (el('dayNumber') as HTMLInputElement).value = settings.dayNumber;
+  if (settings.creditsDefault) (el('credits') as HTMLInputElement).value = settings.creditsDefault;
+  if (settings.ideogramStyle) (el('imgStyle') as HTMLSelectElement).value = settings.ideogramStyle;
+  if (settings.ideogramAspect) (el('imgAspect') as HTMLSelectElement).value = settings.ideogramAspect;
+
+  // Default schedule to tomorrow at 9am
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  (el('scheduleDate') as HTMLInputElement).value = tomorrow.toISOString().slice(0, 10);
+  (el('scheduleTime') as HTMLInputElement).value = '09:00';
+
+  // ── Step 1 → 2: Start transcription ───────────────────────────────────────
+  el('startTranscriptBtn').addEventListener('click', async () => {
+    clearError('step1Error');
+    const url = (el('videoUrl') as HTMLInputElement).value.trim();
+    if (!url) { setError('step1Error', 'Paste a video URL first.'); return; }
+
+    (el('startTranscriptBtn') as HTMLButtonElement).disabled = true;
+    goToStep(2);
+
+    try {
+      const res = await fetch('/api/content/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: url }),
+      });
+      const data = await res.json() as { jobId?: string; error?: string };
+      if (!res.ok || !data.jobId) throw new Error(data.error ?? 'Transcription failed to start');
+      jobId = data.jobId;
+      startPolling();
+    } catch (err) {
+      setError('step2Error', (err as Error).message);
+      goToStep(1);
+      (el('startTranscriptBtn') as HTMLButtonElement).disabled = false;
+    }
+  });
+
+  function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(checkTranscript, 8000);
+    checkTranscript();
+  }
+
+  async function checkTranscript() {
+    const orgName = (el('orgName') as HTMLInputElement).value.trim();
+    const dayNumber = (el('dayNumber') as HTMLInputElement).value.trim() || '1';
+    const credits = (el('credits') as HTMLInputElement).value.trim();
+
+    const params = new URLSearchParams({ jobId, orgName, dayNumber, credits });
+    try {
+      const res = await fetch(`/api/content/result?${params.toString()}`);
+      const data = await res.json() as {
+        status: string; transcript?: string; instagram?: string;
+        linkedin?: string; firstComment?: string;
+        flagged?: Array<{ text: string; confidence: number }>;
+        error?: string;
+      };
+
+      el('transcriptStatusText').textContent =
+        data.status === 'queued' ? 'Queued…' :
+        data.status === 'processing' ? 'Transcribing audio…' :
+        data.status === 'completed' ? 'Done!' : `Status: ${data.status}`;
+
+      if (data.status === 'error') {
+        if (pollInterval) clearInterval(pollInterval);
+        setError('step2Error', data.error ?? 'Transcription failed');
+        return;
+      }
+
+      if (data.status === 'completed') {
+        if (pollInterval) clearInterval(pollInterval);
+        transcriptDone = true;
+
+        (el('transcriptText') as HTMLTextAreaElement).value = data.transcript ?? '';
+        el('transcriptPreview').removeAttribute('hidden');
+        el('step2Actions').removeAttribute('hidden');
+
+        if (data.flagged?.length) {
+          el('flaggedWords').innerHTML = `<p class="flagged-label">Low-confidence words: </p>` +
+            data.flagged.map(w => `<span class="flagged-word">${w.text} (${w.confidence}%)</span>`).join('');
+        }
+
+        // Pre-fill captions
+        if (data.instagram) (el('captionInstagram') as HTMLTextAreaElement).value = data.instagram;
+        if (data.linkedin) (el('captionLinkedin') as HTMLTextAreaElement).value = data.linkedin;
+        if (data.firstComment) (el('firstComment') as HTMLInputElement).value = data.firstComment;
+      }
+    } catch (err) {
+      // Network blip — keep polling
+      console.warn('Poll error:', err);
+    }
+  }
+
+  // ── Step 2 nav ──────────────────────────────────────────────────────────────
+  el('backToStep1Btn').addEventListener('click', () => {
+    if (pollInterval) clearInterval(pollInterval);
+    (el('startTranscriptBtn') as HTMLButtonElement).disabled = false;
+    goToStep(1);
+  });
+
+  el('goToCaptionsBtn').addEventListener('click', () => goToStep(3));
+
+  // ── Step 3 nav ──────────────────────────────────────────────────────────────
+  el('backToStep2Btn').addEventListener('click', () => goToStep(2));
+  el('goToGraphicBtn').addEventListener('click', () => goToStep(4));
+  el('skipGraphicBtn').addEventListener('click', () => {
+    selectedImageUrl = '';
+    loadAccounts();
+    goToStep(5);
+  });
+
+  // ── Step 4: Ideogram ────────────────────────────────────────────────────────
+  el('backToStep3Btn').addEventListener('click', () => goToStep(3));
+
+  el('generateGraphicBtn').addEventListener('click', async () => {
+    clearError('step4Error');
+    const prompt = (el('imagePrompt') as HTMLTextAreaElement).value.trim();
+    if (!prompt) { setError('step4Error', 'Describe the image first.'); return; }
+
+    (el('generateGraphicBtn') as HTMLButtonElement).disabled = true;
+    (el('generateGraphicBtn') as HTMLButtonElement).textContent = 'Generating…';
+
+    try {
+      const res = await fetch('/api/ideogram/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          style: (el('imgStyle') as HTMLSelectElement).value,
+          aspectRatio: (el('imgAspect') as HTMLSelectElement).value,
+        }),
+      });
+      const data = await res.json() as { images?: Array<{ url: string }>; error?: string };
+
+      if (res.status === 500 && data.error?.includes('IDEOGRAM_API_KEY')) {
+        el('step4IdeogramNote').removeAttribute('hidden');
+        el('skipToScheduleFromGraphicBtn').addEventListener('click', () => {
+          selectedImageUrl = '';
+          loadAccounts();
+          goToStep(5);
+        });
+        return;
+      }
+      if (!res.ok) throw new Error(data.error ?? 'Image generation failed');
+
+      const images = data.images ?? [];
+      const resultsEl = el('graphicResults');
+      resultsEl.removeAttribute('hidden');
+      resultsEl.innerHTML = images.map((img, i) => `
+        <div class="graphic-option" data-url="${img.url}" data-index="${i}">
+          <img src="${img.url}" alt="Generated option ${i + 1}" loading="lazy" />
+          <button class="select-image-btn btn-primary">Use this image</button>
+        </div>
+      `).join('');
+
+      resultsEl.querySelectorAll<HTMLElement>('.graphic-option').forEach(opt => {
+        opt.querySelector('.select-image-btn')?.addEventListener('click', () => {
+          resultsEl.querySelectorAll('.graphic-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          selectedImageUrl = opt.dataset.url ?? '';
+          el('step4NextActions').removeAttribute('hidden');
+        });
+      });
+
+      el('step4NextActions').removeAttribute('hidden');
+    } catch (err) {
+      setError('step4Error', (err as Error).message);
+    } finally {
+      (el('generateGraphicBtn') as HTMLButtonElement).disabled = false;
+      (el('generateGraphicBtn') as HTMLButtonElement).textContent = 'Generate image';
+    }
+  });
+
+  el('skipImageBtn').addEventListener('click', () => {
+    selectedImageUrl = '';
+    loadAccounts();
+    goToStep(5);
+  });
+
+  el('goToScheduleBtn').addEventListener('click', () => {
+    loadAccounts();
+    goToStep(5);
+  });
+
+  // ── Step 5: Schedule ─────────────────────────────────────────────────────────
+  el('backToStep4Btn').addEventListener('click', () => goToStep(4));
+
+  async function loadAccounts() {
+    const pid = profileId();
+    el('accountsLoading').style.display = 'block';
+    el('accountsSection').setAttribute('hidden', '');
+    (el('accountsError') as HTMLElement).setAttribute('hidden', '');
+
+    try {
+      const params = new URLSearchParams();
+      if (pid) params.set('profileId', pid);
+      const res = await fetch(`/api/content/accounts?${params.toString()}`);
+      const data = await res.json() as { accounts?: Account[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Could not load accounts');
+
+      const accounts = data.accounts ?? [];
+      const checkboxes = el('accountCheckboxes');
+      checkboxes.innerHTML = accounts.length
+        ? accounts.map(a => `
+            <label class="account-check">
+              <input type="checkbox" value="${a.id}" data-platform="${a.platform}" data-username="${a.username}" />
+              <span class="platform-tag">${a.platform}</span>
+              <span>${a.username}</span>
+            </label>`).join('')
+        : '<p class="muted-note">No accounts connected. <a href="/studio/connect">Connect accounts →</a></p>';
+
+      el('accountsLoading').style.display = 'none';
+      el('accountsSection').removeAttribute('hidden');
+
+      // Update preview on checkbox change
+      checkboxes.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updatePreview);
+      });
+      updatePreview();
+    } catch (err) {
+      el('accountsLoading').style.display = 'none';
+      const errEl = el('accountsError') as HTMLElement;
+      errEl.textContent = (err as Error).message;
+      errEl.removeAttribute('hidden');
+    }
+  }
+
+  function updatePreview() {
+    const checked = Array.from(
+      document.querySelectorAll<HTMLInputElement>('#accountCheckboxes input:checked')
+    );
+    const previewEl = el('previewPlatforms');
+    if (!checked.length) {
+      previewEl.innerHTML = '<p class="muted-note">Select accounts above to see a preview.</p>';
+      return;
+    }
+
+    previewEl.innerHTML = checked.map(cb => {
+      const platform = cb.dataset.platform ?? '';
+      const caption = platform === 'linkedin'
+        ? (el('captionLinkedin') as HTMLTextAreaElement).value
+        : (el('captionInstagram') as HTMLTextAreaElement).value;
+      return `
+        <div class="preview-block">
+          <span class="platform-tag">${platform} — ${cb.dataset.username}</span>
+          <p class="preview-caption">${caption.slice(0, 140)}${caption.length > 140 ? '…' : ''}</p>
+        </div>`;
+    }).join('');
+  }
+
+  el('postNowBtn').addEventListener('click', async () => {
+    clearError('step5Error');
+    const checked = Array.from(
+      document.querySelectorAll<HTMLInputElement>('#accountCheckboxes input:checked')
+    );
+    if (!checked.length) { setError('step5Error', 'Select at least one account.'); return; }
+
+    const date = (el('scheduleDate') as HTMLInputElement).value;
+    const time = (el('scheduleTime') as HTMLInputElement).value;
+    if (!date || !time) { setError('step5Error', 'Pick a date and time.'); return; }
+
+    const videoUrl = (el('videoUrl') as HTMLInputElement).value.trim();
+    const scheduledFor = new Date(`${date}T${time}`).toISOString();
+    const pid = profileId();
+
+    const platforms = checked.map(cb => ({
+      accountId: cb.value,
+      caption: cb.dataset.platform === 'linkedin'
+        ? (el('captionLinkedin') as HTMLTextAreaElement).value
+        : (el('captionInstagram') as HTMLTextAreaElement).value,
+    }));
+
+    (el('postNowBtn') as HTMLButtonElement).disabled = true;
+    (el('postNowBtn') as HTMLButtonElement).textContent = 'Scheduling…';
+
+    try {
+      const res = await fetch('/api/content/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoUrl,
+          platforms,
+          scheduledFor,
+          ...(pid ? { profileId: pid } : {}),
+          ...(selectedImageUrl ? { imageUrl: selectedImageUrl } : {}),
+        }),
+      });
+      const data = await res.json() as {
+        success?: boolean; postIds?: string[]; errors?: string[]; error?: string;
+      };
+      if (!res.ok || !data.success) throw new Error(data.error ?? data.errors?.join('; ') ?? 'Post failed');
+
+      el('step5Success').removeAttribute('hidden');
+      el('postNowBtn').setAttribute('hidden', '');
+
+      if (data.postIds?.length) {
+        el('postLinks').innerHTML = `<p class="muted-note">Post ID(s): ${data.postIds.join(', ')}</p>`;
+      }
+    } catch (err) {
+      setError('step5Error', (err as Error).message);
+      (el('postNowBtn') as HTMLButtonElement).disabled = false;
+      (el('postNowBtn') as HTMLButtonElement).textContent = 'Schedule post';
+    }
+  });
+
+  el('startOverBtn').addEventListener('click', () => {
+    // Reset state
+    jobId = '';
+    selectedImageUrl = '';
+    transcriptDone = false;
+    (el('videoUrl') as HTMLInputElement).value = '';
+    (el('transcriptText') as HTMLTextAreaElement).value = '';
+    (el('captionInstagram') as HTMLTextAreaElement).value = '';
+    (el('captionLinkedin') as HTMLTextAreaElement).value = '';
+    (el('imagePrompt') as HTMLTextAreaElement).value = '';
+    el('transcriptPreview').setAttribute('hidden', '');
+    el('step2Actions').setAttribute('hidden', '');
+    el('graphicResults').setAttribute('hidden', '');
+    el('step4NextActions').setAttribute('hidden', '');
+    el('step5Success').setAttribute('hidden', '');
+    el('postNowBtn').removeAttribute('hidden');
+    (el('startTranscriptBtn') as HTMLButtonElement).disabled = false;
+    goToStep(1);
+  });
+</script>
+
+<style>
+  .studio-shell { min-height: 100vh; background: var(--surface-base); }
+  .studio-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 24px; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;
+  }
+  .studio-badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); background: var(--surface-card);
+    border: 1px solid var(--border-mid); padding: 2px 8px; border-radius: 4px;
+  }
+  .studio-nav { display: flex; gap: 20px; }
+  .studio-nav a { font-size: 0.875rem; color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+  .studio-nav a:hover, .studio-nav a[aria-current] { color: var(--text-strong); }
+
+  .create-main { max-width: 760px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* Step bar */
+  .step-bar {
+    display: flex; align-items: center; gap: 0; margin-bottom: 40px; overflow-x: auto; padding-bottom: 4px;
+  }
+  .step-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.8rem; font-weight: var(--fw-medium); color: var(--text-faint);
+    white-space: nowrap; transition: color 0.2s;
+  }
+  .step-item.active { color: var(--text-strong); }
+  .step-item.done { color: var(--ok); }
+  .step-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ink-600); flex-shrink: 0; transition: background 0.2s;
+  }
+  .step-item.active .step-dot { background: var(--accent); }
+  .step-item.done .step-dot { background: var(--ok); }
+  .step-connector { flex: 1; min-width: 20px; height: 1px; background: var(--border-subtle); }
+
+  /* Panels */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  .step-panel h2 {
+    font-size: 1.5rem; font-weight: var(--fw-bold); color: var(--text-strong); margin-bottom: 8px;
+  }
+  .step-desc { color: var(--text-muted); margin-bottom: 28px; font-size: 0.95rem; }
+
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block; font-size: 0.875rem; font-weight: var(--fw-medium);
+    color: var(--text-body); margin-bottom: 6px;
+  }
+  .field small { display: block; font-size: 0.775rem; color: var(--text-faint); margin-top: 5px; }
+
+  input[type="text"], input[type="url"], input[type="number"], input[type="date"],
+  input[type="time"], textarea, select {
+    width: 100%; background: var(--surface-card); border: 1px solid var(--border-mid);
+    color: var(--text-strong); padding: 10px 14px; border-radius: 8px;
+    font-size: 0.9rem; font-family: var(--font-sans); transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; }
+  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%236F685C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+
+  .step-meta { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle); }
+  .step-meta::before { content: 'Context (optional)'; display: block; font-size: 0.75rem; font-weight: var(--fw-semibold); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+
+  .divider-or {
+    text-align: center; position: relative; margin: 20px 0;
+    color: var(--text-faint); font-size: 0.8rem;
+  }
+  .divider-or::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border-subtle);
+  }
+  .divider-or span { background: var(--surface-base); padding: 0 12px; position: relative; }
+
+  .upload-zone {
+    border: 2px dashed var(--border-mid); border-radius: 10px; padding: 40px 24px;
+    text-align: center; color: var(--text-faint); font-size: 0.9rem;
+  }
+  .upload-note { font-size: 0.8rem; margin-top: 8px; }
+
+  .step-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+
+  .error-line { font-size: 0.85rem; color: var(--ae-coral); margin-top: 10px; min-height: 1em; }
+  .notice-line { font-size: 0.85rem; color: var(--warn); margin-top: 10px; }
+
+  /* Transcript */
+  .transcript-status {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;
+  }
+  .spinner {
+    width: 20px; height: 20px; border: 2px solid var(--border-mid);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .transcript-preview h3 { font-size: 0.875rem; font-weight: var(--fw-semibold); color: var(--text-body); margin-bottom: 8px; }
+
+  .flagged-words { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .flagged-label { font-size: 0.775rem; color: var(--text-faint); width: 100%; margin-bottom: 4px; }
+  .flagged-word { font-size: 0.775rem; background: rgba(233,185,73,0.12); color: var(--warn); padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono); }
+
+  /* Captions */
+  .captions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  @media (max-width: 600px) { .captions-grid { grid-template-columns: 1fr; } }
+  .caption-block label { display: block; font-size: 0.875rem; font-weight: var(--fw-medium); color: var(--text-body); margin-bottom: 6px; }
+
+  /* Graphic */
+  .graphic-results {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px; margin-top: 24px;
+  }
+  .graphic-option {
+    border: 2px solid var(--border-subtle); border-radius: 10px; overflow: hidden; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .graphic-option img { width: 100%; display: block; }
+  .graphic-option.selected { border-color: var(--accent); }
+  .select-image-btn {
+    width: 100%; border-radius: 0; padding: 8px; font-size: 0.8rem;
+  }
+
+  /* Schedule */
+  .loading-inline { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 16px; }
+
+  .account-checkboxes { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+  .account-check {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    font-size: 0.9rem; color: var(--text-body);
+  }
+  .account-check input { width: auto; flex-shrink: 0; accent-color: var(--accent); }
+  .platform-tag {
+    font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent); background: var(--accent-quiet);
+    padding: 2px 7px; border-radius: 4px;
+  }
+
+  .post-preview { margin: 24px 0; }
+  .post-preview h3 { font-size: 0.875rem; font-weight: var(--fw-semibold); color: var(--text-body); margin-bottom: 12px; }
+  .preview-block { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+  .preview-platforms { display: flex; flex-direction: column; gap: 8px; }
+  .preview-caption { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; white-space: pre-wrap; }
+
+  .muted-note { font-size: 0.875rem; color: var(--text-muted); }
+  .muted-note a { color: var(--accent); text-decoration: none; }
+
+  .success-panel { background: rgba(79,191,139,0.08); border: 1px solid rgba(79,191,139,0.2); border-radius: 10px; padding: 24px; margin-top: 24px; }
+  .success-msg { font-size: 1.1rem; font-weight: var(--fw-semibold); color: var(--ok); margin-bottom: 12px; }
+  .post-links { margin-bottom: 16px; }
+  .success-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; background: var(--grad-cta); color: #fff;
+    font-weight: var(--fw-semibold); padding: 11px 24px; border-radius: 8px;
+    text-decoration: none; font-size: 0.9rem; border: none; cursor: pointer;
+    box-shadow: var(--glow-cta); transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; border: 1px solid var(--border-mid);
+    color: var(--text-body); font-weight: var(--fw-medium); padding: 11px 22px;
+    border-radius: 8px; background: none; cursor: pointer;
+    font-size: 0.9rem; text-decoration: none; transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); color: var(--text-strong); }
+
+  .btn-text {
+    background: none; border: none; color: var(--accent); cursor: pointer; font-size: inherit;
+    text-decoration: underline; padding: 0; font-family: inherit;
+  }
+</style>
