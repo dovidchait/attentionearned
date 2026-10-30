@@ -281,6 +281,18 @@ export function mediaPage({ user, brand, isAdmin, asClient }) {
   <h1 class="page-title">Media library</h1>
 </div>
 
+<div class="media-upload-zone" id="media-upload-zone">
+  <input type="file" id="media-lib-input" accept="video/*,image/*" class="upload-input" aria-label="Choose media file" multiple/>
+  <div class="upload-prompt" id="media-lib-prompt">
+    <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 4v16M8 12l8-8 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24h24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>Upload media — drag &amp; drop or click</span>
+  </div>
+  <div id="media-lib-progress" class="media-lib-progress" hidden>
+    <div class="progress-bar"><div class="progress-bar__fill" id="media-lib-fill"></div></div>
+    <p id="media-lib-label">Uploading…</p>
+  </div>
+</div>
+
 <div id="media-grid" class="media-grid" aria-live="polite">
   <div class="loading-skeleton">${Array(8).fill('<div class="skeleton-card skeleton-card--sq"></div>').join('')}</div>
 </div>

@@ -67,7 +67,8 @@ router.post('/posts/:id/publish', handle(async req => {
 
 router.post('/posts', handle(async req => {
   const user = resolveUser(req);
-  return Z.createPost({ profileId: user.zernioProfileId, ...req.body }, apiKeyFor(user));
+  const { _idempotencyKey, ...body } = req.body;
+  return Z.createPost({ profileId: user.zernioProfileId, ...body }, apiKeyFor(user), _idempotencyKey || undefined);
 }));
 
 router.get('/posts/:id/analytics', handle(async req => {

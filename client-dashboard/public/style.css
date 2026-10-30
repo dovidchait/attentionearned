@@ -512,6 +512,35 @@ input, textarea, select { font: inherit; color: inherit; }
 .analytics-section { margin-top: 0.5rem; }
 
 /* ── Media library ───────────────────────────────────────────────────────── */
+.media-upload-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1.25rem;
+  cursor: pointer;
+  transition: border-color 120ms;
+  position: relative;
+}
+.media-upload-zone:hover, .media-upload-zone.upload-area--drag { border-color: var(--brand); }
+.media-upload-zone .upload-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text-faint);
+  font-size: 0.875rem;
+}
+.media-upload-zone .upload-prompt svg { flex-shrink: 0; }
+.media-lib-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.media-lib-progress p {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin: 0;
+}
+
 .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));

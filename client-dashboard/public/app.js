@@ -17,6 +17,20 @@ async function api(method, path, body) {
   return json;
 }
 
+function uploadWithProgress(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.upload.addEventListener('progress', e => {
+      if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100));
+    });
+    xhr.addEventListener('load', () => xhr.status < 400 ? resolve() : reject(new Error(`Upload HTTP ${xhr.status}`)));
+    xhr.addEventListener('error', () => reject(new Error('Upload network error')));
+    xhr.send(file);
+  });
+}
+
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -265,6 +279,7 @@ const newPostForm = $('new-post-form');
 if (newPostForm) {
   let uploadedMediaUrl = null;
   let uploadedMediaType = null;
+  let postIdempotencyKey = crypto.randomUUID();
 
   // Load accounts for platform options
   const asC = new URLSearchParams(location.search).get('asClient');
@@ -430,20 +445,6 @@ if (newPostForm) {
     }
   }
 
-  function uploadWithProgress(url, file, onProgress) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', url);
-      xhr.setRequestHeader('Content-Type', file.type);
-      xhr.upload.addEventListener('progress', e => {
-        if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100));
-      });
-      xhr.addEventListener('load', () => xhr.status < 400 ? resolve() : reject(new Error(`Upload HTTP ${xhr.status}`)));
-      xhr.addEventListener('error', () => reject(new Error('Upload network error')));
-      xhr.send(file);
-    });
-  }
-
   // Schedule / post-now / save draft
   const postNowBtn = $('post-now-btn');
   const saveDraftBtn = $('save-draft-btn');
@@ -478,9 +479,10 @@ if (newPostForm) {
     return {
       caption,
       ...(firstComment ? { firstComment } : {}),
-      ...(mediaUrl ? { media: [{ url: mediaUrl, type: mediaType || 'video' }] } : {}),
+      ...(mediaUrl ? { mediaItems: [{ url: mediaUrl, type: mediaType || 'video' }] } : {}),
       platforms,
       ...(scheduledAt ? { scheduledAt } : {}),
+      _idempotencyKey: postIdempotencyKey,
       ...extra,
     };
   }
@@ -501,6 +503,7 @@ if (newPostForm) {
       newPostForm.reset();
       uploadedMediaUrl = null;
       uploadedMediaType = null;
+      postIdempotencyKey = crypto.randomUUID();
       if (uploadPreview) uploadPreview.hidden = true;
       if (uploadPrompt) uploadPrompt.hidden = false;
     } catch (err) {
@@ -603,6 +606,71 @@ function fmt(n) {
 }
 
 // ─── Media library ────────────────────────────────────────────────────────────
+
+// ─── Media library upload ─────────────────────────────────────────────────────
+
+const mediaUploadZone = $('media-upload-zone');
+if (mediaUploadZone) {
+  const libInput    = $('media-lib-input');
+  const libPrompt   = $('media-lib-prompt');
+  const libProgress = $('media-lib-progress');
+  const libFill     = $('media-lib-fill');
+  const libLabel    = $('media-lib-label');
+  const asC0        = new URLSearchParams(location.search).get('asClient');
+
+  mediaUploadZone.addEventListener('dragover', e => { e.preventDefault(); mediaUploadZone.classList.add('upload-area--drag'); });
+  mediaUploadZone.addEventListener('dragleave', () => mediaUploadZone.classList.remove('upload-area--drag'));
+  mediaUploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    mediaUploadZone.classList.remove('upload-area--drag');
+    if (e.dataTransfer.files.length) handleLibFiles([...e.dataTransfer.files]);
+  });
+  mediaUploadZone.addEventListener('click', e => {
+    if (e.target === libInput) return;
+    libInput.click();
+  });
+  libInput.addEventListener('change', () => { if (libInput.files.length) handleLibFiles([...libInput.files]); });
+
+  async function handleLibFiles(files) {
+    libPrompt.hidden = true;
+    libProgress.hidden = false;
+    libFill.style.width = '0%';
+    libLabel.textContent = files.length > 1 ? `Uploading 0 / ${files.length}…` : 'Getting upload URL…';
+    const param = asC0 ? `?asClient=${encodeURIComponent(asC0)}` : '';
+    let done = 0;
+    for (const file of files) {
+      try {
+        const presignData = await api('POST', `/media/presign${param}`, {
+          filename: file.name, contentType: file.type, size: file.size,
+        });
+        await uploadWithProgress(presignData.uploadUrl, file, pct => {
+          libFill.style.width = `${Math.round((done / files.length + pct / 100 / files.length) * 100)}%`;
+          libLabel.textContent = files.length > 1 ? `Uploading ${done + 1} / ${files.length} (${pct}%)…` : `Uploading… ${pct}%`;
+        });
+        done++;
+      } catch (err) {
+        console.error('Media upload failed:', err);
+        libProgress.hidden = true;
+        libPrompt.hidden = false;
+        libInput.value = '';
+        alert(`Upload failed for ${file.name}: ${err.message}`);
+        return;
+      }
+    }
+    libFill.style.width = '100%';
+    libLabel.textContent = `${done} file${done !== 1 ? 's' : ''} uploaded`;
+    setTimeout(() => {
+      libProgress.hidden = true;
+      libPrompt.hidden = false;
+      libInput.value = '';
+      // Reload the grid to show the new uploads
+      page = 1;
+      loadMedia(1);
+    }, 1200);
+  }
+}
+
+// ─── Media grid ───────────────────────────────────────────────────────────────
 
 const mediaGrid = $('media-grid');
 if (mediaGrid) {
