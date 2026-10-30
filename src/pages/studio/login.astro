@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Sign In — Studio"
+  noNav={true}
+  noFooter={true}
+  noindex={true}
+>
+  <div class="auth-shell">
+    <header class="auth-top">
+      <a href="/" class="auth-wordmark">
+        <img src="/wordmark-white.svg" alt="Attention Earned" height="16" />
+      </a>
+      <span class="studio-badge">Studio</span>
+    </header>
+
+    <main class="auth-main">
+      <div class="auth-card">
+        <h1>Sign in</h1>
+        <p class="auth-sub">Use your Attention Earned Studio account.</p>
+        <!-- Clerk's <SignIn> component renders here -->
+        <clerk-sign-in
+          routing="hash"
+          sign-up-url="/studio/signup"
+          redirect-url="/studio/dashboard"
+        ></clerk-sign-in>
+      </div>
+    </main>
+  </div>
+</Base>
+
+<style>
+  .auth-shell { min-height: 100vh; background: var(--surface-base); display: flex; flex-direction: column; }
+  .auth-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 20px 24px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .studio-badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); background: var(--surface-card);
+    border: 1px solid var(--border-mid); padding: 2px 8px; border-radius: 4px;
+  }
+  .auth-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+  .auth-card {
+    width: 100%; max-width: 440px; background: var(--surface-card);
+    border: 1px solid var(--border-subtle); border-radius: 14px; padding: 36px;
+  }
+  .auth-card h1 { font-size: 1.5rem; font-weight: var(--fw-bold); color: var(--text-strong); margin-bottom: 6px; }
+  .auth-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 28px; }
+</style>

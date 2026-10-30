@@ -1,15 +1,11 @@
-import { defineMiddleware } from 'astro:middleware';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/astro/server';
 
-// ── Auth middleware ────────────────────────────────────────────────────────────
-// Protect /studio/* pages. Currently a passthrough stub — activate by:
-//   1. npm install @clerk/astro
-//   2. Add clerk() to astro.config.mjs integrations
-//   3. Set CLERK_SECRET_KEY and PUBLIC_CLERK_PUBLISHABLE_KEY env vars
-//   4. Replace this middleware body with Clerk's clerkMiddleware() helper
-//
-// Until Clerk is configured, /studio routes are accessible without auth.
-// ─────────────────────────────────────────────────────────────────────────────
+const isStudioRoute = createRouteMatcher(['/studio/create', '/studio/dashboard', '/studio/connect', '/studio/settings']);
 
-export const onRequest = defineMiddleware(async (_context, next) => {
-  return next();
+export const onRequest = clerkMiddleware((auth, context) => {
+  if (isStudioRoute(context.request)) {
+    auth.protect({
+      unauthenticatedUrl: new URL('/studio/login', context.request.url).toString(),
+    });
+  }
 });
