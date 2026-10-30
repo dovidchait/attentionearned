@@ -715,3 +715,176 @@ if (mediaGrid) {
   loadMoreBtn?.addEventListener('click', () => { page++; loadMedia(page); });
   loadMedia(1);
 }
+
+// ─── Admin: client management ─────────────────────────────────────────────────
+
+const clientsList = $('clients-list');
+if (clientsList) {
+  const addBtn      = $('add-client-btn');
+  const modal       = $('client-modal');
+  const modalTitle  = $('client-modal-title');
+  const form        = $('client-form');
+  const editEmail   = $('client-edit-email');
+  const nameInput   = $('client-name');
+  const emailInput  = $('client-email');
+  const tzInput     = $('client-tz');
+  const profileInput = $('client-profile-id');
+  const apiKeyEnvInput = $('client-api-key-env');
+  const formError   = $('client-form-error');
+  const saveBtn     = $('client-save-btn');
+
+  const delModal    = $('delete-client-modal');
+  const delDesc     = $('delete-client-desc');
+  const delConfirm  = $('delete-client-confirm');
+  let deleteTarget  = null;
+
+  async function loadClients() {
+    clientsList.innerHTML = '<div class="loading-skeleton">' + Array(3).fill('<div class="skeleton-card"></div>').join('') + '</div>';
+    try {
+      const data = await api('GET', '/admin/clients');
+      const clients = data.clients || [];
+      if (!clients.length) {
+        clientsList.innerHTML = '<div class="empty-state"><p class="empty-state__title">No clients yet. Add one above.</p></div>';
+        return;
+      }
+      clientsList.innerHTML = `
+        <table class="clients-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Timezone</th>
+              <th>Zernio Profile</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${clients.map(c => `
+              <tr data-email="${esc(c.email)}">
+                <td>${esc(c.name)}</td>
+                <td>${esc(c.email)}</td>
+                <td class="text-muted">${esc(c.timezone || '—')}</td>
+                <td class="text-muted text-mono">${esc(c.zernioProfileId || '—')}</td>
+                <td class="clients-table__actions">
+                  <a href="/?asClient=${encodeURIComponent(c.email)}" class="btn btn--sm btn--ghost">View</a>
+                  <button class="btn btn--sm btn--ghost js-invite" data-email="${esc(c.email)}">Invite</button>
+                  <button class="btn btn--sm btn--ghost js-edit"
+                    data-email="${esc(c.email)}" data-name="${esc(c.name)}"
+                    data-tz="${esc(c.timezone || '')}" data-profile="${esc(c.zernioProfileId || '')}"
+                    data-apienv="${esc(c.apiKeyEnv || 'ZERNIO_API_KEY')}">Edit</button>
+                  <button class="btn btn--sm btn--danger js-delete" data-email="${esc(c.email)}" data-name="${esc(c.name)}">Remove</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+
+      clientsList.querySelectorAll('.js-edit').forEach(btn => {
+        btn.addEventListener('click', () => openEdit(btn.dataset));
+      });
+      clientsList.querySelectorAll('.js-delete').forEach(btn => {
+        btn.addEventListener('click', () => openDelete(btn.dataset));
+      });
+      clientsList.querySelectorAll('.js-invite').forEach(btn => {
+        btn.addEventListener('click', () => sendInvite(btn.dataset.email, btn));
+      });
+    } catch (err) {
+      clientsList.innerHTML = `<p class="empty-state__title">Error: ${esc(err.message)}</p>`;
+    }
+  }
+
+  function openAdd() {
+    editEmail.value = '';
+    form.reset();
+    emailInput.disabled = false;
+    formError.hidden = true;
+    modalTitle.textContent = 'Add client';
+    saveBtn.textContent = 'Add client';
+    modal.showModal();
+  }
+
+  function openEdit({ email, name, tz, profile, apienv }) {
+    editEmail.value = email;
+    nameInput.value = name || '';
+    emailInput.value = email || '';
+    emailInput.disabled = true;
+    tzInput.value = tz || '';
+    profileInput.value = profile || '';
+    apiKeyEnvInput.value = apienv || 'ZERNIO_API_KEY';
+    formError.hidden = true;
+    modalTitle.textContent = 'Edit client';
+    saveBtn.textContent = 'Save changes';
+    modal.showModal();
+  }
+
+  function openDelete({ email, name }) {
+    deleteTarget = email;
+    delDesc.textContent = `Remove ${name} (${email})?`;
+    delModal.showModal();
+  }
+
+  async function sendInvite(email, btn) {
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      await api('POST', `/admin/clients/${encodeURIComponent(email)}/invite`);
+      btn.textContent = 'Sent!';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+    } catch (err) {
+      btn.textContent = orig;
+      btn.disabled = false;
+      alert('Failed to send invite: ' + err.message);
+    }
+  }
+
+  addBtn.addEventListener('click', openAdd);
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    formError.hidden = true;
+    saveBtn.disabled = true;
+    const isEdit = !!editEmail.value;
+    try {
+      if (isEdit) {
+        await api('PATCH', `/admin/clients/${encodeURIComponent(editEmail.value)}`, {
+          name: nameInput.value.trim(),
+          timezone: tzInput.value.trim() || undefined,
+          zernioProfileId: profileInput.value.trim() || undefined,
+          apiKeyEnv: apiKeyEnvInput.value.trim() || undefined,
+        });
+      } else {
+        await api('POST', '/admin/clients', {
+          name: nameInput.value.trim(),
+          email: emailInput.value.trim(),
+          timezone: tzInput.value.trim() || undefined,
+          zernioProfileId: profileInput.value.trim() || undefined,
+          apiKeyEnv: apiKeyEnvInput.value.trim() || undefined,
+        });
+      }
+      modal.close();
+      loadClients();
+    } catch (err) {
+      formError.textContent = err.message;
+      formError.hidden = false;
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  delConfirm.addEventListener('click', async () => {
+    if (!deleteTarget) return;
+    delConfirm.disabled = true;
+    try {
+      await api('DELETE', `/admin/clients/${encodeURIComponent(deleteTarget)}`);
+      delModal.close();
+      deleteTarget = null;
+      loadClients();
+    } catch (err) {
+      alert('Failed to remove client: ' + err.message);
+    } finally {
+      delConfirm.disabled = false;
+    }
+  });
+
+  loadClients();
+}

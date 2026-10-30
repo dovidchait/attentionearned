@@ -736,6 +736,38 @@ input, textarea, select { font: inherit; color: inherit; }
 .client-item strong { display: block; font-weight: 600; color: var(--text-strong); }
 .client-actions { display: flex; gap: 0.5rem; }
 
+/* ── Clients table (admin) ───────────────────────────────────────────────── */
+.clients-table-wrap { margin-top: 1.25rem; overflow-x: auto; }
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.clients-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.clients-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  vertical-align: middle;
+}
+.clients-table tr:last-child td { border-bottom: none; }
+.clients-table tr:hover td { background: var(--surface-hover, rgba(0,0,0,.03)); }
+.clients-table__actions { display: flex; gap: 0.375rem; justify-content: flex-end; }
+.text-mono { font-family: var(--font-mono, monospace); font-size: 0.8rem; }
+
+/* ── Form hints ──────────────────────────────────────────────────────────── */
+.form-hint { margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-faint); }
+.modal-desc { color: var(--text-base); margin-bottom: 0.25rem; }
+
 /* ── Empty states ────────────────────────────────────────────────────────── */
 .empty-state {
   text-align: center;

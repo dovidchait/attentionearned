@@ -305,38 +305,79 @@ export function mediaPage({ user, brand, isAdmin, asClient }) {
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
 
-export function adminPage({ clients }) {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="robots" content="noindex,nofollow"/>
-  <title>Admin — Attention Earned</title>
-  <link rel="stylesheet" href="/style.css"/>
-</head>
-<body>
-<div class="shell shell--simple">
-  <div class="page-header">
-    <h1 class="page-title">Admin — all clients</h1>
-    <form action="/auth/logout" method="post"><button type="submit" class="btn btn--ghost btn--sm">Sign out</button></form>
-  </div>
-  <ul class="client-list">
-    ${clients.map(c => `
-      <li class="client-item">
-        <div>
-          <strong>${escHtml(c.name)}</strong>
-          <span class="text-muted">${escHtml(c.email)}</span>
-        </div>
-        <div class="client-actions">
-          <a href="/?asClient=${encodeURIComponent(c.email)}" class="btn btn--sm btn--ghost">View dashboard</a>
-        </div>
-      </li>`).join('')}
-  </ul>
+export function adminPage({ brand, isAdmin: adminFlag }) {
+  return layout({
+    title: 'Clients',
+    activePage: 'admin',
+    brand, isAdmin: adminFlag, asClient: null,
+    children: `
+<div class="page-header">
+  <h1 class="page-title">Clients</h1>
+  <button class="btn btn--primary" id="add-client-btn">+ Add client</button>
 </div>
-<script src="/app.js" type="module"></script>
-</body>
-</html>`;
+
+<div id="clients-list" class="clients-table-wrap" aria-live="polite">
+  <div class="loading-skeleton">
+    ${Array(3).fill('<div class="skeleton-card"></div>').join('')}
+  </div>
+</div>
+
+<!-- Add / edit client modal -->
+<dialog id="client-modal" class="modal" aria-labelledby="client-modal-title">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <h2 id="client-modal-title" class="modal-title">Add client</h2>
+      <button class="modal-close" aria-label="Close" onclick="document.getElementById('client-modal').close()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <form id="client-form">
+      <input type="hidden" id="client-edit-email"/>
+      <div class="form-group">
+        <label class="form-label" for="client-name">Name</label>
+        <input type="text" id="client-name" class="form-input" required placeholder="Jane Smith"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="client-email">Email</label>
+        <input type="email" id="client-email" class="form-input" required placeholder="jane@example.com"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="client-tz">Timezone</label>
+        <input type="text" id="client-tz" class="form-input" placeholder="America/New_York"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="client-profile-id">Zernio Profile ID</label>
+        <input type="text" id="client-profile-id" class="form-input" placeholder="prof_…"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="client-api-key-env">API key env var</label>
+        <input type="text" id="client-api-key-env" class="form-input" placeholder="ZERNIO_API_KEY"/>
+        <p class="form-hint">Name of the server environment variable holding this client's Zernio API key.</p>
+      </div>
+      <p id="client-form-error" class="form-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn--ghost" onclick="document.getElementById('client-modal').close()">Cancel</button>
+        <button type="submit" class="btn btn--primary" id="client-save-btn">Save</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- Delete confirmation modal -->
+<dialog id="delete-client-modal" class="modal" aria-labelledby="delete-client-title">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <h2 id="delete-client-title" class="modal-title">Remove client?</h2>
+    </div>
+    <p id="delete-client-desc" class="modal-desc"></p>
+    <p class="form-hint" style="margin-top:.5rem">This removes them from the system. Their Zernio data is unaffected.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn--ghost" onclick="document.getElementById('delete-client-modal').close()">Cancel</button>
+      <button type="button" class="btn btn--danger" id="delete-client-confirm">Remove</button>
+    </div>
+  </div>
+</dialog>`,
+  });
 }
 
 // ─── Account callback ─────────────────────────────────────────────────────────

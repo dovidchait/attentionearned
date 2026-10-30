@@ -3,7 +3,9 @@
  * Each route resolves the caller's user → their Zernio API key → proxies the call.
  */
 import { Router } from 'express';
-import { findUserByEmail, apiKeyFor, isAdmin, allUsers } from '../lib/users.js';
+import { findUserByEmail, apiKeyFor, isAdmin, allUsers, addUser, updateUser, removeUser } from '../lib/users.js';
+import { createMagicToken } from '../lib/auth.js';
+import { sendMagicLink } from '../lib/email.js';
 import * as Z from '../lib/zernio.js';
 
 const router = Router();
@@ -145,7 +147,55 @@ router.get('/admin/clients', handle(async req => {
   if (!isAdmin(req.userEmail)) {
     const err = new Error('Forbidden'); err.status = 403; throw err;
   }
-  return { clients: allUsers().map(u => ({ name: u.name, email: u.email, timezone: u.timezone })) };
+  return {
+    clients: allUsers().map(u => ({
+      name: u.name,
+      email: u.email,
+      timezone: u.timezone,
+      zernioProfileId: u.zernioProfileId || '',
+      apiKeyEnv: u.apiKeyEnv || 'ZERNIO_API_KEY',
+    })),
+  };
+}));
+
+router.post('/admin/clients', handle(async req => {
+  if (!isAdmin(req.userEmail)) {
+    const err = new Error('Forbidden'); err.status = 403; throw err;
+  }
+  const user = addUser(req.body);
+  return { client: { name: user.name, email: user.email, timezone: user.timezone, zernioProfileId: user.zernioProfileId || '', apiKeyEnv: user.apiKeyEnv || 'ZERNIO_API_KEY' } };
+}));
+
+router.patch('/admin/clients/:email', handle(async req => {
+  if (!isAdmin(req.userEmail)) {
+    const err = new Error('Forbidden'); err.status = 403; throw err;
+  }
+  const user = updateUser(decodeURIComponent(req.params.email), req.body);
+  return { client: { name: user.name, email: user.email, timezone: user.timezone, zernioProfileId: user.zernioProfileId || '', apiKeyEnv: user.apiKeyEnv || 'ZERNIO_API_KEY' } };
+}));
+
+router.delete('/admin/clients/:email', handle(async req => {
+  if (!isAdmin(req.userEmail)) {
+    const err = new Error('Forbidden'); err.status = 403; throw err;
+  }
+  removeUser(decodeURIComponent(req.params.email));
+  return { ok: true };
+}));
+
+router.post('/admin/clients/:email/invite', handle(async req => {
+  if (!isAdmin(req.userEmail)) {
+    const err = new Error('Forbidden'); err.status = 403; throw err;
+  }
+  const email = decodeURIComponent(req.params.email);
+  const user = findUserByEmail(email);
+  if (!user) {
+    const err = new Error('User not found'); err.status = 404; throw err;
+  }
+  const token = await createMagicToken(email);
+  const base = process.env.DASHBOARD_URL || 'http://localhost:4000';
+  const link = `${base}/auth/verify?token=${encodeURIComponent(token)}`;
+  await sendMagicLink(email, link);
+  return { ok: true };
 }));
 
 export default router;

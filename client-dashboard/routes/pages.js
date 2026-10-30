@@ -88,8 +88,9 @@ router.get('/media', (req, res) => {
 
 router.get('/admin', (req, res) => {
   if (!isAdmin(req.userEmail)) return res.redirect('/');
-  const clients = allUsers().map(u => ({ name: u.name, email: u.email, timezone: u.timezone }));
-  res.send(adminPage({ clients }));
+  const user = findUserByEmail(req.userEmail);
+  const brand = { name: user?.orgName || user?.name, color: user?.brandColor };
+  res.send(adminPage({ brand, isAdmin: true }));
 });
 
 export default router;
