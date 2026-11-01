@@ -1,11 +1,18 @@
 name: Deploy client dashboard to Fly
 
-# Deploys client-dashboard/ to its own Fly app on every push to main that
-# touches it (or users.json, which it reads), and from the Actions tab
-# (Run workflow). Creates the Fly app on the first run if it doesn't exist.
+# Deploys client-dashboard/ to its own Fly app (text-to-attention-dashboard) on
+# every push to main that touches it (or fly-service/users.json, which it reads),
+# and from the Actions tab (Run workflow).
 #
-# Token: FLY_DASHBOARD_TOKEN (a Fly org token, so it can create the app), or
-# FLY_API_TOKEN if that token can already deploy this app.
+# INERT until the repo secret FLY_DASHBOARD_TOKEN exists: without it the tests
+# still run, then the job stops with a notice (green, nothing deployed).
+# FLY_DASHBOARD_TOKEN must be a Fly ORG token (Fly dashboard > Tokens), because
+# the first run creates the app. The existing FLY_API_TOKEN is a deploy token for
+# text-to-attention only (it failed to create this app on Oct 28), so it is not used.
+#
+# Optional repo secrets, copied into the app's Fly secrets on each run so nothing
+# has to be typed in the Fly dashboard: DASHBOARD_ZERNIO_API_KEY -> ZERNIO_API_KEY,
+# DASHBOARD_EMAILIT_API_KEY -> EMAILIT_API_KEY. Values are never printed.
 
 on:
   push:
@@ -37,34 +44,78 @@ jobs:
           npm ci
           npm test
 
+      - name: Is FLY_DASHBOARD_TOKEN set?
+        id: token
+        env:
+          TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dashboard not deployed: add the repo secret FLY_DASHBOARD_TOKEN (a Fly org token) to turn deploys on. See client-dashboard/README.md."
+          fi
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.token.outputs.present == 'true'
 
       - name: Create the Fly app if it doesn't exist
+        if: steps.token.outputs.present == 'true'
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN || secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN }}
         run: |
           if flyctl status -a "$APP" >/dev/null 2>&1; then
             echo "Fly app $APP exists"
+          elif flyctl apps create "$APP" --org "$FLY_ORG"; then
+            echo "Created Fly app $APP in org $FLY_ORG"
           else
-            flyctl apps create "$APP" --org "$FLY_ORG" || echo "::warning::Could not create $APP (does the token have org access?)"
+            echo "::error::Could not create $APP in Fly org '$FLY_ORG'. FLY_DASHBOARD_TOKEN must be an org token (Fly dashboard > Tokens > Create org token); if your org slug isn't 'personal', add a repo variable FLY_ORG."
+            exit 1
           fi
 
-      - name: Generate DASHBOARD_JWT_SECRET once (never printed)
+      - name: Stage Fly secrets (never printed)
+        if: steps.token.outputs.present == 'true'
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN || secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN }}
+          ZERNIO_KEY: ${{ secrets.DASHBOARD_ZERNIO_API_KEY }}
+          EMAILIT_KEY: ${{ secrets.DASHBOARD_EMAILIT_API_KEY }}
         run: |
-          if flyctl secrets list -a "$APP" --json 2>/dev/null | grep -q '"DASHBOARD_JWT_SECRET"'; then
+          existing="$(flyctl secrets list -a "$APP" --json 2>/dev/null || echo '[]')"
+          if echo "$existing" | grep -q '"DASHBOARD_JWT_SECRET"'; then
             echo "DASHBOARD_JWT_SECRET already set"
           else
             flyctl secrets set -a "$APP" --stage DASHBOARD_JWT_SECRET="$(openssl rand -hex 32)" >/dev/null
             echo "DASHBOARD_JWT_SECRET generated and staged"
           fi
+          if [ -n "$ZERNIO_KEY" ]; then
+            flyctl secrets set -a "$APP" --stage ZERNIO_API_KEY="$ZERNIO_KEY" >/dev/null && echo "ZERNIO_API_KEY staged from repo secret"
+          elif ! echo "$existing" | grep -q '"ZERNIO_API_KEY"'; then
+            echo "::warning::ZERNIO_API_KEY is not set on $APP: add it in Fly (or the repo secret DASHBOARD_ZERNIO_API_KEY) or posting from the dashboard won't work."
+          fi
+          if [ -n "$EMAILIT_KEY" ]; then
+            flyctl secrets set -a "$APP" --stage EMAILIT_API_KEY="$EMAILIT_KEY" >/dev/null && echo "EMAILIT_API_KEY staged from repo secret"
+          elif ! echo "$existing" | grep -q '"EMAILIT_API_KEY"'; then
+            echo "::warning::EMAILIT_API_KEY is not set on $APP: sign-in emails (magic links) can't be sent until it is."
+          fi
 
       - name: Bundle users.json (IDs only, no keys)
+        if: steps.token.outputs.present == 'true'
         run: cp fly-service/users.json client-dashboard/users.json
 
       - name: Deploy
+        if: steps.token.outputs.present == 'true'
         working-directory: client-dashboard
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN || secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_DASHBOARD_TOKEN }}
         run: flyctl deploy --remote-only --ha=false -a "$APP"
+
+      - name: Smoke check
+        if: steps.token.outputs.present == 'true'
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "https://$APP.fly.dev/" || true)"
+            echo "GET https://$APP.fly.dev/ -> $code"
+            case "$code" in 2*|3*) exit 0;; esac
+            sleep 10
+          done
+          echo "::warning::$APP deployed but did not answer yet; check Fly dashboard > $APP > Logs"

@@ -5,7 +5,7 @@ import { google } from 'googleapis';
 import { channels, smsEnabled, smsFromNumber } from './lib/channels.js';
 import { brand } from './lib/brand.js';
 import { inboundHandler, handleZernioWebhook } from './lib/poster.js';
-import { emailWebhook } from './lib/emailit.js';
+import { emailWebhook, emailSenderStatus, checkSendingDomain } from './lib/emailit.js';
 import { allUsers } from './lib/users.js';
 
 const app = express();
@@ -53,11 +53,17 @@ app.get('/', (req, res) => {
       whatsappTemplate: Boolean(process.env.TWILIO_WA_TEMPLATE_POSTED_SID),
       twilioSignatureCheck: Boolean(process.env.TWILIO_AUTH_TOKEN) && process.env.TWILIO_SKIP_SIGNATURE_CHECK !== 'true',
       emailOut: Boolean(process.env.EMAILIT_API_KEY),
+      // true when outgoing email looks healthy: key set, last send did not fail,
+      // the From domain is not known-unverified. Details in emailSenderDetail.
+      emailSender: emailSenderStatus().ok,
       emailInbound: Boolean(process.env.EMAILIT_WEBHOOK_SECRET),
       zernio: Boolean(process.env.ZERNIO_API_KEY),
       zernioWebhook: Boolean(process.env.ZERNIO_WEBHOOK_SECRET),
       envAllowlistEnforced: String(process.env.ENFORCE_ENV_ALLOWLIST || '').trim().toLowerCase() === 'true'
-    }
+    },
+    // where the From comes from, the Emailit domain status, last send result
+    // (status codes and plain-words reasons only, never addresses or keys)
+    emailSenderDetail: emailSenderStatus()
   });
 });
 
@@ -172,4 +178,5 @@ if (process.env.NODE_ENV !== 'test') app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Attention Earned service running on port ${PORT}`);
   console.log(`📱 SMS: /sms-webhook (${smsEnabled() ? 'on' : 'off'}) | 💬 WhatsApp: /whatsapp-webhook | 📧 Email: /email-webhook | 🔔 Zernio: /zernio-webhook`);
   console.log(`👥 Configured users: ${allUsers().length}`);
+  checkSendingDomain().catch(() => {});
 });

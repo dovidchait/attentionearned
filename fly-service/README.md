@@ -173,6 +173,38 @@ Your normal mail (Google Workspace on `attentionearned.com`) is not touched.
 Replies are sent From `EMAIL_FROM` with Reply-To `EMAIL_REPLY_TO`, so a client's reply comes back into
 Emailit. Each received email costs 1 Emailit credit, each reply 1 credit.
 
+### When the "posted" email doesn't arrive
+
+Open `https://text-to-attention.fly.dev/` (no login needed; flags only, never addresses or keys):
+
+- `config.emailSender`: `true` when outgoing email looks healthy (key set, last send didn't fail,
+  From domain not known to be unverified).
+- `emailSenderDetail.from`: `EMAIL_FROM`, or `default` (`Attention Earned <post@attentionearned.com>`)
+  because `EMAIL_FROM` is unset, not a valid address, or was refused by Emailit.
+- `emailSenderDetail.domain`: the From domain's status in Emailit, checked at startup
+  (`verified`, `pending`, `pending_review`, `not added to Emailit`, or `unknown` when the API key
+  can't read domains).
+- `emailSenderDetail.lastSend` / `lastFailStatus` / `lastFailReason`: the last send's outcome in plain
+  words, e.g. `Emailit is out of credits`, `Emailit workspace is in sandbox mode` (it only sends to
+  workspace members until production access is approved), `the From address is not on a verified
+  Emailit sending domain`.
+
+What the service does by itself: every Emailit error is logged with its status code and response body
+(`fly logs -a text-to-attention`, look for `Emailit POST /emails ->`), and every accepted email is
+logged with its Emailit id (`Emailit accepted em_...`), so it can be looked up in Emailit > Logs. If
+Emailit refuses `EMAIL_FROM` (unverified domain / bad From), the email is sent again from the default
+sender and later emails use the default until the next deploy.
+
+What only you can fix (in Emailit, no code):
+1. Emailit > Email API > Domains > `attentionearned.com`: Verification must say **Verified**
+   (the DNS records are published: return path MX, SPF and DKIM on `emailit.attentionearned.com`;
+   click Check DNS if it says Not verified).
+2. Emailit account: production access approved (out of sandbox) and credits/auto-refill on.
+3. `EMAIL_FROM` must be an address on that verified domain, e.g. `Attention Earned <post@attentionearned.com>`,
+   or unset (the default is the same). Typed in the Fly dashboard without surrounding quotes.
+4. If the health check says `lastSend: ok` but nothing arrives: Emailit > Logs shows whether the
+   receiving server accepted it; then check spam/quarantine on the receiving mailbox.
+
 Other forwarders (a Cloudflare Email Worker, etc.) can post a raw email (`Content-Type: message/rfc822`)
 or simple JSON (`from`, `subject`, `text`, `attachments[]`) to `/email-webhook?secret=<EMAIL_WEBHOOK_SECRET>`;
 without that secret set, only signed Emailit requests are accepted.
@@ -216,8 +248,16 @@ Emailit webhook (event `email.received`): `https://text-to-attention.fly.dev/ema
 
 Optional, for live links on scheduled/queued posts: in Zernio create a webhook for
 `post.published`, `post.partial`, `post.failed` pointing at
-`https://text-to-attention.fly.dev/zernio-webhook`, then
-`fly secrets set ZERNIO_WEBHOOK_SECRET=<its secret>`.
+`https://text-to-attention.fly.dev/zernio-webhook`, with a secret you make up (Zernio doesn't generate
+one; e.g. `openssl rand -hex 32`), then `fly secrets set -a text-to-attention ZERNIO_WEBHOOK_SECRET=<the same secret>`.
+
+Zernio webhook security: Zernio signs each delivery with `X-Zernio-Signature` (lowercase hex
+HMAC-SHA256 of the raw body, keyed by that secret; `X-Late-Signature` is the legacy name). With
+`ZERNIO_WEBHOOK_SECRET` set, anything unsigned or wrongly signed gets 401 and is ignored. Without it the
+webhook is off: requests get 200 so Zernio doesn't keep retrying, and nothing is done with them (an
+unsigned event could otherwise make the service text anyone). Replies only go to people in
+`users.json`. Zernio's "Test webhook" button answers 200 and the log says `Zernio test webhook received
+and verified`; `GET /` shows `zernioWebhook: true` once the secret is set.
 
 ## SMS (toll-free +1 866-618-8109)
 

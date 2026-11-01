@@ -64,9 +64,29 @@ export function addressFromEnv(name, fallback) {
   return fallback;
 }
 
+// Set once Emailit refuses EMAIL_FROM itself (e.g. 422 "Domain not verified"):
+// from then on every email goes from DEFAULT_FROM until the app restarts.
+let fromRefused = false;
+
 /** The From for every outgoing email: EMAIL_FROM cleaned up, else DEFAULT_FROM. */
 export function fromAddress() {
+  if (fromRefused) return DEFAULT_FROM;
   return addressFromEnv('EMAIL_FROM', DEFAULT_FROM);
+}
+
+/** Where the From comes from, for the health check (never the address itself). */
+export function fromSource() {
+  const raw = env('EMAIL_FROM');
+  if (raw === undefined || String(raw).trim() === '') return 'default';
+  if (!normalizeAddress(raw)) return 'default (EMAIL_FROM is not a valid address)';
+  if (fromRefused) return 'default (Emailit refused EMAIL_FROM)';
+  return 'EMAIL_FROM';
+}
+
+/** The domain part of an address ("Name <a@b.com>" -> "b.com"). */
+export function domainOf(address) {
+  const m = String(address || '').match(/@([^\s@<>]+?)>?$/);
+  return m ? m[1].toLowerCase() : null;
 }
 
 /** Reply-To from EMAIL_REPLY_TO cleaned up, or undefined when unset/invalid. */
@@ -78,6 +98,47 @@ const TOLERANCE_SECONDS = 300;
 function apiBase() {
   return (env('EMAILIT_API_URL') || 'https://api.emailit.com/v2').replace(/\/$/, '');
 }
+
+/**
+ * Emailit's error answers, in plain words (https://emailit.com/docs/api-reference/errors/).
+ * Used in the logs and the health check so a failed "posted" email says why.
+ */
+export function emailitHint(status, body = '') {
+  const text = String(body).toLowerCase();
+  if (status === 401) return 'EMAILIT_API_KEY is wrong or revoked';
+  if (status === 402) return 'Emailit is out of credits (buy credits or turn on auto-refill)';
+  if (status === 403 && text.includes('workspace not verified')) return 'Emailit workspace is in sandbox mode: it only sends to workspace members until production access is approved';
+  if (status === 403 && text.includes('paused')) return 'Emailit paused sending from this domain (bounces/complaints)';
+  if (status === 403 && text.includes('not authorized')) return 'the API key is restricted to another sending domain';
+  if (status === 422 && text.includes('domain not verified')) return 'the From address is not on a verified Emailit sending domain';
+  if (status === 400 && text.includes('from')) return 'Emailit refused the From address';
+  if (status === 429) return 'Emailit rate limit';
+  if (status >= 500) return 'Emailit server error';
+  return null;
+}
+
+export class EmailitError extends Error {
+  constructor(status, body, path) {
+    const hint = emailitHint(status, body);
+    super(`Emailit error ${status}: ${String(body).slice(0, 300)}${hint ? ` (${hint})` : ''}`);
+    this.status = status;
+    this.body = String(body).slice(0, 1000);
+    this.hint = hint;
+    this.path = path;
+  }
+}
+
+/** A refusal that is about the From address/domain, so another From could work. */
+export function isFromRefusal(error) {
+  if (!(error instanceof EmailitError)) return false;
+  const text = error.body.toLowerCase();
+  if (error.status === 422 && text.includes('domain not verified')) return true;
+  if (error.status === 403 && text.includes('not authorized')) return true;
+  return (error.status === 400 || error.status === 422) && /\bfrom\b/.test(text);
+}
+
+// Last outcome of an outgoing email, for GET / (no addresses, no bodies)
+const sendState = { lastOkAt: null, lastFailAt: null, lastFailStatus: null, lastFailReason: null, fromFallbacks: 0 };
 
 async function call(path, options = {}, timeoutMs = 20000) {
   const key = env('EMAILIT_API_KEY');
@@ -91,16 +152,110 @@ async function call(path, options = {}, timeoutMs = 20000) {
       signal: controller.signal
     });
     const text = await response.text();
-    if (!response.ok) throw new Error(`Emailit error ${response.status}: ${text.slice(0, 300)}`);
+    if (!response.ok) {
+      const error = new EmailitError(response.status, text, path);
+      console.error(`❌ Emailit ${options.method || 'GET'} ${path} -> ${response.status}: ${text.slice(0, 500)}${error.hint ? ` | ${error.hint}` : ''}`);
+      throw error;
+    }
     try { return JSON.parse(text); } catch { return {}; }
   } finally {
     clearTimeout(timer);
   }
 }
 
-/** POST /emails. payload: { from, to, subject, text, html, reply_to, headers, tracking, meta } */
-export function sendEmailit(payload) {
-  return call('/emails', { method: 'POST', body: JSON.stringify(payload) });
+async function postEmail(payload) {
+  const result = await call('/emails', { method: 'POST', body: JSON.stringify(payload) });
+  sendState.lastOkAt = new Date().toISOString();
+  console.log(`📧 Emailit accepted ${result?.id || 'email'} to @${domainOf(payload.to) || '?'} (status ${result?.status || 'unknown'})`);
+  return result;
+}
+
+/**
+ * POST /emails. payload: { from, to, subject, text, html, reply_to, headers, tracking, meta }
+ * If Emailit refuses the From (EMAIL_FROM on an unverified domain, say), the
+ * email is sent once more from DEFAULT_FROM, and later emails use DEFAULT_FROM.
+ */
+export async function sendEmailit(payload) {
+  try {
+    return await postEmail(payload);
+  } catch (error) {
+    if (isFromRefusal(error) && payload.from && extractAddress(payload.from) !== extractAddress(DEFAULT_FROM)) {
+      console.warn(`⚠️  Emailit refused the From address (${error.hint || error.status}); retrying from the default sender. Fix EMAIL_FROM or verify its domain in Emailit.`);
+      fromRefused = true;
+      sendState.fromFallbacks += 1;
+      try {
+        return await postEmail({ ...payload, from: DEFAULT_FROM });
+      } catch (retryError) {
+        recordFailure(retryError);
+        throw retryError;
+      }
+    }
+    recordFailure(error);
+    throw error;
+  }
+}
+
+function extractAddress(value) {
+  const m = String(value || '').match(/<([^<>]+)>\s*$/);
+  return (m ? m[1] : String(value || '')).trim().toLowerCase();
+}
+
+function recordFailure(error) {
+  sendState.lastFailAt = new Date().toISOString();
+  sendState.lastFailStatus = error?.status || null;
+  sendState.lastFailReason = error?.hint || (error?.status ? `Emailit ${error.status}` : 'network error or timeout');
+}
+
+// ---------------------------------------------------------------------------
+// Sending-domain check (startup, and GET / after that from memory).
+// GET /domains needs a Full Access key; a sending-only key answers 401/403 and
+// the check just says "unknown". Never blocks sending.
+// ---------------------------------------------------------------------------
+let domainState = { status: 'not checked', checkedAt: null };
+
+export async function checkSendingDomain() {
+  const domain = domainOf(fromAddress());
+  if (!env('EMAILIT_API_KEY') || !domain) {
+    domainState = { status: 'not checked', checkedAt: null };
+    return domainState;
+  }
+  try {
+    const page = await call(`/domains?search=${encodeURIComponent(domain)}&limit=100`, { method: 'GET' }, 10000);
+    const found = (page?.data || []).find(d => String(d.name || '').toLowerCase() === domain);
+    const status = found ? (found.verification_status || 'unknown') : 'not added to Emailit';
+    domainState = { status, checkedAt: new Date().toISOString() };
+    if (status !== 'verified') console.warn(`⚠️  Emailit sending domain for the From address: ${status}. Emails will not send until it is verified (Emailit > Domains > Check DNS).`);
+    else console.log('📧 Emailit sending domain verified');
+  } catch (error) {
+    domainState = { status: error.status === 401 || error.status === 403 ? 'unknown (API key cannot read domains)' : 'unknown (check failed)', checkedAt: new Date().toISOString() };
+  }
+  return domainState;
+}
+
+/** Health-check view of outgoing email. Flags and statuses only, never addresses or keys. */
+export function emailSenderStatus() {
+  const configured = Boolean(env('EMAILIT_API_KEY'));
+  const lastSend = !sendState.lastOkAt && !sendState.lastFailAt ? 'none yet'
+    : (sendState.lastFailAt || '') > (sendState.lastOkAt || '') ? 'failed' : 'ok';
+  return {
+    ok: configured && lastSend !== 'failed' && !['pending', 'pending_review', 'not added to Emailit'].includes(domainState.status),
+    configured,
+    from: fromSource(),
+    domain: domainState.status,
+    lastSend,
+    lastOkAt: sendState.lastOkAt,
+    lastFailAt: sendState.lastFailAt,
+    lastFailStatus: sendState.lastFailStatus,
+    lastFailReason: sendState.lastFailReason,
+    fromFallbacks: sendState.fromFallbacks
+  };
+}
+
+/** Tests only: forget the From refusal and the send history. */
+export function resetEmailState() {
+  fromRefused = false;
+  Object.assign(sendState, { lastOkAt: null, lastFailAt: null, lastFailStatus: null, lastFailReason: null, fromFallbacks: 0 });
+  domainState = { status: 'not checked', checkedAt: null };
 }
 
 /** GET /emails/{id}: the parsed inbound message (needs a Full Access key). */

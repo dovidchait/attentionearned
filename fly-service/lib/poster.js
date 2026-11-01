@@ -384,23 +384,48 @@ export async function safeReply(route, message) {
 // ZERNIO WEBHOOK (scheduled + queued posts)
 // Subscribe in Zernio to post.published, post.partial, post.failed with this
 // service's /zernio-webhook URL, and set ZERNIO_WEBHOOK_SECRET to the secret.
+//
+// Signature (https://docs.zernio.com/webhooks#signatures): X-Zernio-Signature
+// is the lowercase hex HMAC-SHA256 of the raw request body keyed by the
+// endpoint's secret; X-Late-Signature is the legacy alias with the same value.
+// - ZERNIO_WEBHOOK_SECRET set: unsigned or wrongly signed requests get 401
+//   and are ignored.
+// - not set: the webhook is off. Requests get 200 (so Zernio doesn't retry
+//   for two days) and nothing is done with them: an unsigned event could
+//   otherwise make us text anyone.
 // ============================================================================
 
 const seenEvents = new Set();
 
-export async function handleZernioWebhook(req, res) {
-  const secret = process.env.ZERNIO_WEBHOOK_SECRET;
-  if (!secret) return res.status(503).json({ error: 'ZERNIO_WEBHOOK_SECRET not set' });
+/** True when `signature` is the hex HMAC-SHA256 of rawBody with secret. */
+export function verifyZernioSignature(rawBody, signature, secret) {
+  if (!secret || !rawBody || !signature) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const given = String(Array.isArray(signature) ? signature[0] : signature).trim().toLowerCase().replace(/^sha256=/, '');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(given);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
-  const signature = req.headers['x-zernio-signature'];
-  const expected = crypto.createHmac('sha256', secret).update(req.rawBody || '').digest('hex');
-  if (!signature || signature.length !== expected.length ||
-      !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-    return res.status(400).json({ error: 'Invalid signature' });
+export async function handleZernioWebhook(req, res) {
+  const secret = String(process.env.ZERNIO_WEBHOOK_SECRET || '').trim();
+  if (!secret) {
+    console.warn('Zernio webhook ignored: ZERNIO_WEBHOOK_SECRET is not set (webhook is off)');
+    return res.status(200).json({ received: false, reason: 'webhook off: ZERNIO_WEBHOOK_SECRET not set' });
+  }
+
+  const signature = req.headers['x-zernio-signature'] || req.headers['x-late-signature'];
+  if (!verifyZernioSignature(req.rawBody, signature, secret)) {
+    console.error(`Zernio webhook refused: ${signature ? 'signature does not match' : 'no signature header'}`);
+    return res.status(401).json({ error: 'Invalid signature' });
   }
 
   const event = req.body || {};
   res.json({ received: true });
+  if (event.event === 'webhook.test') {
+    console.log('🔔 Zernio test webhook received and verified');
+    return;
+  }
 
   if (!['post.published', 'post.partial', 'post.failed'].includes(event.event)) return;
   if (event.id) {
@@ -421,6 +446,11 @@ export async function handleZernioWebhook(req, res) {
     subject: meta.replySubject || undefined
   };
   const user = findUser(route.channel, route.to);
+  if (!user) {
+    // Only people in users.json post through us, so only they get answers.
+    console.warn(`Zernio webhook: reply target on ${route.channel} is not in users.json; not sending`);
+    return;
+  }
   const title = meta.title || titleOf(event.post?.content);
   await safeReply(route, whereItWent(platformResults(event.post, accountLabels(user)), [], title));
 }

@@ -83,18 +83,32 @@ The client can then log in at `https://dashboard.attentionearned.com` with their
 on every merge to main that touches `client-dashboard/` or `fly-service/users.json`, and from
 GitHub > Actions > "Deploy client dashboard to Fly" > Run workflow. On its first run it creates the
 Fly app, generates `DASHBOARD_JWT_SECRET` (never printed), bundles `fly-service/users.json` as
-`/app/users.json`, then deploys one machine.
+`/app/users.json`, deploys one machine, then checks the URL answers.
 
-One-time setup:
-1. Fly dashboard > Tokens: create an **org token** and save it in GitHub > Settings > Secrets and
-   variables > Actions as `FLY_DASHBOARD_TOKEN` (the existing `FLY_API_TOKEN` is a deploy token for
-   `text-to-attention` only, so it can't create or deploy this app). If your Fly org isn't
-   `personal`, add a repository variable `FLY_ORG` with its slug.
-2. Run the workflow once (Actions tab), then in Fly dashboard > text-to-attention-dashboard > Secrets
-   add `ZERNIO_API_KEY` and `EMAILIT_API_KEY` (plus any per-client `ZERNIO_API_KEY_*`). Fly restarts
-   the app by itself.
-3. Open https://text-to-attention-dashboard.fly.dev and sign in with your email.
+It does nothing until `FLY_DASHBOARD_TOKEN` exists: the tests run, then the run ends green with the
+notice "Dashboard not deployed: add the repo secret FLY_DASHBOARD_TOKEN".
 
+One-time setup (about 5 minutes, all in the browser):
+1. Fly dashboard (fly.io) > your org > **Tokens** > Create token, type **Org** (name it
+   `github-dashboard`). Copy it.
+   The existing `FLY_API_TOKEN` repo secret is a deploy token for `text-to-attention` only: it can't
+   create or deploy this app (that's why the Oct 28 run failed), so the workflow doesn't use it.
+2. GitHub > dovidchait/attentionearned > Settings > Secrets and variables > Actions > New repository
+   secret: name `FLY_DASHBOARD_TOKEN`, value = that token.
+3. Same page, two more repository secrets (optional but easiest; the workflow copies them into the
+   app's Fly secrets and never prints them):
+   - `DASHBOARD_ZERNIO_API_KEY` = the Zernio API key (same one `text-to-attention` uses)
+   - `DASHBOARD_EMAILIT_API_KEY` = the Emailit API key (sends the sign-in links)
+   Or skip these and add `ZERNIO_API_KEY` and `EMAILIT_API_KEY` in Fly dashboard >
+   text-to-attention-dashboard > Secrets after the first run (Fly restarts the app by itself).
+4. If your Fly org's slug isn't `personal`: Settings > Secrets and variables > Actions > Variables >
+   New repository variable `FLY_ORG` = the slug (shown in the Fly dashboard URL).
+5. GitHub > Actions > "Deploy client dashboard to Fly" > Run workflow (branch main).
+6. Open https://text-to-attention-dashboard.fly.dev and sign in with your email (admins:
+   `chaitd@outlook.com`, `david@attentionearned.com`, or `ADMIN_EMAILS`).
+
+Per-client Zernio keys (`ZERNIO_API_KEY_*`, see users.json `apiKeyEnv`) go in Fly dashboard >
+text-to-attention-dashboard > Secrets.
 
 ### First deploy
 

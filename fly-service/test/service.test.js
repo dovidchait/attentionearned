@@ -19,7 +19,7 @@ const SENDER = '+18666188109';
 const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tta-state-'));
 
 // ---------------------------------------------------------------- fakes ----
-const fake = { zernio: [], uploads: [], media: [], emailit: [], emailitReads: [], inbox: {}, twilio: [], nextPost: null };
+const fake = { zernio: [], uploads: [], media: [], emailit: [], emailitRefused: [], emailitReads: [], inbox: {}, twilio: [], nextPost: null, emailitFail: null, domains: [] };
 const EMAILIT_SECRET = 'whsec_' + 'ab'.repeat(32);
 
 function listen(handler) {
@@ -97,9 +97,21 @@ before(async () => {
   emailit = await listen(async (req, res) => {
     const body = await readBody(req);
     if (req.method === 'POST' && req.url === '/v2/emails') {
-      fake.emailit.push({ path: req.url, auth: req.headers.authorization, json: JSON.parse(body) });
+      const json = JSON.parse(body);
+      const fail = fake.emailitFail && fake.emailitFail(json);
+      if (fail) {
+        fake.emailitRefused.push(json);
+        res.writeHead(fail.status, { 'content-type': 'application/json' });
+        return res.end(JSON.stringify(fail.body));
+      }
+      fake.emailit.push({ path: req.url, auth: req.headers.authorization, json });
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(JSON.stringify({ object: 'email', id: `em_out${fake.emailit.length}`, message_id: `<out${fake.emailit.length}@attentionearned.com>`, status: 'pending' }));
+    }
+    if (req.method === 'GET' && req.url.startsWith('/v2/domains')) {
+      const search = new URL(req.url, 'http://x').searchParams.get('search');
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ data: (fake.domains || []).filter(d => d.name.includes(search || '')), domain_count: (fake.domains || []).length }));
     }
     const m = req.url.match(/^\/v2\/emails\/([A-Za-z0-9_]+)$/);
     if (req.method === 'GET' && m) {
@@ -152,7 +164,9 @@ after(() => {
 });
 
 beforeEach(() => {
-  for (const k of ['zernio', 'uploads', 'media', 'emailit', 'emailitReads', 'twilio']) fake[k].length = 0;
+  for (const k of ['zernio', 'uploads', 'media', 'emailit', 'emailitRefused', 'emailitReads', 'twilio']) fake[k].length = 0;
+  fake.emailitFail = null;
+  fake.domains = [];
   fake.inbox = {};
   delete process.env.EMAIL_WEBHOOK_SECRET;
   fake.nextPost = null;
@@ -785,4 +799,133 @@ test('health check says whether an SMS sender is set (never the number)', async 
   assert.equal(json.config.sms, true);
   assert.equal(json.config.smsSender, true);
   assert.ok(!JSON.stringify(json).includes('8666188109'));
+});
+
+
+// ------------------------------------------- email sender reliability ----
+test('Emailit refuses EMAIL_FROM (unverified domain): the email goes again from the default sender', async () => {
+  const em = await import('../lib/emailit.js');
+  em.resetEmailState();
+  const savedFrom = process.env.EMAIL_FROM;
+  process.env.EMAIL_FROM = 'Attention Earned <post@unverified-example.com>';
+  fake.emailitFail = json => json.from.includes('unverified-example.com')
+    ? { status: 422, body: { error: 'Domain not verified', message: 'The from address is not on a verified sending domain' } }
+    : null;
+  try {
+    const result = await mod.notify.notify({ channel: 'email', to: 'chaitd@outlook.com', subject: 'Gala' }, '✅ Live: https://example.com/p/1');
+    assert.equal(result.sent, true);
+    assert.equal(fake.emailitRefused.length, 1);
+    assert.equal(fake.emailit.length, 1);
+    assert.equal(fake.emailit[0].json.from, em.DEFAULT_FROM);
+    // later emails skip the refused From
+    await mod.notify.notify({ channel: 'email', to: 'chaitd@outlook.com' }, 'second');
+    assert.equal(fake.emailitRefused.length, 1);
+    assert.equal(fake.emailit[1].json.from, em.DEFAULT_FROM);
+
+    const json = await (await fetch(`${appUrl}/`)).json();
+    assert.equal(json.emailSenderDetail.from, 'default (Emailit refused EMAIL_FROM)');
+    assert.equal(json.emailSenderDetail.fromFallbacks, 1);
+    assert.equal(json.emailSenderDetail.lastSend, 'ok');
+    assert.equal(json.config.emailSender, true);
+    assert.ok(!JSON.stringify(json).includes('unverified-example.com'));
+    assert.ok(!JSON.stringify(json).includes('secret_emailit_test'));
+  } finally {
+    process.env.EMAIL_FROM = savedFrom;
+    em.resetEmailState();
+  }
+});
+
+test('Emailit failure: status and reason are kept for GET / (emailSender false), errors carry the body', async () => {
+  const em = await import('../lib/emailit.js');
+  em.resetEmailState();
+  fake.emailitFail = () => ({ status: 403, body: { error: 'Workspace not verified', message: 'Workspace not verified' } });
+  try {
+    await assert.rejects(
+      em.sendEmailit({ from: em.DEFAULT_FROM, to: 'someone@example.com', subject: 's', text: 't' }),
+      err => err instanceof em.EmailitError && err.status === 403 && /sandbox/.test(err.message)
+    );
+    assert.equal(fake.emailitRefused.length, 1); // a non-From refusal is not retried
+    const json = await (await fetch(`${appUrl}/`)).json();
+    assert.equal(json.config.emailSender, false);
+    assert.equal(json.emailSenderDetail.lastSend, 'failed');
+    assert.equal(json.emailSenderDetail.lastFailStatus, 403);
+    assert.match(json.emailSenderDetail.lastFailReason, /sandbox mode/);
+    assert.ok(!JSON.stringify(json).includes('someone@example.com'));
+  } finally {
+    em.resetEmailState();
+  }
+});
+
+test('Emailit hints, From source and the sending-domain check', async () => {
+  const em = await import('../lib/emailit.js');
+  em.resetEmailState();
+  assert.match(em.emailitHint(402, '{"error":"Insufficient credits"}'), /out of credits/);
+  assert.match(em.emailitHint(422, '{"error":"Domain not verified"}'), /not on a verified/);
+  assert.match(em.emailitHint(401, ''), /EMAILIT_API_KEY/);
+  assert.equal(em.domainOf('Attention Earned <post@AttentionEarned.com>'), 'attentionearned.com');
+  const savedFrom = process.env.EMAIL_FROM;
+  try {
+    process.env.EMAIL_FROM = 'not an address';
+    assert.equal(em.fromSource(), 'default (EMAIL_FROM is not a valid address)');
+    delete process.env.EMAIL_FROM;
+    assert.equal(em.fromSource(), 'default');
+
+    fake.domains = [{ name: 'attentionearned.com', verification_status: 'pending' }];
+    assert.equal((await em.checkSendingDomain()).status, 'pending');
+    assert.equal(em.emailSenderStatus().ok, false);
+    fake.domains = [{ name: 'attentionearned.com', verification_status: 'verified' }];
+    assert.equal((await em.checkSendingDomain()).status, 'verified');
+    assert.equal(em.emailSenderStatus().ok, true);
+    fake.domains = [];
+    assert.equal((await em.checkSendingDomain()).status, 'not added to Emailit');
+  } finally {
+    process.env.EMAIL_FROM = savedFrom;
+    em.resetEmailState();
+  }
+});
+
+// ------------------------------------------------- Zernio webhook security ----
+test('Zernio webhook without ZERNIO_WEBHOOK_SECRET is off: 200, nothing sent', async () => {
+  const body = JSON.stringify(scheduledEvent({ lastInboundAt: Date.now() - 3600 * 1000, platforms: [{ platform: 'instagram', accountId: IG_PERSONAL, status: 'published', publishedUrl: 'https://instagram.com/p/x' }] }));
+  const res = await fetch(`${appUrl}/zernio-webhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).received, false);
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(fake.twilio.length, 0);
+});
+
+test('Zernio webhook with a secret: missing/wrong signature -> 401; X-Zernio-Signature or X-Late-Signature accepted', async () => {
+  process.env.ZERNIO_WEBHOOK_SECRET = 'zernio-secret';
+  const event = scheduledEvent({ lastInboundAt: Date.now() - 3600 * 1000, platforms: [{ platform: 'instagram', accountId: IG_PERSONAL, status: 'published', publishedUrl: 'https://instagram.com/p/y' }] });
+  const body = JSON.stringify(event);
+  const post = headers => fetch(`${appUrl}/zernio-webhook`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body });
+
+  assert.equal((await post({})).status, 401);
+  assert.equal((await post({ 'x-zernio-signature': 'ab'.repeat(32) })).status, 401);
+  const forged = crypto.createHmac('sha256', 'wrong-secret').update(body).digest('hex');
+  assert.equal((await post({ 'x-zernio-signature': forged })).status, 401);
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(fake.twilio.length, 0);
+
+  // legacy header name, upper-case hex: accepted
+  assert.equal((await post({ 'x-late-signature': signZernio(body).toUpperCase() })).status, 200);
+  const m = await until(() => fake.twilio[0]);
+  assert.match(m.body, /instagram\.com\/p\/y/);
+
+  // Zernio's dashboard test event: 200, nothing sent
+  fake.twilio.length = 0;
+  const testBody = JSON.stringify({ id: 'evt_test_1', event: 'webhook.test', message: 'This is a test webhook from Zernio' });
+  const t = await fetch(`${appUrl}/zernio-webhook`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-zernio-signature': signZernio(testBody) }, body: testBody });
+  assert.equal(t.status, 200);
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(fake.twilio.length, 0);
+});
+
+test('Zernio webhook: a validly signed event for someone not in users.json sends nothing', async () => {
+  process.env.ZERNIO_WEBHOOK_SECRET = 'zernio-secret';
+  const event = scheduledEvent({ lastInboundAt: Date.now() - 3600 * 1000, platforms: [{ platform: 'instagram', accountId: IG_PERSONAL, status: 'published', publishedUrl: 'https://instagram.com/p/z' }] });
+  event.post.metadata.replyTo = '+15550001111';
+  assert.equal(await zernioWebhook(event), 200);
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(fake.twilio.length, 0);
 });
