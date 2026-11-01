@@ -449,6 +449,10 @@ import Base from '../layouts/Base.astro';
 </script>
 
 <style>
+  /* The panels below set display:flex/grid, which overrode the hidden
+     attribute and showed the spinner, error and results boxes on page load. */
+  [hidden] { display: none !important; }
+
   .pipeline {
     max-width: 720px;
     padding-block: clamp(4rem, 8vw, 6rem) 6rem;

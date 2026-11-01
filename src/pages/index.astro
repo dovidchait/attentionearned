@@ -194,6 +194,11 @@ const featuredWork = AE_WORK
     gap: 22px;
   }
 
+  /* Must come before the media queries below so they can override it on
+     phones (it used to sit after them, which kept the first tile spanning
+     2 columns in the 1-column phone grid and squeezed the other tiles). */
+  .work-tile--wide { grid-column: span 2; }
+
   @media (max-width: 900px) {
     .work-grid { grid-template-columns: repeat(2, 1fr); }
     .work-tile--wide { grid-column: span 2; }
@@ -204,7 +209,6 @@ const featuredWork = AE_WORK
     .work-tile--wide { grid-column: span 1; }
   }
 
-  .work-tile--wide { grid-column: span 2; }
 
   .work-tile {
     position: relative;
@@ -301,6 +305,9 @@ const featuredWork = AE_WORK
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
+    /* overflow:hidden moves an inline-block's baseline to its bottom edge,
+       which lifted the word above the rest of the headline */
+    vertical-align: bottom;
     border-right: 3px solid var(--accent, #fc2c30);
   }
 
