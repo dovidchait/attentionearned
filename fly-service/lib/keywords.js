@@ -1,5 +1,7 @@
 // ============================================================================
-// KEYWORDS: STOP / START / HELP (WhatsApp, email; SMS is answered by Twilio)
+// KEYWORDS: STOP / START / HELP
+// WhatsApp + email: answered here. SMS: Twilio's opt-out handling answers STOP
+// and START (and blocks texts after STOP); we only answer HELP (SMS_HELP_REPLY).
 // ============================================================================
 
 const STOP_WORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'OPTOUT', 'OPT OUT', 'REVOKE']);
@@ -24,3 +26,7 @@ export const KEYWORD_REPLIES = {
   stop: "You're unsubscribed and won't get more messages from us here. Reply START to resubscribe.",
   start: "You're signed up for updates about your posts (live links, failure notices, reminders). Msg frequency varies. Reply HELP for help, STOP to opt out."
 };
+
+// SMS HELP answer (the toll-free number). Set SMS_HELP_REPLY=false if Twilio's
+// Advanced Opt-Out already sends this same text, so people don't get it twice.
+export const SMS_HELP_REPLY = 'Attention Earned: text a photo or video with a caption to post it. Help: attentionearned.com/sms. Reply STOP to opt out.';

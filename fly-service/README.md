@@ -76,7 +76,8 @@ See `.env.example`. Required for posting: `ZERNIO_API_KEY`, `TWILIO_ACCOUNT_SID`
 links that arrive after 24 h). Email needs `EMAILIT_API_KEY` (Full Access), `EMAILIT_WEBHOOK_SECRET`, `EMAIL_FROM`
 and `EMAIL_REPLY_TO` (both optional-ish: surrounding quotes/spaces are stripped, and an invalid
 `EMAIL_FROM` falls back to `Attention Earned <post@attentionearned.com>` with a warning in the log;
-in the Fly dashboard type values without quotes). SMS is off until `SMS_ENABLED=true` (with `TWILIO_FROM_NUMBER`).
+in the Fly dashboard type values without quotes). SMS is off until `SMS_ENABLED=true` (sender: `TWILIO_FROM_NUMBER`,
+or the older `TWILIO_PHONE_NUMBER`; see "SMS" below).
 `LATE_API_KEY` is no longer used. `GET /` shows which of these are set (true/false, never values).
 
 ## WhatsApp (Twilio WhatsApp sender)
@@ -199,8 +200,8 @@ fly secrets set -a text-to-attention \
   TWILIO_WHATSAPP_FROM=+1... TWILIO_WA_TEMPLATE_POSTED_SID=HX... \
   EMAILIT_API_KEY=... EMAILIT_WEBHOOK_SECRET=whsec_... \
   EMAIL_FROM="Attention Earned <post@attentionearned.com>" EMAIL_REPLY_TO=post@inbound.attentionearned.com
-# later, once the toll-free number is verified:
-# fly secrets set -a text-to-attention SMS_ENABLED=true TWILIO_FROM_NUMBER=+18666188109
+# SMS (toll-free number verified Oct 29 2026), see "SMS" below:
+# fly secrets set -a text-to-attention SMS_ENABLED=true TWILIO_FROM_NUMBER=+18666188109 PUBLIC_BASE_URL=https://text-to-attention.fly.dev
 
 fly secrets unset -a text-to-attention LATE_API_KEY   # if it was set
 
@@ -218,6 +219,53 @@ Optional, for live links on scheduled/queued posts: in Zernio create a webhook f
 `https://text-to-attention.fly.dev/zernio-webhook`, then
 `fly secrets set ZERNIO_WEBHOOK_SECRET=<its secret>`.
 
+## SMS (toll-free +1 866-618-8109)
+
+The number passed toll-free verification on Oct 29 2026. SMS works like WhatsApp and email: a person
+in `users.json` (matched by `phone`) texts a photo or video with a caption to the number, the service
+answers "Attention Earned: Got it. Posting now: ...", posts through Zernio, then texts back the live
+links (or what failed and why). Anyone not in `users.json` gets "not set up to post". MMS media is
+capped at 5 MB, so longer videos go in as a Dropbox / Google Drive link in the text.
+
+- Every outbound SMS starts with `Attention Earned:` (added once, never doubled), including calendar reminders.
+- `HELP` / `INFO` is answered with: "Attention Earned: text a photo or video with a caption to post it.
+  Help: attentionearned.com/sms. Reply STOP to opt out." If Twilio's Advanced Opt-Out is set to send
+  that same HELP text itself, set `SMS_HELP_REPLY=false` so nobody gets it twice.
+- `STOP` / `START` are answered and enforced by Twilio's opt-out handling. The service sends no reply
+  to them; it only remembers the opt-out so it doesn't try to text that number.
+- Posts that come in by **email** also get their result ("Live: ..." / scheduled / failed) by SMS when
+  `SMS_ENABLED=true` and the sender's `users.json` entry has a `phone`. The "Got it" stays email-only.
+- The SMS sender is `TWILIO_FROM_NUMBER`, falling back to `TWILIO_PHONE_NUMBER`. Replies to a text go
+  out from the number that was texted.
+- `PUBLIC_BASE_URL=https://text-to-attention.fly.dev` pins the URL used to check Twilio's signature
+  (without it the URL comes from Fly's proxy headers, which also works).
+
+Switch it on:
+
+1. Fly secrets (CLI, or Fly dashboard > text-to-attention > Secrets, then deploy):
+   `fly secrets set -a text-to-attention SMS_ENABLED=true TWILIO_FROM_NUMBER=+18666188109 PUBLIC_BASE_URL=https://text-to-attention.fly.dev`
+   No allow-list secret is needed (`users.json` decides). Only if `ENFORCE_ENV_ALLOWLIST=true` is set,
+   also set `ALLOWED_NUMBERS=+13473610822` (comma-separated for more people).
+2. Twilio console > Phone Numbers > Manage > Active numbers > +1 866-618-8109 > Messaging configuration >
+   "A message comes in": Webhook, `https://text-to-attention.fly.dev/sms-webhook`, HTTP POST > Save.
+   (If the number sits in a Messaging Service, set the same URL under that service's Integration
+   instead.) Leave Twilio's opt-out handling for STOP/START/HELP on.
+3. Deploy (merging a change under `fly-service/` to main deploys through GitHub Actions, or `fly deploy`).
+   `curl https://text-to-attention.fly.dev/` should show `"sms": true` and `"smsSender": true`.
+
+Test plan:
+
+1. From +1 347-361-0822, text a photo + caption with `post to linkedin personal` to +1 866-618-8109.
+   Expect "Attention Earned: Got it. Posting now: ..." within seconds.
+2. The post appears on LinkedIn, and a text "Attention Earned: ... Live: <link>" comes back.
+   (Delete the test post afterwards.)
+3. Text `HELP`: expect the help line above (once). Text `STOP`, then try to post: nothing is
+   posted or sent. Text `START` to turn it back on.
+4. Email a photo + caption to post@inbound.attentionearned.com from the address in `users.json`:
+   the result arrives by email and by text.
+5. If nothing comes back: `fly logs -a text-to-attention` names the reason ("SMS is off",
+   "Invalid sms webhook signature", "not in users.json", ...).
+
 ## Local dev
 
 ```bash
@@ -231,6 +279,7 @@ Set `ZERNIO_BASE_URL` to point at a mock server for testing without posting.
 
 ## Known limits
 
+- SMS/MMS: media up to 5 MB; bigger videos need a link.
 - WhatsApp: free-form replies only within 24 h of the person's last message (template or email after
   that, see above). Media up to 16 MB; bigger videos need a link.
 - Videos from links are held in memory while uploading (512 MB machine); `MAX_LINK_MEDIA_MB` (default

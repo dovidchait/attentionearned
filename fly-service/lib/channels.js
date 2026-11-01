@@ -3,6 +3,7 @@ import mailparser from 'mailparser';
 import fetch from 'node-fetch';
 import { extractEmail } from './users.js';
 import { sendEmailit, fromAddress, replyToAddress } from './emailit.js';
+import { brand } from './brand.js';
 
 // ============================================================================
 // CHANNELS (pluggable inbound/outbound)
@@ -24,9 +25,16 @@ import { sendEmailit, fromAddress, replyToAddress } from './emailit.js';
 // ============================================================================
 
 const env = name => process.env[name];
+// Fly dashboard values sometimes arrive with quotes or spaces: "true", ' +1866... '
+const cleanEnv = name => String(env(name) || '').trim().replace(/^["']|["']$/g, '').trim();
 
 export function smsEnabled() {
-  return String(env('SMS_ENABLED') || '').toLowerCase() === 'true';
+  return cleanEnv('SMS_ENABLED').toLowerCase() === 'true';
+}
+
+/** The SMS sender: TWILIO_FROM_NUMBER, or the older TWILIO_PHONE_NUMBER secret. */
+export function smsFromNumber() {
+  return cleanEnv('TWILIO_FROM_NUMBER') || cleanEnv('TWILIO_PHONE_NUMBER') || null;
 }
 
 let twilioClient = null;
@@ -93,7 +101,7 @@ function twilioChannel({ name, prefix, maxMediaMb }) {
   const address = value => (prefix ? `${prefix}${strip(value)}` : strip(value));
   const fromFor = route => (name === 'whatsapp'
     ? env('TWILIO_WHATSAPP_FROM') || route.from
-    : route.from || env('TWILIO_FROM_NUMBER'));
+    : route.from || smsFromNumber());
 
   return {
     name,
@@ -131,8 +139,10 @@ function twilioChannel({ name, prefix, maxMediaMb }) {
       const client = getTwilioClient();
       if (!client) throw new Error('Twilio is not configured (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)');
       const from = fromFor(route);
-      if (!from) throw new Error(`No ${name} sender number (${name === 'whatsapp' ? 'TWILIO_WHATSAPP_FROM' : 'TWILIO_FROM_NUMBER'})`);
-      return client.messages.create({ from: address(from), to: address(route.to), body: text });
+      if (!from) throw new Error(`No ${name} sender number (${name === 'whatsapp' ? 'TWILIO_WHATSAPP_FROM' : 'TWILIO_FROM_NUMBER or TWILIO_PHONE_NUMBER'})`);
+      // Every SMS starts with "Attention Earned:" (toll-free verification), even if a caller forgot.
+      const body = name === 'sms' ? brand(text) : text;
+      return client.messages.create({ from: address(from), to: address(route.to), body });
     },
 
     async downloadMedia(item) {

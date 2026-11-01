@@ -683,3 +683,106 @@ test('health check shows configuration flags only, never values', async () => {
   assert.equal(json.config.whatsappSender, true);
   assert.ok(!JSON.stringify(json).includes(TOKEN));
 });
+
+// ------------------------------------------------------- SMS switch-on ----
+function withSmsEnv(vars) {
+  for (const k of ['TWILIO_FROM_NUMBER', 'TWILIO_PHONE_NUMBER', 'SMS_HELP_REPLY']) delete process.env[k];
+  Object.assign(process.env, { SMS_ENABLED: 'true', ...vars });
+}
+
+test('SMS: a text with a photo from a users.json number posts and answers from the toll-free number', async () => {
+  withSmsEnv({ TWILIO_FROM_NUMBER: SENDER });
+  const res = await postTwilio('/sms-webhook', { From: DAVID, To: SENDER, Body: 'Sunset shot\npost to linkedin personal', NumMedia: '1', MediaUrl0: `${files.url}/twilio/ME10`, MediaContentType0: 'image/jpeg' });
+  assert.equal(res.status, 200);
+  assert.match(twiml(res.text), /^Attention Earned: Got it\./);
+  await until(() => posts().length === 1);
+  assert.equal(posts()[0].json.content, 'Sunset shot');
+  assert.equal(posts()[0].json.metadata.replyChannel, 'sms');
+  const reply = await until(() => fake.twilio[0]);
+  assert.equal(reply.to, DAVID);
+  assert.equal(reply.from, SENDER);
+  assert.match(reply.body, /^Attention Earned: /);
+  assert.doesNotMatch(reply.body, /Attention Earned: Attention Earned:/);
+});
+
+test('SMS: a number that is not in users.json cannot post', async () => {
+  withSmsEnv({ TWILIO_FROM_NUMBER: SENDER });
+  const res = await postTwilio('/sms-webhook', { From: '+12125550000', To: SENDER, Body: 'hi', NumMedia: '1', MediaUrl0: `${files.url}/twilio/ME11`, MediaContentType0: 'image/jpeg' });
+  assert.match(twiml(res.text), /not set up to post/);
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(posts().length, 0);
+});
+
+test('SMS HELP gets our help text (once prefixed); START is left to Twilio; SMS_HELP_REPLY=false silences HELP', async () => {
+  withSmsEnv({ TWILIO_FROM_NUMBER: SENDER });
+  const help = await postTwilio('/sms-webhook', { From: '+12125550000', To: SENDER, Body: 'help' });
+  assert.equal(twiml(help.text), 'Attention Earned: text a photo or video with a caption to post it. Help: attentionearned.com/sms. Reply STOP to opt out.');
+  const start = await postTwilio('/sms-webhook', { From: DAVID, To: SENDER, Body: 'START' });
+  assert.equal(twiml(start.text), '');
+  process.env.SMS_HELP_REPLY = 'false';
+  const quiet = await postTwilio('/sms-webhook', { From: DAVID, To: SENDER, Body: 'HELP' });
+  assert.equal(twiml(quiet.text), '');
+  assert.equal(posts().length, 0);
+});
+
+test('SMS sender falls back to TWILIO_PHONE_NUMBER; every SMS is prefixed exactly once', async () => {
+  withSmsEnv({ TWILIO_PHONE_NUMBER: ' "+18666188109" ' });
+  assert.equal(mod.channels.smsFromNumber(), SENDER);
+  await mod.channels.channels.sms.send({ channel: 'sms', to: DAVID }, 'plain text');
+  await mod.channels.channels.sms.send({ channel: 'sms', to: DAVID }, 'Attention Earned: already branded');
+  assert.equal(fake.twilio[0].from, SENDER);
+  assert.equal(fake.twilio[0].body, 'Attention Earned: plain text');
+  assert.equal(fake.twilio[1].body, 'Attention Earned: already branded');
+  process.env.TWILIO_FROM_NUMBER = '+15550001111';
+  assert.equal(mod.channels.smsFromNumber(), '+15550001111'); // TWILIO_FROM_NUMBER wins
+});
+
+test('email post: the "posted" result also goes out by SMS when SMS is on (and only then)', async () => {
+  withSmsEnv({ TWILIO_FROM_NUMBER: SENDER });
+  fake.inbox.em_sms1 = inboundEmail('em_sms1', { message_id: '<sms1@outlook.com>' });
+  await emailitWebhook([received('em_sms1')]);
+  const live = await until(() => fake.emailit.find(m => m.json.text.includes('Live')));
+  const sms = await until(() => fake.twilio.find(m => m.body.includes('Live')));
+  assert.equal(sms.to, DAVID);
+  assert.equal(sms.from, SENDER);
+  assert.match(sms.body, /^Attention Earned: /);
+  assert.equal(sms.body, live.json.text);
+  assert.ok(!fake.twilio.some(m => m.body.includes('Got it')), 'the "Got it" stays email-only');
+
+  // SMS off: email only
+  for (const k of ['zernio', 'emailit', 'twilio']) fake[k].length = 0;
+  mod.store._resetForTests();
+  delete process.env.SMS_ENABLED;
+  fake.inbox.em_sms2 = inboundEmail('em_sms2', { message_id: '<sms2@outlook.com>', subject: 'Second', body: { text: 'Second\npost to linkedin' } });
+  await emailitWebhook([received('em_sms2')]);
+  await until(() => fake.emailit.find(m => m.json.text.includes('Live')));
+  await new Promise(r => setTimeout(r, 100));
+  assert.equal(fake.twilio.length, 0);
+});
+
+test('email post: SMS copy still goes out when the email reply fails; none after SMS STOP', async () => {
+  withSmsEnv({ TWILIO_FROM_NUMBER: SENDER });
+  const route = { channel: 'email', to: 'chaitd@outlook.com' };
+  const realSend = mod.channels.channels.email.send;
+  mod.channels.channels.email.send = async () => { throw new Error('email down'); };
+  try {
+    const result = await mod.notify.notify(route, 'Live: https://example.com/p/1');
+    assert.equal(result.via, 'sms');
+  } finally {
+    mod.channels.channels.email.send = realSend;
+  }
+  assert.equal(fake.twilio[0].body, 'Attention Earned: Live: https://example.com/p/1');
+  mod.store.setOptedOut('sms', DAVID, true);
+  fake.twilio.length = 0;
+  const result = await mod.notify.notify(route, 'Live again');
+  assert.equal(result.via, 'email');
+  assert.equal(fake.twilio.length, 0);
+});
+
+test('health check says whether an SMS sender is set (never the number)', async () => {
+  withSmsEnv({ TWILIO_PHONE_NUMBER: SENDER });
+  const json = await (await fetch(`${appUrl}/`)).json();
+  assert.equal(json.config.sms, true);
+  assert.equal(json.config.smsSender, true);
+  assert.ok(!JSON.stringify(json).includes('8666188109'));
+});
