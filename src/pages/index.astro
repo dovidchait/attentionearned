@@ -15,10 +15,8 @@ const featuredWork = AE_WORK
     <div class="hero__inner ae-reveal">
       <Kicker bullet={false}>Video Production</Kicker>
       <h1 class="hero__h1">We make people <span class="hero__flip" aria-live="polite"><span class="hero__flip-word" id="heroFlipWord">buy.</span></span></h1>
-      <p class="hero__sub">
+      <p class="hero__sub" id="heroSub">
         For B2B teams and service brands who want to turn watchers into buyers.
-        For founders who want to build trust, not just awareness. For nonprofits
-        and missions that deserve more than applause. They deserve action.
       </p>
       <div class="hero__actions">
         <a href="/contact" class="btn-primary btn-lg">Let's make them feel something</a>
@@ -125,6 +123,11 @@ const featuredWork = AE_WORK
     font-size: clamp(1.05rem, 1.6vw, 1.25rem);
     line-height: var(--lh-body);
     color: var(--text-muted);
+    transition: opacity 0.35s ease;
+  }
+
+  .hero__sub--fade {
+    opacity: 0;
   }
 
   .hero__actions {
@@ -327,7 +330,13 @@ const featuredWork = AE_WORK
 
 <script>
   const words = ['buy.', 'cry.', 'act.'];
+  const subs = [
+    'For B2B teams and service brands who want to turn watchers into buyers.',
+    'For nonprofits and missions that deserve more than applause. They deserve action.',
+    'For founders who want to build trust, not just awareness.',
+  ];
   const el = document.getElementById('heroFlipWord') as HTMLElement;
+  const subEl = document.getElementById('heroSub') as HTMLElement;
   if (el) {
     let wordIndex = 0;
     let charIndex = words[0].length;
@@ -348,6 +357,7 @@ const featuredWork = AE_WORK
         phase = 'erase';
         el.classList.remove('typing');
         el.classList.add('erasing');
+        if (subEl) subEl.classList.add('hero__sub--fade');
         setTimeout(tick, PAUSE_AFTER);
         return;
       }
@@ -359,6 +369,10 @@ const featuredWork = AE_WORK
           setTimeout(tick, ERASE_SPEED);
         } else {
           wordIndex = (wordIndex + 1) % words.length;
+          if (subEl) {
+            subEl.textContent = subs[wordIndex];
+            setTimeout(() => subEl.classList.remove('hero__sub--fade'), 50);
+          }
           charIndex = 0;
           phase = 'type';
           el.classList.remove('erasing');
