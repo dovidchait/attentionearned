@@ -1,6 +1,9 @@
 import { channels, smsEnabled } from './channels.js';
 import { findUser } from './users.js';
 import * as store from './store.js';
+import { BRAND, brand } from './brand.js';
+
+export { BRAND, brand };
 
 // ============================================================================
 // NOTIFY: every outbound message goes through here.
@@ -10,16 +13,13 @@ import * as store from './store.js';
 //   message. Outside it: live links go out as the approved template
 //   (TWILIO_WA_TEMPLATE_POSTED_SID); anything else (failures, or no template)
 //   falls back to email, then SMS only if SMS_ENABLED=true.
+// - email posts: email delivery is unreliable, so when SMS_ENABLED=true and
+//   the sender's users.json entry has a phone, the same result (posted /
+//   scheduled / failed) also goes out by SMS.
 // ============================================================================
 
-export const BRAND = 'Attention Earned:';
 export const WINDOW_MS = 24 * 60 * 60 * 1000;
 const SAFETY_MS = 10 * 60 * 1000; // treat the last 10 minutes of the window as closed
-
-export function brand(text) {
-  const t = String(text || '').trim();
-  return t.startsWith(BRAND) ? t : `${BRAND} ${t}`;
-}
 
 /** Last time this WhatsApp number wrote in: the state file or the time saved on the post. */
 export function lastWhatsAppInbound(route) {
@@ -54,6 +54,8 @@ export async function notify(route, message) {
   if (!route?.channel || !route.to) throw new Error('No reply route');
   if (!msg.text) return { sent: false, reason: 'empty' };
 
+  if (route.channel === 'email') return notifyEmail(route, msg);
+
   if (store.isOptedOut(route.channel, route.to)) {
     console.log(`🔕 ${route.to} opted out of ${route.channel}; not sending`);
     return { sent: false, reason: 'opted_out' };
@@ -63,6 +65,46 @@ export async function notify(route, message) {
     return notifyOutsideWindow(route, msg);
   }
   return sendOn(route, msg.text);
+}
+
+// Email answer + an SMS copy to the same person (when SMS is on and they have a phone).
+// The SMS still goes out if the email send fails.
+async function notifyEmail(route, msg) {
+  const via = [];
+  let emailError = null;
+  if (store.isOptedOut('email', route.to)) {
+    console.log(`🔕 ${route.to} opted out of email; not sending`);
+  } else {
+    try {
+      await sendOn(route, msg.text);
+      via.push('email');
+    } catch (error) {
+      emailError = error;
+      console.error(`❌ Email reply to ${route.to} failed:`, error.message);
+    }
+  }
+  if (await smsCopyForEmail(route.to, msg.text)) via.push('sms');
+  if (via.length > 0) return { sent: true, via: via.join('+') };
+  if (emailError) throw emailError;
+  return { sent: false, reason: 'opted_out' };
+}
+
+async function smsCopyForEmail(address, text) {
+  if (!smsEnabled()) return false;
+  const user = findUser('email', address);
+  if (!user?.phone) return false;
+  if (store.isOptedOut('sms', user.phone)) {
+    console.log(`🔕 ${user.phone} opted out of SMS; no SMS copy of the email reply`);
+    return false;
+  }
+  try {
+    await sendOn({ channel: 'sms', to: user.phone }, text);
+    console.log(`📱 SMS copy of the email reply sent to ${user.phone}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ SMS copy of the email reply to ${user.phone} failed:`, error.message);
+    return false;
+  }
 }
 
 async function notifyOutsideWindow(route, msg) {

@@ -4,7 +4,7 @@ import { parseCommand, stripCommands, selectTargets } from './commands.js';
 import { findUser, apiKeyFor, accountLabels, extractEmail, normalizePhone } from './users.js';
 import { smsEnabled } from './channels.js';
 import { notify, brand } from './notify.js';
-import { keywordOf, KEYWORD_REPLIES } from './keywords.js';
+import { keywordOf, KEYWORD_REPLIES, SMS_HELP_REPLY } from './keywords.js';
 import { findMediaLinks, removeLinks, guessContentType, downloadLink } from './links.js';
 import * as store from './store.js';
 import { resolveStyle, processVideo, ffmpegAvailable } from './subtitles.js';
@@ -169,9 +169,13 @@ function handleKeyword(channel, message, keyword, answer, user) {
   if (keyword === 'stop') store.setOptedOut(channel.name, message.from, true);
   if (keyword === 'start') store.setOptedOut(channel.name, message.from, false);
   console.log(`🔑 ${keyword.toUpperCase()} from ${message.from} on ${channel.name}`);
-  // On SMS, Twilio's own Opt-Out Management sends the STOP/START/HELP replies
-  // (and blocks texts after STOP), so we only record it.
-  if (channel.name === 'sms') return answer('');
+  // On SMS, Twilio's own opt-out handling answers STOP/START (and blocks texts
+  // after STOP), so we stay silent on those and only mirror the state. HELP gets
+  // our answer unless SMS_HELP_REPLY=false (Twilio's Advanced Opt-Out sends it).
+  if (channel.name === 'sms') {
+    const helpOn = String(process.env.SMS_HELP_REPLY || '').trim().replace(/^["']|["']$/g, '').toLowerCase() !== 'false';
+    return answer(keyword === 'help' && helpOn ? SMS_HELP_REPLY : '');
+  }
   return answer(KEYWORD_REPLIES[keyword]);
 }
 

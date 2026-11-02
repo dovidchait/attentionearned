@@ -2,7 +2,8 @@ import express from 'express';
 import twilio from 'twilio';
 import cron from 'node-cron';
 import { google } from 'googleapis';
-import { channels, smsEnabled } from './lib/channels.js';
+import { channels, smsEnabled, smsFromNumber } from './lib/channels.js';
+import { brand } from './lib/brand.js';
 import { inboundHandler, handleZernioWebhook } from './lib/poster.js';
 import { emailWebhook } from './lib/emailit.js';
 import { allUsers } from './lib/users.js';
@@ -19,7 +20,7 @@ const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 // Calendar reminder config
 const CALENDAR_ID = process.env.CALENDAR_ID || 'david@attentionearned.com';
 const REMINDER_TO_NUMBER = process.env.REMINDER_TO_NUMBER;   // your flip phone
-const REMINDER_FROM_NUMBER = process.env.REMINDER_FROM_NUMBER || process.env.TWILIO_FROM_NUMBER;
+const REMINDER_FROM_NUMBER = process.env.REMINDER_FROM_NUMBER || smsFromNumber();
 
 if (!process.env.ZERNIO_API_KEY) console.warn('⚠️  ZERNIO_API_KEY is not set: posting will not work');
 
@@ -47,6 +48,7 @@ app.get('/', (req, res) => {
     // configuration only (true/false), never values
     config: {
       sms: smsEnabled(),
+      smsSender: Boolean(smsFromNumber()),
       whatsappSender: Boolean(process.env.TWILIO_WHATSAPP_FROM),
       whatsappTemplate: Boolean(process.env.TWILIO_WA_TEMPLATE_POSTED_SID),
       twilioSignatureCheck: Boolean(process.env.TWILIO_AUTH_TOKEN) && process.env.TWILIO_SKIP_SIGNATURE_CHECK !== 'true',
@@ -129,7 +131,7 @@ async function checkCalendarAndRemind() {
             hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
           });
           await twilioClient.messages.create({
-            body: `Attention Earned reminder: "${title}" starts in ${window.label} at ${timeStr}`,
+            body: brand(`Reminder: "${title}" starts in ${window.label} at ${timeStr}`),
             from: REMINDER_FROM_NUMBER,
             to: REMINDER_TO_NUMBER,
           });
