@@ -194,6 +194,20 @@ if (mdxEntry) {
     margin: 0;
   }
 
+  .work-detail__credits dt,
+  .work-detail__credits dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Phones: long credit labels pushed the names off the right edge
+     (sideways scroll on e.g. /work/kol-zman, /work/zevi-giniger). */
+  @media (max-width: 600px) {
+    .work-detail__credits {
+      grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr);
+    }
+  }
+
   .work-detail__credits-note {
     grid-column: 1 / -1;
     color: var(--text-faint);
