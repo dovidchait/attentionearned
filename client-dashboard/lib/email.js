@@ -21,6 +21,37 @@ export function cleanFrom(value) {
 
 const FROM = cleanFrom(process.env.EMAIL_FROM);
 
+export async function sendSignupNotification({ name, email, orgName }) {
+  const adminEmails = (process.env.ADMIN_EMAILS || 'chaitd@outlook.com,david@attentionearned.com')
+    .split(',').map(e => e.trim()).filter(Boolean);
+
+  const subject = `New client signup: ${name}`;
+  const html = `<!doctype html><html><body style="font-family:sans-serif;max-width:480px;margin:40px auto;color:#1a1a1a">
+    <h2 style="margin-bottom:8px">New client signed up</h2>
+    <table style="border-collapse:collapse;margin-bottom:24px">
+      <tr><td style="color:#888;padding:4px 16px 4px 0">Name</td><td style="font-weight:600">${name}</td></tr>
+      <tr><td style="color:#888;padding:4px 16px 4px 0">Email</td><td>${email}</td></tr>
+      ${orgName ? `<tr><td style="color:#888;padding:4px 16px 4px 0">Org</td><td>${orgName}</td></tr>` : ''}
+    </table>
+    <p style="font-size:13px;color:#888">They were sent a magic link and can log in now. Add Zernio credentials to users.json when ready.</p>
+  </body></html>`;
+  const text = `New client signup\nName: ${name}\nEmail: ${email}${orgName ? `\nOrg: ${orgName}` : ''}`;
+
+  for (const admin of adminEmails) {
+    try {
+      if (process.env.EMAILIT_API_KEY) {
+        await sendViaEmailIt(admin, subject, html, text);
+      } else if (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
+        await sendViaMailgun(admin, subject, html, text);
+      } else {
+        console.log(`\n📬  New signup from ${email} (${name})\n`);
+      }
+    } catch (e) {
+      console.error('Admin notification error:', e.message);
+    }
+  }
+}
+
 /**
  * Send a magic-link sign-in email.
  * Supports two backends:

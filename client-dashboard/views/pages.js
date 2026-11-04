@@ -5,7 +5,7 @@ import { layout, escHtml } from './layout.js';
 export function loginPage({ sent = false, error = null } = {}) {
   const errors = {
     email_required: 'Please enter your email address.',
-    not_found: 'This email is not registered. Contact your account manager.',
+    not_found: "That email isn't registered. <a href=\"/auth/signup\">Request access</a>.",
     expired: 'That link has expired. Request a new one.',
     invalid: 'Invalid sign-in link. Request a new one.',
   };
@@ -29,12 +29,61 @@ export function loginPage({ sent = false, error = null } = {}) {
       </div>
       <a href="/auth/login" class="auth-again">Send another link</a>
     ` : `
-      ${error ? `<p class="auth-error">${escHtml(errors[error] || 'Something went wrong.')}</p>` : ''}
+      ${error ? `<p class="auth-error">${errors[error] || escHtml('Something went wrong.')}</p>` : ''}
       <form action="/auth/login" method="post" class="auth-form">
         <label for="email" class="auth-label">Email address</label>
         <input type="email" id="email" name="email" class="auth-input" required autocomplete="email" placeholder="you@example.com"/>
         <button type="submit" class="auth-btn">Send sign-in link</button>
       </form>
+      <p class="auth-switch">New client? <a href="/auth/signup">Request access</a></p>
+    `}
+  </div>
+</body>
+</html>`;
+}
+
+// ─── Signup ──────────────────────────────────────────────────────────────────
+
+export function signupPage({ sent = false, error = null } = {}) {
+  const errors = {
+    fields_required: 'Name and email are required.',
+    invalid_email: 'Please enter a valid email address.',
+  };
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="robots" content="noindex,nofollow"/>
+  <title>Request access — Attention Earned</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body class="auth-body">
+  <div class="auth-card">
+    <img src="/logo.svg" alt="Attention Earned" class="auth-logo" onerror="this.style.display='none'"/>
+    <h1 class="auth-title">Request dashboard access</h1>
+    ${sent ? `
+      <div class="auth-sent">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="var(--ok)" stroke-width="1.5"/><path d="M8 12l3 3 5-5" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p>Check your email — a sign-in link is on its way. It expires in 15 minutes.</p>
+      </div>
+      <a href="/auth/signup" class="auth-again">Try a different email</a>
+    ` : `
+      <p class="auth-sub">Enter your details and we'll send you a sign-in link right away.</p>
+      ${error ? `<p class="auth-error">${escHtml(errors[error] || 'Something went wrong.')}</p>` : ''}
+      <form action="/auth/signup" method="post" class="auth-form">
+        <label for="name" class="auth-label">Your name</label>
+        <input type="text" id="name" name="name" class="auth-input" required autocomplete="name" placeholder="David Chait"/>
+
+        <label for="email" class="auth-label">Email address</label>
+        <input type="email" id="email" name="email" class="auth-input" required autocomplete="email" placeholder="you@example.com"/>
+
+        <label for="orgName" class="auth-label">Organization <span class="auth-optional">(optional)</span></label>
+        <input type="text" id="orgName" name="orgName" class="auth-input" autocomplete="organization" placeholder="Acme Nonprofit"/>
+
+        <button type="submit" class="auth-btn">Get access</button>
+      </form>
+      <p class="auth-switch">Already have access? <a href="/auth/login">Sign in</a></p>
     `}
   </div>
 </body>
