@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { findUserByEmail } from '../lib/users.js';
+import { findUserByEmail, addUser } from '../lib/users.js';
 import {
   createMagicToken, verifyMagicToken,
   createSessionToken, setSessionCookie, clearSessionCookie,
 } from '../lib/auth.js';
-import { sendMagicLink } from '../lib/email.js';
-import { loginPage } from '../views/pages.js';
+import { sendMagicLink, sendSignupNotification } from '../lib/email.js';
+import { loginPage, signupPage } from '../views/pages.js';
 
 const router = Router();
 
@@ -50,6 +50,39 @@ router.get('/verify', async (req, res) => {
 router.post('/logout', (req, res) => {
   clearSessionCookie(res);
   res.redirect('/auth/login');
+});
+
+router.get('/signup', (req, res) => {
+  res.send(signupPage({ sent: !!req.query.sent, error: req.query.error }));
+});
+
+router.post('/signup', async (req, res) => {
+  const name = (req.body.name || '').trim();
+  const email = (req.body.email || '').trim().toLowerCase();
+  const orgName = (req.body.orgName || '').trim();
+
+  if (!name || !email) return res.redirect('/auth/signup?error=fields_required');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.redirect('/auth/signup?error=invalid_email');
+
+  let user = findUserByEmail(email);
+  const isNew = !user;
+  if (isNew) user = addUser({ name, email, orgName });
+
+  try {
+    const token = await createMagicToken(email);
+    const base = process.env.DASHBOARD_URL || `${req.protocol}://${req.get('host')}`;
+    const link = `${base}/auth/verify?token=${encodeURIComponent(token)}`;
+    await sendMagicLink(email, link);
+    if (isNew) {
+      sendSignupNotification({ name: user.name, email, orgName }).catch(e =>
+        console.error('Signup notification error:', e.message)
+      );
+    }
+  } catch (err) {
+    console.error('Signup error:', err.message);
+  }
+
+  res.redirect('/auth/signup?sent=1');
 });
 
 export default router;

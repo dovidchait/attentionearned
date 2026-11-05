@@ -47,3 +47,20 @@ export function accountLabels(user) {
     (user?.accounts || []).map(a => [a.accountId, a.label || `${a.platform} ${a.accountId}`])
   );
 }
+
+export function addUser({ name, email, orgName }) {
+  const newUser = {
+    name: name.trim(),
+    email: email.toLowerCase().trim(),
+    ...(orgName?.trim() && { orgName: orgName.trim() }),
+    timezone: 'America/New_York',
+    createdAt: new Date().toISOString(),
+  };
+  config.users.push(newUser);
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(config, null, 2), 'utf8');
+  } catch (e) {
+    console.error('⚠️  Could not persist user to users.json:', e.message);
+  }
+  return newUser;
+}
