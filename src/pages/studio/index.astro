@@ -1,0 +1,262 @@
+---
+import Base from '../../layouts/Base.astro';
+import CtaBand from '../../components/CtaBand.astro';
+---
+
+<Base
+  title="Studio — Content Distro"
+  description="Turn a video URL into captioned posts scheduled to your social accounts. Paste a link, review the captions, pick your accounts and time."
+>
+  <section class="page-hero">
+    <div class="inner">
+      <div class="kicker">Studio</div>
+      <h1 class="hero-title">From clip to caption<br/>to live post.</h1>
+      <p class="hero-body">
+        Paste a video link. We transcribe it, write Instagram and LinkedIn captions
+        in your voice, and schedule it to your connected accounts. No editing software.
+        No caption-writing. Done.
+      </p>
+      <div class="hero-ctas">
+        <a href="/studio/create" class="ae-btn ae-btn--primary ae-btn--lg">Create a post</a>
+        <a href="/studio/dashboard" class="ae-btn ae-btn--ghost ae-btn--lg">View scheduled posts</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="how-section">
+    <div class="inner">
+
+      <div class="step-card step-card--first">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h2 class="step-title">Paste the video</h2>
+          <p class="step-desc">
+            Drop in any public video URL — Dropbox, Google Drive, Vimeo, a direct
+            link, whatever. Add context: org name, campaign day, who to credit.
+          </p>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h2 class="step-title">Review the captions</h2>
+          <p class="step-desc">
+            AssemblyAI transcribes the audio. Claude writes Instagram/TikTok and
+            LinkedIn captions from the transcript — story-first, no hashtags, no
+            buzzwords. Edit anything before it goes out.
+          </p>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h2 class="step-title">Pick accounts and schedule</h2>
+          <p class="step-desc">
+            Select which connected social accounts get the post and when. One click
+            queues it to all of them. Live links come back when each one publishes.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="note-section">
+    <div class="inner">
+      <p class="note-text">
+        Studio is for Attention Earned clients with connected social accounts.
+        Not set up yet?{' '}
+        <a href="/contact?ref=studio" class="note-link">Get in touch</a> to get your accounts connected.
+      </p>
+    </div>
+  </section>
+
+  <CtaBand
+    heading="Have footage ready to post?"
+    accentPhrase="Open Studio."
+    body="Paste the URL and have it scheduled in a few minutes."
+    primaryLabel="Create a post"
+    primaryHref="/studio/create"
+    secondaryLabel="View dashboard"
+    secondaryHref="/studio/dashboard"
+  />
+</Base>
+
+<style>
+  .inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* Hero */
+  .page-hero {
+    padding: clamp(4.5rem, 9vw, 7rem) 0 3rem;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    margin-bottom: 20px;
+  }
+
+  .hero-title {
+    font-size: clamp(2.4rem, 1.6rem + 3vw, 3.6rem);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--tracking-display);
+    line-height: 1.05;
+    color: var(--text-strong);
+    margin: 0 0 22px;
+    max-width: 18ch;
+  }
+
+  .hero-body {
+    font-size: 1.12rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    margin: 0 0 2rem;
+    max-width: 54ch;
+  }
+
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  /* Steps */
+  .how-section {
+    padding-bottom: 2.5rem;
+  }
+
+  .step-card {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 32px;
+    padding: 2.5rem 0;
+    border-top: 1px solid var(--border-subtle);
+    align-items: start;
+  }
+
+  .step-card--first {
+    border-top-color: var(--accent);
+  }
+
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    color: var(--text-faint);
+    padding-top: 6px;
+  }
+
+  .step-card--first .step-num {
+    color: var(--accent-soft);
+  }
+
+  .step-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .step-title {
+    font-size: 1.65rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.02em;
+    line-height: 1.18;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .step-desc {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-body);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  /* Note */
+  .note-section {
+    padding: 2rem 0 4rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .note-text {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  .note-link {
+    color: var(--accent-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: var(--fw-bold);
+  }
+
+  /* Buttons */
+  .ae-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .ae-btn--lg {
+    font-size: 1rem;
+    padding: 0.8rem 1.75rem;
+    letter-spacing: 0.03em;
+  }
+
+  .ae-btn--primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .ae-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252, 44, 48, 0.7), 0 0 0 1px rgba(252, 44, 48, 0.4);
+  }
+
+  .ae-btn--ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-mid);
+  }
+
+  .ae-btn--ghost:hover {
+    color: var(--text-body);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 640px) {
+    .step-card {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .step-num {
+      padding-top: 0;
+    }
+  }
+</style>

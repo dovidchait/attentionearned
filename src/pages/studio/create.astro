@@ -1,0 +1,878 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Create a post — Studio"
+  description="Paste a video URL, review captions, and schedule to your social accounts."
+  noindex={true}
+>
+  <div class="studio-wrap">
+    <div class="studio-header">
+      <a href="/studio" class="back-link">← Studio</a>
+      <h1 class="studio-title">New post</h1>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="steps-bar" aria-label="Progress">
+      <div class="step-dot step-dot--active" data-step-indicator="1" title="Video"></div>
+      <div class="step-connector"></div>
+      <div class="step-dot" data-step-indicator="2" title="Captions"></div>
+      <div class="step-connector"></div>
+      <div class="step-dot" data-step-indicator="3" title="Schedule"></div>
+    </div>
+
+    <!-- ── Step 1: Video URL + context ───────────────────────────────── -->
+    <div class="step-panel" id="step-1">
+      <div class="step-panel__inner">
+        <div class="panel-heading">
+          <div class="step-label">Step 1 of 3</div>
+          <h2 class="panel-title">The video</h2>
+        </div>
+
+        <div class="form-stack">
+          <div class="field">
+            <label class="field__label" for="videoUrl">Video URL <span class="req">*</span></label>
+            <input
+              id="videoUrl"
+              type="url"
+              class="field__input"
+              placeholder="https://www.dropbox.com/s/… or Vimeo, Drive, etc."
+              required
+              autocomplete="off"
+            />
+            <p class="field__hint">Public link. Dropbox: use "Direct Download" link (dl=1).</p>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field__label" for="orgName">Organization name</label>
+              <input id="orgName" type="text" class="field__input" placeholder="e.g. Camp Kesher" autocomplete="organization" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="dayNumber">Campaign day</label>
+              <input id="dayNumber" type="number" class="field__input" placeholder="e.g. 7" min="1" max="365" />
+              <p class="field__hint">Day X/30 appears in the caption.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="credits">Credits / context</label>
+            <textarea
+              id="credits"
+              class="field__input field__textarea"
+              rows="3"
+              placeholder="Who's speaking? What happened? First names only."
+            ></textarea>
+          </div>
+
+          <div id="step1-error" class="error-msg" hidden></div>
+
+          <div class="actions">
+            <button id="startBtn" class="ae-btn ae-btn--primary ae-btn--lg">
+              Transcribe
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 1.5: Transcribing (shown between step 1 and 2) ────────── -->
+    <div class="step-panel" id="step-transcribing" hidden>
+      <div class="step-panel__inner step-panel__inner--center">
+        <div class="spinner" aria-label="Transcribing…"></div>
+        <p class="status-msg" id="transcribeStatus">Submitting to AssemblyAI…</p>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Review transcript + captions ──────────────────────── -->
+    <div class="step-panel" id="step-2" hidden>
+      <div class="step-panel__inner">
+        <div class="panel-heading">
+          <div class="step-label">Step 2 of 3</div>
+          <h2 class="panel-title">Review captions</h2>
+        </div>
+
+        <details class="transcript-details">
+          <summary class="transcript-summary">Transcript</summary>
+          <div class="transcript-box" id="transcriptBox"></div>
+          <div id="flaggedBox" class="flagged-box" hidden>
+            <p class="flagged-label">Low-confidence words (check these):</p>
+            <div id="flaggedWords"></div>
+          </div>
+        </details>
+
+        <div class="form-stack">
+          <div class="field">
+            <label class="field__label" for="instagramCaption">Instagram / TikTok caption</label>
+            <textarea id="instagramCaption" class="field__input field__textarea--tall" rows="8"></textarea>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="linkedinCaption">LinkedIn caption</label>
+            <textarea id="linkedinCaption" class="field__input field__textarea--tall" rows="8"></textarea>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="firstComment">First comment</label>
+            <input id="firstComment" type="text" class="field__input" />
+            <p class="field__hint">Posted as the first comment on Instagram. Leave blank to skip.</p>
+          </div>
+
+          <div class="actions actions--spread">
+            <button id="backTo1Btn" class="ae-btn ae-btn--ghost ae-btn--md">← Back</button>
+            <button id="toStep3Btn" class="ae-btn ae-btn--primary ae-btn--lg">Select accounts →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 3: Select accounts + schedule ────────────────────────── -->
+    <div class="step-panel" id="step-3" hidden>
+      <div class="step-panel__inner">
+        <div class="panel-heading">
+          <div class="step-label">Step 3 of 3</div>
+          <h2 class="panel-title">Schedule</h2>
+        </div>
+
+        <div class="form-stack">
+          <div class="field">
+            <div class="field__label" id="accounts-label">Social accounts</div>
+            <div id="accountsList" class="accounts-list" aria-labelledby="accounts-label">
+              <p class="loading-accounts">Loading accounts…</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="scheduleTime">Schedule for</label>
+            <input id="scheduleTime" type="datetime-local" class="field__input" />
+            <p class="field__hint">Leave blank to post immediately.</p>
+          </div>
+
+          <div id="step3-error" class="error-msg" hidden></div>
+
+          <div class="actions actions--spread">
+            <button id="backTo2Btn" class="ae-btn ae-btn--ghost ae-btn--md">← Back</button>
+            <button id="postBtn" class="ae-btn ae-btn--primary ae-btn--lg">Schedule posts</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 4: Done ──────────────────────────────────────────────── -->
+    <div class="step-panel" id="step-done" hidden>
+      <div class="step-panel__inner step-panel__inner--center">
+        <div class="done-icon" aria-hidden="true">✓</div>
+        <h2 class="done-title">Scheduled</h2>
+        <p class="done-body" id="doneBody"></p>
+        <div class="actions actions--center">
+          <a href="/studio/create" class="ae-btn ae-btn--primary ae-btn--md">Create another</a>
+          <a href="/studio/dashboard" class="ae-btn ae-btn--ghost ae-btn--md">View dashboard</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</Base>
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────
+
+  let jobId: string | null = null;
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function showPanel(id: string) {
+    document.querySelectorAll<HTMLElement>('.step-panel').forEach((el) => {
+      el.hidden = el.id !== id;
+    });
+  }
+
+  function setStepIndicator(step: number) {
+    document.querySelectorAll<HTMLElement>('[data-step-indicator]').forEach((dot) => {
+      const n = Number(dot.dataset.stepIndicator);
+      dot.classList.toggle('step-dot--active', n === step);
+      dot.classList.toggle('step-dot--done', n < step);
+    });
+  }
+
+  function showError(containerId: string, msg: string) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function clearError(containerId: string) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = '';
+  }
+
+  // ── Step 1 → Transcribe ──────────────────────────────────────────────────
+
+  document.getElementById('startBtn')?.addEventListener('click', async () => {
+    clearError('step1-error');
+
+    const videoUrl = (document.getElementById('videoUrl') as HTMLInputElement).value.trim();
+    if (!videoUrl) {
+      showError('step1-error', 'Please paste a video URL.');
+      return;
+    }
+
+    showPanel('step-transcribing');
+
+    try {
+      const res = await fetch('/api/content/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.jobId) {
+        showPanel('step-1');
+        showError('step1-error', data.error ?? 'Failed to start transcription.');
+        return;
+      }
+      jobId = data.jobId;
+      pollTranscript();
+    } catch {
+      showPanel('step-1');
+      showError('step1-error', 'Network error. Check your connection and try again.');
+    }
+  });
+
+  function pollTranscript() {
+    const statusEl = document.getElementById('transcribeStatus');
+    if (statusEl) statusEl.textContent = 'Transcribing audio…';
+
+    const orgName = (document.getElementById('orgName') as HTMLInputElement).value.trim();
+    const dayNumber = (document.getElementById('dayNumber') as HTMLInputElement).value.trim() || '1';
+    const credits = (document.getElementById('credits') as HTMLTextAreaElement).value.trim();
+
+    const params = new URLSearchParams({ jobId: jobId!, orgName, dayNumber, credits });
+
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/content/result?${params}`);
+        const data = await res.json();
+
+        if (data.status === 'error') {
+          clearInterval(pollInterval!);
+          showPanel('step-1');
+          showError('step1-error', data.error ?? 'Transcription failed.');
+          return;
+        }
+
+        if (data.status === 'completed') {
+          clearInterval(pollInterval!);
+
+          // Fill transcript
+          const box = document.getElementById('transcriptBox');
+          if (box) box.textContent = data.transcript ?? '';
+
+          // Fill flagged words
+          if (data.flagged?.length) {
+            const flaggedBox = document.getElementById('flaggedBox');
+            const flaggedWords = document.getElementById('flaggedWords');
+            if (flaggedBox && flaggedWords) {
+              flaggedWords.innerHTML = data.flagged
+                .map((w: { text: string; confidence: number }) =>
+                  `<span class="flagged-word">${w.text} <span class="conf">${w.confidence}%</span></span>`
+                )
+                .join('');
+              flaggedBox.hidden = false;
+            }
+          }
+
+          // Fill captions
+          (document.getElementById('instagramCaption') as HTMLTextAreaElement).value = data.instagram ?? '';
+          (document.getElementById('linkedinCaption') as HTMLTextAreaElement).value = data.linkedin ?? '';
+          (document.getElementById('firstComment') as HTMLInputElement).value = data.firstComment ?? '';
+
+          setStepIndicator(2);
+          showPanel('step-2');
+          return;
+        }
+
+        if (statusEl) {
+          statusEl.textContent =
+            data.status === 'processing' ? 'Processing…' : 'Waiting in queue…';
+        }
+      } catch {
+        // keep polling
+      }
+    }, 3000);
+  }
+
+  // ── Step 2 → 3 ──────────────────────────────────────────────────────────
+
+  document.getElementById('backTo1Btn')?.addEventListener('click', () => {
+    setStepIndicator(1);
+    showPanel('step-1');
+  });
+
+  document.getElementById('toStep3Btn')?.addEventListener('click', async () => {
+    setStepIndicator(3);
+    showPanel('step-3');
+    loadAccounts();
+  });
+
+  // ── Load accounts ────────────────────────────────────────────────────────
+
+  async function loadAccounts() {
+    const listEl = document.getElementById('accountsList')!;
+    listEl.innerHTML = '<p class="loading-accounts">Loading accounts…</p>';
+
+    try {
+      const res = await fetch('/api/content/accounts');
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        listEl.innerHTML = `<p class="error-inline">${data.error ?? 'Could not load accounts.'}</p>`;
+        return;
+      }
+
+      const accounts: Array<{ id: string; platform: string; username: string }> = data.accounts ?? [];
+
+      if (!accounts.length) {
+        listEl.innerHTML = '<p class="error-inline">No connected accounts found. Contact Attention Earned to get your accounts set up.</p>';
+        return;
+      }
+
+      const platformIcons: Record<string, string> = {
+        instagram: '📸',
+        tiktok: '🎵',
+        linkedin: '💼',
+        facebook: '👤',
+        twitter: '𝕏',
+        youtube: '▶',
+      };
+
+      listEl.innerHTML = accounts
+        .map((a) => {
+          const icon = platformIcons[a.platform?.toLowerCase()] ?? '📱';
+          return `
+            <label class="account-row">
+              <input type="checkbox" name="account" value="${a.id}" data-platform="${a.platform}" data-username="${a.username}" checked />
+              <span class="account-icon">${icon}</span>
+              <span class="account-info">
+                <span class="account-name">${a.username}</span>
+                <span class="account-platform">${a.platform}</span>
+              </span>
+            </label>
+          `;
+        })
+        .join('');
+    } catch {
+      listEl.innerHTML = '<p class="error-inline">Network error loading accounts.</p>';
+    }
+  }
+
+  // ── Step 3 → Post ────────────────────────────────────────────────────────
+
+  document.getElementById('backTo2Btn')?.addEventListener('click', () => {
+    setStepIndicator(2);
+    showPanel('step-2');
+  });
+
+  document.getElementById('postBtn')?.addEventListener('click', async () => {
+    clearError('step3-error');
+
+    const videoUrl = (document.getElementById('videoUrl') as HTMLInputElement).value.trim();
+    const scheduleTimeEl = document.getElementById('scheduleTime') as HTMLInputElement;
+
+    // Gather selected accounts + per-platform captions
+    const checkedBoxes = document.querySelectorAll<HTMLInputElement>('input[name="account"]:checked');
+    if (!checkedBoxes.length) {
+      showError('step3-error', 'Select at least one account.');
+      return;
+    }
+
+    const instagram = (document.getElementById('instagramCaption') as HTMLTextAreaElement).value;
+    const linkedin = (document.getElementById('linkedinCaption') as HTMLTextAreaElement).value;
+    const firstComment = (document.getElementById('firstComment') as HTMLInputElement).value.trim();
+
+    const instagramPlatforms = ['instagram', 'tiktok', 'facebook'];
+
+    const platforms = Array.from(checkedBoxes).map((box) => {
+      const platform = box.dataset.platform?.toLowerCase() ?? '';
+      const caption = instagramPlatforms.includes(platform) ? instagram : linkedin;
+      return { accountId: box.value, caption };
+    });
+
+    const scheduledFor = scheduleTimeEl.value
+      ? new Date(scheduleTimeEl.value).toISOString()
+      : new Date(Date.now() + 60_000).toISOString();
+
+    const postBtn = document.getElementById('postBtn') as HTMLButtonElement;
+    postBtn.disabled = true;
+    postBtn.textContent = 'Scheduling…';
+
+    try {
+      const res = await fetch('/api/content/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl, platforms, scheduledFor }),
+      });
+      const data = await res.json();
+
+      postBtn.disabled = false;
+      postBtn.textContent = 'Schedule posts';
+
+      if (!res.ok || data.error) {
+        showError('step3-error', data.error ?? 'Scheduling failed. Try again.');
+        return;
+      }
+
+      const count = (data.postIds ?? []).length;
+      const doneBody = document.getElementById('doneBody');
+      if (doneBody) {
+        const when = scheduleTimeEl.value
+          ? new Date(scheduleTimeEl.value).toLocaleString('en-US', {
+              month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+            })
+          : 'immediately';
+        doneBody.textContent = `${count} post${count !== 1 ? 's' : ''} queued for ${when}.${
+          data.errors?.length ? ` Note: ${data.errors.join(' | ')}` : ''
+        }`;
+      }
+
+      showPanel('step-done');
+
+      // Post first comment separately if needed (Zernio doesn't support firstComment natively — noted for later)
+      if (firstComment) {
+        console.info('First comment to post manually:', firstComment);
+      }
+    } catch {
+      postBtn.disabled = false;
+      postBtn.textContent = 'Schedule posts';
+      showError('step3-error', 'Network error. Try again.');
+    }
+  });
+</script>
+
+<style>
+  .studio-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) var(--gutter) 6rem;
+  }
+
+  .studio-header {
+    margin-bottom: 2rem;
+  }
+
+  .back-link {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .back-link:hover { color: var(--accent-soft); }
+
+  .studio-title {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin: 0.6rem 0 0;
+  }
+
+  /* Step indicators */
+  .steps-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2.5rem;
+  }
+
+  .step-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ink-600);
+    border: 1.5px solid var(--border-mid);
+    transition: background var(--dur-base), border-color var(--dur-base);
+    flex-shrink: 0;
+  }
+
+  .step-dot--active {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(252, 44, 48, 0.5);
+  }
+
+  .step-dot--done {
+    background: var(--ok);
+    border-color: var(--ok);
+  }
+
+  .step-connector {
+    flex: 1;
+    height: 1px;
+    background: var(--border-subtle);
+    max-width: 80px;
+  }
+
+  /* Step panels */
+  .step-panel__inner {
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2rem 2.5rem;
+  }
+
+  .step-panel__inner--center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+    padding: 3.5rem 2rem;
+  }
+
+  /* Panel headings */
+  .panel-heading { margin-bottom: 1.75rem; }
+
+  .step-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.4rem;
+  }
+
+  .panel-title {
+    font-size: 1.5rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  /* Form */
+  .form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 520px) {
+    .field-row { grid-template-columns: 1fr; }
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .field__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .req { color: var(--accent-soft); }
+
+  .field__input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    color: var(--text-body);
+    background: var(--surface-inset);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+    appearance: none;
+    resize: vertical;
+  }
+
+  .field__input::placeholder { color: var(--text-faint); }
+
+  .field__input:focus {
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 3px rgba(252, 106, 106, 0.15);
+  }
+
+  .field__textarea { min-height: 80px; }
+  .field__textarea--tall { min-height: 160px; }
+
+  .field__hint {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* Actions row */
+  .actions { display: flex; justify-content: flex-end; padding-top: 0.5rem; }
+  .actions--spread { justify-content: space-between; align-items: center; }
+  .actions--center { justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+
+  /* Buttons */
+  .ae-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .ae-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .ae-btn--lg { font-size: 1rem; padding: 0.8rem 1.75rem; }
+  .ae-btn--md { font-size: var(--fs-sm); padding: 0.65rem 1.4rem; }
+
+  .ae-btn--primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .ae-btn--primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252, 44, 48, 0.7), 0 0 0 1px rgba(252, 44, 48, 0.4);
+  }
+
+  .ae-btn--ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-mid);
+  }
+
+  .ae-btn--ghost:hover {
+    color: var(--text-body);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 42px;
+    height: 42px;
+    border: 3px solid var(--border-mid);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-msg {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+
+  /* Transcript */
+  .transcript-details {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .transcript-summary {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    background: var(--surface-inset);
+    list-style: none;
+    transition: color var(--dur-fast);
+  }
+
+  .transcript-summary:hover { color: var(--text-muted); }
+  .transcript-summary::-webkit-details-marker { display: none; }
+
+  .transcript-box {
+    padding: 1rem;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: 1.65;
+    background: var(--surface-inset);
+    white-space: pre-wrap;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .flagged-box {
+    padding: 0.75rem 1rem;
+    background: rgba(233, 185, 73, 0.07);
+    border-top: 1px solid rgba(233, 185, 73, 0.2);
+  }
+
+  .flagged-label {
+    font-size: var(--fs-xs);
+    color: var(--warn);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+  }
+
+  .flagged-word {
+    display: inline-block;
+    background: rgba(233, 185, 73, 0.1);
+    border: 1px solid rgba(233, 185, 73, 0.25);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin: 2px 4px 2px 0;
+    font-size: var(--fs-xs);
+    color: var(--text-body);
+  }
+
+  .conf {
+    color: var(--warn);
+    font-size: 10px;
+  }
+
+  /* Accounts */
+  .accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .account-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--dur-fast), background var(--dur-fast);
+  }
+
+  .account-row:hover {
+    border-color: var(--border-mid);
+    background: var(--ink-800);
+  }
+
+  .account-row input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .account-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1;
+  }
+
+  .account-name {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    color: var(--text-body);
+  }
+
+  .account-platform {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    text-transform: capitalize;
+  }
+
+  .loading-accounts {
+    font-size: var(--fs-sm);
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+  }
+
+  /* Errors */
+  .error-msg {
+    padding: 0.75rem 1rem;
+    background: rgba(252, 44, 48, 0.08);
+    border: 1px solid rgba(252, 44, 48, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--ae-coral);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+  }
+
+  .error-inline {
+    font-size: var(--fs-sm);
+    color: var(--ae-coral);
+    margin: 0;
+    padding: 0.5rem 0;
+  }
+
+  /* Done state */
+  .done-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(79, 191, 139, 0.12);
+    border: 1px solid rgba(79, 191, 139, 0.3);
+    font-size: 1.5rem;
+    color: var(--ok);
+  }
+
+  .done-title {
+    font-size: 1.75rem;
+    font-weight: var(--fw-black);
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .done-body {
+    font-size: 1rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 44ch;
+    margin: 0;
+  }
+
+  /* Datetime local input (fix system styling on dark) */
+  input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+</style>

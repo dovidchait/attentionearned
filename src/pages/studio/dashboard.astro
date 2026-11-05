@@ -1,0 +1,471 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Dashboard — Studio"
+  description="Your scheduled and published posts."
+  noindex={true}
+>
+  <div class="dash-wrap">
+    <div class="dash-header">
+      <div class="dash-header__left">
+        <a href="/studio" class="back-link">← Studio</a>
+        <h1 class="dash-title">Posts</h1>
+      </div>
+      <div class="dash-header__right">
+        <div class="filter-row">
+          <button class="filter-btn filter-btn--active" data-filter="">All</button>
+          <button class="filter-btn" data-filter="scheduled">Scheduled</button>
+          <button class="filter-btn" data-filter="published">Published</button>
+          <button class="filter-btn" data-filter="failed">Failed</button>
+        </div>
+        <a href="/studio/create" class="ae-btn ae-btn--primary ae-btn--sm">+ New post</a>
+      </div>
+    </div>
+
+    <div id="posts-loading" class="state-box">
+      <div class="spinner"></div>
+      <p class="state-msg">Loading posts…</p>
+    </div>
+
+    <div id="posts-error" class="state-box" hidden>
+      <p class="error-msg" id="posts-error-text"></p>
+    </div>
+
+    <div id="posts-empty" class="state-box" hidden>
+      <p class="state-msg state-msg--empty">No posts yet.</p>
+      <a href="/studio/create" class="ae-btn ae-btn--primary ae-btn--md">Create your first post</a>
+    </div>
+
+    <div id="posts-list" class="posts-list" hidden></div>
+  </div>
+</Base>
+
+<script>
+  interface Post {
+    id: string;
+    content: string;
+    status: string;
+    scheduledFor: string | null;
+    publishedAt: string | null;
+    createdAt: string | null;
+    platforms: Array<{ platform?: string; status?: string; url?: string }>;
+    thumbnail: string | null;
+  }
+
+  let currentFilter = '';
+
+  function formatDate(iso: string | null): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  function statusBadge(status: string): string {
+    const map: Record<string, { label: string; cls: string }> = {
+      scheduled: { label: 'Scheduled', cls: 'badge--scheduled' },
+      published: { label: 'Published', cls: 'badge--published' },
+      queued: { label: 'Queued', cls: 'badge--scheduled' },
+      processing: { label: 'Processing', cls: 'badge--scheduled' },
+      failed: { label: 'Failed', cls: 'badge--failed' },
+      error: { label: 'Error', cls: 'badge--failed' },
+    };
+    const s = map[status?.toLowerCase()] ?? { label: status ?? 'Unknown', cls: 'badge--unknown' };
+    return `<span class="badge ${s.cls}">${s.label}</span>`;
+  }
+
+  function platformIcon(platform?: string): string {
+    const icons: Record<string, string> = {
+      instagram: '📸', tiktok: '🎵', linkedin: '💼',
+      facebook: '👤', twitter: '𝕏', youtube: '▶',
+    };
+    return icons[platform?.toLowerCase() ?? ''] ?? '📱';
+  }
+
+  function renderPost(post: Post): string {
+    const time = post.publishedAt
+      ? `Published ${formatDate(post.publishedAt)}`
+      : post.scheduledFor
+      ? `Scheduled for ${formatDate(post.scheduledFor)}`
+      : post.createdAt
+      ? `Created ${formatDate(post.createdAt)}`
+      : '';
+
+    const preview = post.content?.slice(0, 160) ?? '';
+    const isTruncated = (post.content?.length ?? 0) > 160;
+
+    const platformsHtml = post.platforms
+      .map((pl) => {
+        const icon = platformIcon(pl.platform);
+        const url = pl.url ? `<a href="${pl.url}" target="_blank" rel="noopener" class="platform-link">${icon} ${pl.platform}</a>` : `<span class="platform-tag">${icon} ${pl.platform}</span>`;
+        return `<span class="platform-item">${url}</span>`;
+      })
+      .join('');
+
+    const thumb = post.thumbnail
+      ? `<div class="post-thumb"><img src="${post.thumbnail}" alt="Video thumbnail" loading="lazy" /></div>`
+      : '';
+
+    return `
+      <article class="post-card" data-status="${post.status?.toLowerCase() ?? 'unknown'}">
+        ${thumb}
+        <div class="post-card__body">
+          <div class="post-card__meta">
+            ${statusBadge(post.status)}
+            <span class="post-time">${time}</span>
+          </div>
+          <p class="post-preview">${preview}${isTruncated ? '…' : ''}</p>
+          ${platformsHtml ? `<div class="post-platforms">${platformsHtml}</div>` : ''}
+        </div>
+      </article>
+    `;
+  }
+
+  async function loadPosts(filter: string) {
+    const loading = document.getElementById('posts-loading')!;
+    const errorBox = document.getElementById('posts-error')!;
+    const empty = document.getElementById('posts-empty')!;
+    const list = document.getElementById('posts-list')!;
+
+    loading.hidden = false;
+    errorBox.hidden = true;
+    empty.hidden = true;
+    list.hidden = true;
+
+    try {
+      const params = new URLSearchParams({ limit: '50' });
+      if (filter) params.set('status', filter);
+
+      const res = await fetch(`/api/content/posts?${params}`);
+      const data = await res.json();
+
+      loading.hidden = true;
+
+      if (!res.ok || data.error) {
+        document.getElementById('posts-error-text')!.textContent = data.error ?? 'Failed to load posts.';
+        errorBox.hidden = false;
+        return;
+      }
+
+      const posts: Post[] = data.posts ?? [];
+
+      if (!posts.length) {
+        empty.hidden = false;
+        return;
+      }
+
+      list.innerHTML = posts.map(renderPost).join('');
+      list.hidden = false;
+    } catch {
+      loading.hidden = true;
+      document.getElementById('posts-error-text')!.textContent = 'Network error loading posts.';
+      errorBox.hidden = false;
+    }
+  }
+
+  // Filter buttons
+  document.querySelectorAll<HTMLButtonElement>('.filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('filter-btn--active'));
+      btn.classList.add('filter-btn--active');
+      currentFilter = btn.dataset.filter ?? '';
+      loadPosts(currentFilter);
+    });
+  });
+
+  loadPosts('');
+</script>
+
+<style>
+  .dash-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) var(--gutter) 6rem;
+  }
+
+  .dash-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .dash-header__left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .dash-header__right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .back-link {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .back-link:hover { color: var(--accent-soft); }
+
+  .dash-title {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  /* Filter row */
+  .filter-row {
+    display: flex;
+    gap: 0.35rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 3px;
+  }
+
+  .filter-btn {
+    font-family: var(--font-sans);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.03em;
+    padding: 0.4rem 0.9rem;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background var(--dur-fast), color var(--dur-fast);
+  }
+
+  .filter-btn:hover { color: var(--text-muted); }
+
+  .filter-btn--active {
+    background: var(--surface-raised);
+    color: var(--text-body);
+  }
+
+  /* State boxes */
+  .state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 4rem 2rem;
+    text-align: center;
+  }
+
+  .state-msg {
+    font-size: var(--fs-sm);
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+  }
+
+  .state-msg--empty {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    color: var(--text-muted);
+  }
+
+  .error-msg {
+    padding: 0.75rem 1rem;
+    background: rgba(252, 44, 48, 0.08);
+    border: 1px solid rgba(252, 44, 48, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--ae-coral);
+    font-size: var(--fs-sm);
+    max-width: 480px;
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border-mid);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Posts list */
+  .posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .post-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface-card);
+    transition: background var(--dur-fast);
+  }
+
+  .post-card + .post-card {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .post-card:hover { background: var(--surface-hover); }
+
+  .post-thumb {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--surface-inset);
+  }
+
+  .post-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .post-card__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .post-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+  }
+
+  .badge--scheduled {
+    background: rgba(252, 106, 106, 0.1);
+    color: var(--accent-soft);
+    border: 1px solid rgba(252, 106, 106, 0.2);
+  }
+
+  .badge--published {
+    background: rgba(79, 191, 139, 0.1);
+    color: var(--ok);
+    border: 1px solid rgba(79, 191, 139, 0.25);
+  }
+
+  .badge--failed {
+    background: rgba(252, 44, 48, 0.1);
+    color: var(--ae-coral);
+    border: 1px solid rgba(252, 44, 48, 0.2);
+  }
+
+  .badge--unknown {
+    background: rgba(111, 104, 92, 0.15);
+    color: var(--text-faint);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .post-time {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+  }
+
+  .post-preview {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: 1.55;
+    white-space: pre-line;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    margin: 0;
+  }
+
+  .post-platforms {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .platform-item {
+    font-size: var(--fs-xs);
+  }
+
+  .platform-link {
+    color: var(--accent-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color var(--dur-fast);
+  }
+
+  .platform-link:hover { color: var(--accent); }
+
+  .platform-tag {
+    color: var(--text-faint);
+    text-transform: capitalize;
+  }
+
+  /* Buttons */
+  .ae-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  .ae-btn--sm { font-size: var(--fs-xs); padding: 0.5rem 1.1rem; letter-spacing: 0.04em; }
+  .ae-btn--md { font-size: var(--fs-sm); padding: 0.65rem 1.4rem; }
+
+  .ae-btn--primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .ae-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252, 44, 48, 0.7), 0 0 0 1px rgba(252, 44, 48, 0.4);
+  }
+
+  @media (max-width: 600px) {
+    .dash-header { flex-direction: column; align-items: flex-start; }
+    .post-card { flex-direction: column; }
+    .post-thumb { width: 100%; height: 160px; }
+  }
+</style>

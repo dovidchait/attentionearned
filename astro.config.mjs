@@ -30,7 +30,9 @@ export default defineConfig({
     sitemap({
       filter: (page) =>
         !UNLISTED_SLUGS.some((slug) => page.endsWith(`/${slug}/`) || page.endsWith(`/${slug}`)) &&
-        !page.includes('/proposals/'),
+        !page.includes('/proposals/') &&
+        !page.includes('/studio/create') &&
+        !page.includes('/studio/dashboard'),
     }),
   ],
   adapter: vercel(),
