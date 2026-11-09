@@ -1,25 +1,22 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
+import type { ZernioAccount } from '../../../lib/zernio';
 
-interface ZernioAccount {
-  _id: string;
-  platform: string;
-  username: string;
-  displayName: string;
-  isActive: boolean;
-  profileUrl?: string;
-}
-
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ url }) => {
   const apiKey = import.meta.env.ZERNIO_API_KEY;
   if (!apiKey?.trim()) {
     return json({ error: 'ZERNIO_API_KEY not configured.' }, 500);
   }
 
-  const base = import.meta.env.ZERNIO_API_BASE ?? 'https://api.zernio.com/v1';
+  const base = import.meta.env.ZERNIO_API_BASE ?? 'https://zernio.com/api/v1';
+  const profileId = url.searchParams.get('profileId');
 
-  const res = await fetch(`${base}/accounts?limit=100`, {
+  const accountsUrl = new URL(`${base}/accounts`);
+  accountsUrl.searchParams.set('limit', '100');
+  if (profileId) accountsUrl.searchParams.set('profileId', profileId);
+
+  const res = await fetch(accountsUrl.toString(), {
     headers: {
       Authorization: `Bearer ${apiKey.trim()}`,
       'Content-Type': 'application/json',

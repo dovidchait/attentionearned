@@ -1,0 +1,222 @@
+---
+export const prerender = false;
+
+const { searchParams } = Astro.url;
+const platform = searchParams.get('platform') ?? '';
+const profileId = searchParams.get('profileId') ?? '';
+const connectToken = searchParams.get('connect_token') ?? '';
+const step = searchParams.get('step') ?? '';
+
+let options: Array<{ id: string; name: string; picture?: string }> = [];
+try {
+  const raw = searchParams.get('options') ?? '[]';
+  options = JSON.parse(raw);
+} catch {
+  /* malformed options — render empty list */
+}
+
+const platformLabel: Record<string, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
+  twitter: 'Twitter / X',
+  youtube: 'YouTube',
+};
+
+const stepLabel: Record<string, string> = {
+  select_page: 'Select a Page',
+  select_account: 'Select an Account',
+  select_profile: 'Select a Profile',
+  select_channel: 'Select a Channel',
+};
+
+const label = platformLabel[platform] ?? platform;
+const selectionLabel = stepLabel[step] ?? 'Select an Option';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect {label} · Attention Earned</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f9fafb;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+        padding: 2rem;
+        width: 100%;
+        max-width: 480px;
+      }
+      h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: .25rem; }
+      .subtitle { color: #6b7280; font-size: .875rem; margin-bottom: 1.5rem; }
+      .options { display: flex; flex-direction: column; gap: .625rem; }
+      .option-btn {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: .75rem 1rem;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        font-size: .9375rem;
+        text-align: left;
+        transition: border-color .15s, background .15s;
+        width: 100%;
+      }
+      .option-btn:hover { border-color: #6366f1; background: #f5f3ff; }
+      .option-btn img {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+      .option-btn .avatar-placeholder {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #6b7280;
+        font-size: .875rem;
+        flex-shrink: 0;
+      }
+      .error { color: #dc2626; font-size: .875rem; margin-top: 1rem; display: none; }
+      .loading { display: none; }
+      .spinner {
+        width: 16px; height: 16px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: spin .6s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: .375rem;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .back { display: inline-block; margin-top: 1.25rem; font-size: .875rem; color: #6b7280; text-decoration: none; }
+      .back:hover { color: #374151; }
+      .empty { color: #6b7280; font-size: .875rem; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Connect {label}</h1>
+      <p class="subtitle">{selectionLabel} to continue</p>
+
+      {options.length === 0 ? (
+        <p class="empty">No options available. Please try connecting again.</p>
+      ) : (
+        <div class="options" id="options">
+          {options.map((opt) => (
+            <button
+              class="option-btn"
+              data-id={opt.id}
+              data-name={opt.name}
+              onclick="selectOption(this)"
+            >
+              {opt.picture
+                ? <img src={opt.picture} alt="" />
+                : <span class="avatar-placeholder">{opt.name.charAt(0).toUpperCase()}</span>
+              }
+              <span>{opt.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p class="error" id="error"></p>
+      <p class="loading" id="loading">
+        <span class="spinner"></span>Connecting&hellip;
+      </p>
+      <a href="/studio/connect" class="back">&larr; Back to accounts</a>
+    </div>
+
+    <script define:vars={{ connectToken, profileId, platform, step }}>
+      async function selectOption(btn) {
+        const selectionId = btn.dataset.id;
+        document.getElementById('options').style.display = 'none';
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('error').style.display = 'none';
+
+        try {
+          const res = await fetch('/api/studio/connect/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              connect_token: connectToken,
+              profileId,
+              platform,
+              step,
+              selection_id: selectionId,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            throw new Error(data.error ?? 'Connection failed');
+          }
+
+          if (data.nextStep && data.options?.length) {
+            // Another selection step needed — rebuild the page in-place
+            document.getElementById('loading').style.display = 'none';
+            renderNextStep(data.nextStep, data.options);
+            return;
+          }
+
+          window.location.href = `/studio/connect?connected=${encodeURIComponent(platform)}`;
+        } catch (err) {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('options').style.display = 'flex';
+          const errorEl = document.getElementById('error');
+          errorEl.textContent = err.message;
+          errorEl.style.display = 'block';
+        }
+      }
+
+      function renderNextStep(nextStep, options) {
+        const labels = {
+          select_page: 'Select a Page',
+          select_account: 'Select an Account',
+          select_profile: 'Select a Profile',
+          select_channel: 'Select a Channel',
+        };
+        document.querySelector('.subtitle').textContent = labels[nextStep] ?? 'Select an Option';
+        const container = document.getElementById('options');
+        container.innerHTML = '';
+        for (const opt of options) {
+          const btn = document.createElement('button');
+          btn.className = 'option-btn';
+          btn.dataset.id = opt.id;
+          btn.dataset.name = opt.name;
+          btn.onclick = function() { selectOption(this); };
+          const avatar = opt.picture
+            ? `<img src="${opt.picture}" alt="" />`
+            : `<span class="avatar-placeholder">${opt.name.charAt(0).toUpperCase()}</span>`;
+          btn.innerHTML = `${avatar}<span>${opt.name}</span>`;
+          container.appendChild(btn);
+        }
+        container.style.display = 'flex';
+        // Update the step for subsequent calls
+        step = nextStep; // eslint-disable-line no-global-assign
+      }
+    </script>
+  </body>
+</html>

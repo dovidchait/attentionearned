@@ -1,0 +1,260 @@
+---
+export const prerender = false;
+
+import type { ZernioAccount } from '../../../lib/zernio';
+
+// profileId: once Clerk is wired up, replace this with the value from
+// Clerk metadata (Astro.locals.user, populated by middleware).
+const profileId = Astro.cookies.get('zernio_profile_id')?.value ?? '';
+
+let accounts: ZernioAccount[] = [];
+let fetchError = '';
+
+if (profileId) {
+  try {
+    const apiKey = import.meta.env.ZERNIO_API_KEY?.trim() ?? '';
+    const base = import.meta.env.ZERNIO_API_BASE ?? 'https://zernio.com/api/v1';
+    const res = await fetch(`${base}/accounts?profileId=${encodeURIComponent(profileId)}&limit=100`, {
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const raw: ZernioAccount[] = Array.isArray(data)
+        ? data
+        : (data.data ?? data.accounts ?? []);
+      accounts = raw.filter((a) => a.isActive !== false);
+    } else {
+      fetchError = `Could not load accounts (${res.status})`;
+    }
+  } catch {
+    fetchError = 'Network error loading accounts';
+  }
+}
+
+const { searchParams } = Astro.url;
+const connectedPlatform = searchParams.get('connected');
+const errorParam = searchParams.get('error');
+
+const PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', icon: '📸' },
+  { id: 'facebook', label: 'Facebook', icon: '👥' },
+  { id: 'linkedin', label: 'LinkedIn', icon: '💼' },
+  { id: 'tiktok', label: 'TikTok', icon: '🎵' },
+  { id: 'twitter', label: 'Twitter / X', icon: '𝕏' },
+  { id: 'youtube', label: 'YouTube', icon: '▶' },
+];
+
+const connectedPlatformIds = new Set(accounts.map((a) => a.platform?.toLowerCase()));
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect Accounts · Attention Earned Studio</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f9fafb;
+        min-height: 100dvh;
+        padding: 2rem 1rem;
+        color: #111827;
+      }
+      .container { max-width: 640px; margin: 0 auto; }
+      header { margin-bottom: 2rem; }
+      header h1 { font-size: 1.5rem; font-weight: 700; }
+      header p { color: #6b7280; margin-top: .375rem; font-size: .9375rem; }
+
+      .alert {
+        padding: .75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.25rem;
+        font-size: .875rem;
+      }
+      .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+      .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+
+      .section-label {
+        font-size: .75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: #9ca3af;
+        margin-bottom: .625rem;
+      }
+
+      .platform-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: .75rem;
+        margin-bottom: 2.5rem;
+      }
+      .platform-card {
+        background: #fff;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1.125rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .625rem;
+      }
+      .platform-card .platform-name {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        font-weight: 600;
+        font-size: .9375rem;
+      }
+      .platform-card .platform-icon { font-size: 1.25rem; line-height: 1; }
+
+      .connect-btn, .disconnect-hint {
+        font-size: .8125rem;
+        border-radius: 6px;
+        padding: .4rem .75rem;
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .connect-btn {
+        background: #6366f1;
+        color: #fff;
+        border: none;
+      }
+      .connect-btn:hover { background: #4f46e5; }
+      .connected-badge {
+        font-size: .75rem;
+        background: #ecfdf5;
+        color: #065f46;
+        padding: .25rem .625rem;
+        border-radius: 20px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+      }
+      .connected-badge::before { content: '✓'; }
+
+      /* Connected accounts list */
+      .accounts-list { display: flex; flex-direction: column; gap: .5rem; }
+      .account-row {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: .75rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+      }
+      .account-info { display: flex; align-items: center; gap: .75rem; }
+      .account-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .875rem;
+        font-weight: 600;
+        color: #6b7280;
+        flex-shrink: 0;
+      }
+      .account-name { font-weight: 500; font-size: .9375rem; }
+      .account-platform { font-size: .8125rem; color: #6b7280; text-transform: capitalize; }
+      .no-profile-banner {
+        background: #fff;
+        border: 1.5px dashed #d1d5db;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        color: #6b7280;
+        font-size: .9375rem;
+      }
+      .no-profile-banner strong { display: block; color: #374151; margin-bottom: .375rem; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Connected Accounts</h1>
+        <p>Manage the social accounts you can post to from Attention Earned Studio.</p>
+      </header>
+
+      {connectedPlatform && (
+        <div class="alert alert-success">
+          ✓ {connectedPlatform.charAt(0).toUpperCase() + connectedPlatform.slice(1)} connected successfully.
+        </div>
+      )}
+      {errorParam && (
+        <div class="alert alert-error">
+          Connection failed: {decodeURIComponent(errorParam)}
+        </div>
+      )}
+      {fetchError && (
+        <div class="alert alert-error">{fetchError}</div>
+      )}
+
+      {!profileId ? (
+        <div class="no-profile-banner">
+          <strong>No profile found</strong>
+          Your Zernio profile isn't set up yet. This will be done automatically on first login once
+          authentication is configured.
+        </div>
+      ) : (
+        <>
+          <p class="section-label">Platforms</p>
+          <div class="platform-grid">
+            {PLATFORMS.map((p) => {
+              const isConnected = connectedPlatformIds.has(p.id);
+              return (
+                <div class="platform-card">
+                  <div class="platform-name">
+                    <span class="platform-icon">{p.icon}</span>
+                    {p.label}
+                  </div>
+                  {isConnected
+                    ? <span class="connected-badge">Connected</span>
+                    : (
+                      <a
+                        class="connect-btn"
+                        href={`/api/studio/connect/${p.id}?profileId=${encodeURIComponent(profileId)}`}
+                      >
+                        Connect
+                      </a>
+                    )
+                  }
+                </div>
+              );
+            })}
+          </div>
+
+          {accounts.length > 0 && (
+            <>
+              <p class="section-label">Your Accounts</p>
+              <div class="accounts-list">
+                {accounts.map((a) => (
+                  <div class="account-row">
+                    <div class="account-info">
+                      <div class="account-avatar">
+                        {(a.username ?? a.displayName ?? '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div class="account-name">{a.displayName ?? a.username}</div>
+                        <div class="account-platform">{a.platform}</div>
+                      </div>
+                    </div>
+                    <span class="connected-badge">Active</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  </body>
+</html>
