@@ -11,15 +11,21 @@ interface ZernioAccount {
   profileUrl?: string;
 }
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async (context) => {
   const apiKey = import.meta.env.ZERNIO_API_KEY;
   if (!apiKey?.trim()) {
     return json({ error: 'ZERNIO_API_KEY not configured.' }, 500);
   }
 
-  const base = import.meta.env.ZERNIO_API_BASE ?? 'https://api.zernio.com/v1';
+  const base = import.meta.env.ZERNIO_API_BASE ?? 'https://zernio.com/api/v1';
 
-  const res = await fetch(`${base}/accounts?limit=100`, {
+  // Scope to the authenticated user's Zernio profile when available
+  const { sessionClaims } = context.locals.auth();
+  const profileId = (sessionClaims?.publicMetadata as { zernio_profile_id?: string } | undefined)
+    ?.zernio_profile_id;
+  const profileParam = profileId ? `&profileId=${encodeURIComponent(profileId)}` : '';
+
+  const res = await fetch(`${base}/accounts?limit=100${profileParam}`, {
     headers: {
       Authorization: `Bearer ${apiKey.trim()}`,
       'Content-Type': 'application/json',

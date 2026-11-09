@@ -1,0 +1,191 @@
+---
+export const prerender = false;
+import { UserButton } from '@clerk/astro/components';
+import Base from '../../layouts/Base.astro';
+
+const { sessionClaims } = Astro.locals.auth();
+const meta = (sessionClaims?.publicMetadata ?? {}) as { zernio_profile_id?: string };
+---
+<Base title="Studio Dashboard | Attention Earned" noNav noFooter>
+  <div class="studio-layout">
+    <nav class="studio-nav">
+      <a href="/studio/dashboard" class="studio-logo">
+        <img src="/mark.svg" alt="Attention Earned" width="28" height="28" />
+        <span>Studio</span>
+      </a>
+
+      <ul class="studio-nav__links">
+        <li>
+          <a href="/studio/dashboard" class="studio-nav__link" aria-current="page">
+            Dashboard
+          </a>
+        </li>
+        <li>
+          <a href="/studio/create" class="studio-nav__link">Create</a>
+        </li>
+        <li>
+          <a href="/studio/connect" class="studio-nav__link">Connect accounts</a>
+        </li>
+      </ul>
+
+      <div class="studio-nav__user">
+        <UserButton />
+      </div>
+    </nav>
+
+    <main class="studio-main">
+      {meta.zernio_profile_id ? (
+        <p class="studio-hint">Profile ready — profile ID <code>{meta.zernio_profile_id}</code></p>
+      ) : (
+        <p class="studio-hint studio-hint--warn">
+          Provisioning your social profile… refresh in a moment.
+        </p>
+      )}
+
+      <section class="studio-empty">
+        <h1>Your content calendar</h1>
+        <p>Scheduled posts will appear here once you've connected accounts and created content.</p>
+        <div class="studio-ctas">
+          <a href="/studio/connect" class="btn btn--primary">Connect accounts</a>
+          <a href="/studio/create" class="btn btn--ghost">Create content</a>
+        </div>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<style>
+  .studio-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100dvh;
+  }
+
+  .studio-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem 1rem;
+    background: var(--surface-raised, #111);
+    border-right: 1px solid var(--border-subtle, #222);
+  }
+
+  .studio-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-strong);
+  }
+
+  .studio-nav__links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .studio-nav__link {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text-muted, #aaa);
+    font-size: 0.875rem;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .studio-nav__link:hover,
+  .studio-nav__link[aria-current="page"] {
+    background: var(--surface-hover, #222);
+    color: var(--text-strong);
+  }
+
+  .studio-nav__user {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle, #222);
+  }
+
+  .studio-main {
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .studio-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted, #aaa);
+  }
+
+  .studio-hint--warn {
+    color: var(--color-warn, #f59e0b);
+  }
+
+  .studio-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 480px;
+    margin-top: 4rem;
+  }
+
+  .studio-empty h1 {
+    font-size: 1.5rem;
+  }
+
+  .studio-ctas {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-sm, 6px);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .btn--primary {
+    background: var(--color-brand, #fff);
+    color: #000;
+  }
+
+  .btn--ghost {
+    border: 1px solid var(--border-subtle, #333);
+    color: var(--text-body);
+  }
+
+  @media (max-width: 640px) {
+    .studio-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .studio-nav {
+      flex-direction: row;
+      align-items: center;
+      border-right: none;
+      border-bottom: 1px solid var(--border-subtle, #222);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .studio-nav__links {
+      flex-direction: row;
+      flex: none;
+    }
+
+    .studio-nav__user {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+      margin-left: auto;
+    }
+  }
+</style>

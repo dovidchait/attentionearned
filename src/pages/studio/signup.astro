@@ -1,0 +1,26 @@
+---
+export const prerender = false;
+import { SignUp } from '@clerk/astro/components';
+import Base from '../../layouts/Base.astro';
+
+const { userId } = Astro.locals.auth();
+if (userId) return Astro.redirect('/studio/dashboard');
+---
+<Base title="Studio Sign Up | Attention Earned" noNav noFooter>
+  <div class="signup-wrap">
+    <SignUp
+      signInUrl="/studio/login"
+      fallbackRedirectUrl="/studio/dashboard"
+    />
+  </div>
+</Base>
+
+<style>
+  .signup-wrap {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-base);
+  }
+</style>
