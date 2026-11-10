@@ -78,7 +78,31 @@ export const POST: APIRoute = async ({ request }) => {
 
   const data = await res.json();
   if (!res.ok) {
-    return new Response(JSON.stringify({ error: data.message || data.error || 'Failed to create profile' }), {
+    // If externalId already exists, look up the existing profile and return it
+    const msg: string = data.message || data.error || '';
+    const isConflict = res.status === 409 || /already.*(exist|used)|duplicate|conflict/i.test(msg);
+    if (isConflict) {
+      try {
+        const listRes = await fetch(
+          `https://zernio.com/api/v1/profiles?externalId=${encodeURIComponent(emailLower)}`,
+          { headers: { Authorization: `Bearer ${apiKey}` } }
+        );
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const profiles = listData.profiles || listData.data || (Array.isArray(listData) ? listData : []);
+          const match = profiles.find((p: any) => p.externalId === emailLower);
+          const existingId = match?._id || match?.id;
+          if (existingId) {
+            return new Response(JSON.stringify({ profileId: existingId }), {
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      } catch {
+        // fall through to error
+      }
+    }
+    return new Response(JSON.stringify({ error: msg || 'Failed to create profile' }), {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
     });
