@@ -73,6 +73,24 @@ No AI video. User uploads their own footage.
 - Multi-tenant: each client = one profile, scoped API keys supported
 - MCP server at `https://mcp.zernio.com/mcp` (OAuth 2.1) — not connected yet, not blocking
 
+## Client onboarding (/signup) — SHIPPED
+
+`attentionearned.com/signup` — multi-step form, Zernio OAuth connect, auto-commit to users.json, welcome SMS.
+
+### Required Vercel env vars (add in Vercel dashboard > attentionearned > Settings > Environment Variables):
+- `ZERNIO_API_KEY` — same value as the Fly secret on text-to-attention
+- `ZERNIO_PROFILE_ID` — `68dad1bfe2de3b9d7f99ae26` (David's master profile)
+- `GITHUB_TOKEN` — GitHub PAT with `repo` scope (create at github.com/settings/tokens)
+- `TWILIO_ACCOUNT_SID` — same as Fly
+- `TWILIO_AUTH_TOKEN` — same as Fly
+- `TWILIO_FROM_NUMBER` — `+18666188109`
+
+### How it works:
+1. Client fills out name/org/email/phone/timezone
+2. We snapshot current Zernio account IDs (baseline)
+3. Client connects each platform via Zernio OAuth (full-page redirect, comes back to /signup?step=2&connected=PLATFORM)
+4. On Finish: POST /api/onboard/provision → finds new accounts (not in baseline) → commits users.json to GitHub → Fly deploy auto-triggers → welcome SMS sent
+
 ## Open questions
 - Pricing/billing for public lead gen tier (free trial? paid?)
 - Ideogram API key — need to get one
