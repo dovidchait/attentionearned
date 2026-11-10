@@ -100,7 +100,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const { name, orgName, email, phone, timezone, baseline } = body;
+  const { name, orgName, email, phone, timezone, profileId: bodyProfileId } = body;
 
   if (!name || !email) {
     return new Response(JSON.stringify({ error: 'name and email are required' }), {
@@ -110,10 +110,9 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const emailLower = email.toLowerCase().trim();
-  const baselineIds: Set<string> = new Set(Array.isArray(baseline) ? baseline : []);
 
   const apiKey = import.meta.env.ZERNIO_API_KEY;
-  const profileId = import.meta.env.ZERNIO_PROFILE_ID;
+  const profileId = bodyProfileId;
   const githubToken = import.meta.env.GITHUB_TOKEN;
   const twilioSid = import.meta.env.TWILIO_ACCOUNT_SID;
   const twilioToken = import.meta.env.TWILIO_AUTH_TOKEN;
@@ -127,11 +126,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    // Find accounts connected during this session (not in the pre-session baseline)
-    const allAccounts = await getZernioAccounts(apiKey, profileId);
-    const newAccounts = allAccounts.filter(
-      (a) => !baselineIds.has(a._id || a.id)
-    );
+    const newAccounts = await getZernioAccounts(apiKey, profileId);
 
     const userEntry: Record<string, any> = {
       name: name.trim(),

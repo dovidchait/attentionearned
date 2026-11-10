@@ -7,6 +7,7 @@ const ALLOWED_PLATFORMS = new Set([
 
 export const GET: APIRoute = async ({ url }) => {
   const platform = url.searchParams.get('platform')?.toLowerCase();
+  const profileId = url.searchParams.get('profileId');
 
   if (!platform || !ALLOWED_PLATFORMS.has(platform)) {
     return new Response(JSON.stringify({ error: 'Invalid platform' }), {
@@ -15,10 +16,9 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
-  const profileId = import.meta.env.ZERNIO_PROFILE_ID;
   if (!profileId) {
-    return new Response(JSON.stringify({ error: 'Service not configured' }), {
-      status: 503,
+    return new Response(JSON.stringify({ error: 'Missing profileId' }), {
+      status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }

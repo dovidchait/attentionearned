@@ -211,17 +211,24 @@ infoForm.addEventListener('submit', async function(e) {
   saveState({ name: name, orgName: orgName, email: email, phone: phone, timezone: timezone });
   var btn = document.getElementById('infoNext');
   btn.disabled = true;
-  btn.textContent = 'Loading...';
+  btn.textContent = 'Setting up your profile...';
   try {
-    var res = await fetch('/api/onboard/snapshot');
+    var res = await fetch('/api/onboard/create-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgName: orgName, email: email }),
+    });
     var data = await res.json();
-    saveState({ baseline: data.accountIds || [] });
+    if (data.error) throw new Error(data.error);
+    saveState({ profileId: data.profileId });
   } catch(err) {
-    saveState({ baseline: [] });
-  } finally {
+    infoError.textContent = 'Could not create your profile: ' + err.message;
     btn.disabled = false;
     btn.textContent = 'Continue: Connect your accounts';
+    return;
   }
+  btn.disabled = false;
+  btn.textContent = 'Continue: Connect your accounts';
   showStep(2);
   restoreConnected();
 });
@@ -267,7 +274,8 @@ PLATFORM_IDS.forEach(function(pid) {
     var statusEl = document.getElementById('status-' + pid);
     statusEl.textContent = 'Loading...';
     try {
-      var res = await fetch('/api/onboard/connect-url?platform=' + pid);
+      var profileId = loadState().profileId || '';
+      var res = await fetch('/api/onboard/connect-url?platform=' + pid + '&profileId=' + encodeURIComponent(profileId));
       var data = await res.json();
       if (data.error) throw new Error(data.error);
       window.location.href = data.connectUrl;
@@ -293,7 +301,7 @@ finishBtn.addEventListener('click', async function() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: state.name, orgName: state.orgName, email: state.email,
-        phone: state.phone, timezone: state.timezone, baseline: state.baseline || []
+        phone: state.phone, timezone: state.timezone, profileId: state.profileId || ''
       })
     });
     var data = await res.json();
