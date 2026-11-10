@@ -21,11 +21,45 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const apiKey = import.meta.env.ZERNIO_API_KEY;
+  const githubToken = import.meta.env.GITHUB_TOKEN;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Service not configured' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  const emailLower = email.toLowerCase().trim();
+
+  // Check if already provisioned before hitting Zernio
+  if (githubToken) {
+    try {
+      const ghRes = await fetch(
+        'https://api.github.com/repos/dovidchait/attentionearned/contents/fly-service/users.json',
+        {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': 'AttentionEarned-Onboard/1.0',
+          },
+        }
+      );
+      if (ghRes.ok) {
+        const fileData = await ghRes.json();
+        const decoded = decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, ''))));
+        const usersConfig = JSON.parse(decoded);
+        const exists = (usersConfig.users || []).some(
+          (u: any) => u.email?.toLowerCase() === emailLower
+        );
+        if (exists) {
+          return new Response(JSON.stringify({ status: 'already_exists' }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    } catch {
+      // Non-fatal: proceed to profile creation
+    }
   }
 
   const { idempotencyKey } = body;

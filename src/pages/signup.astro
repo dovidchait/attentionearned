@@ -222,6 +222,12 @@ infoForm.addEventListener('submit', async function(e) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
+    if (data.status === 'already_exists') {
+      var doneMsg = document.getElementById('doneMessage');
+      doneMsg.textContent = 'You\'re already set up. Check your dashboard at dashboard.attentionearned.com.';
+      showStep(3);
+      return;
+    }
     saveState({ profileId: data.profileId });
   } catch(err) {
     infoError.textContent = 'Could not create your profile: ' + err.message;
