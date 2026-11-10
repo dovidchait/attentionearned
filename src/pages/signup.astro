@@ -1,0 +1,569 @@
+---
+import Base from '../layouts/Base.astro';
+
+const TIMEZONES = [
+  { value: 'America/New_York',    label: 'Eastern (ET)' },
+  { value: 'America/Chicago',     label: 'Central (CT)' },
+  { value: 'America/Denver',      label: 'Mountain (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
+  { value: 'America/Phoenix',     label: 'Arizona (no DST)' },
+  { value: 'America/Anchorage',   label: 'Alaska (AKT)' },
+  { value: 'Pacific/Honolulu',    label: 'Hawaii (HST)' },
+  { value: 'America/Puerto_Rico', label: 'Puerto Rico / AST' },
+  { value: 'Europe/London',       label: 'London (GMT/BST)' },
+  { value: 'Europe/Jerusalem',    label: 'Israel (IST)' },
+];
+
+const PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', icon: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>` },
+  { id: 'tiktok',    label: 'TikTok',    icon: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>` },
+  { id: 'youtube',   label: 'YouTube',   icon: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>` },
+  { id: 'linkedin',  label: 'LinkedIn',  icon: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>` },
+  { id: 'facebook',  label: 'Facebook',  icon: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>` },
+];
+---
+
+<Base
+  title="Get Started"
+  description="Connect your social accounts. We handle the rest."
+  noindex={true}
+>
+  <section class="onboard container">
+
+    <!-- Progress bar -->
+    <div class="onboard__progress" id="progress-wrap" aria-hidden="true">
+      <div class="onboard__progress-bar" id="progress-bar"></div>
+    </div>
+
+    <!-- Step 1: Info -->
+    <div class="onboard__step" id="step-1">
+      <div class="onboard__header">
+        <div class="onboard__kicker">Step 1 of 2</div>
+        <h1 class="onboard__title">Tell us about your organization</h1>
+        <p class="onboard__sub">Takes about 2 minutes. We'll set up your accounts and you can start texting us clips.</p>
+      </div>
+
+      <form class="oform" id="infoForm" novalidate>
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label" for="name">Your name <span class="req">*</span></label>
+            <input class="field__input" type="text" id="name" name="name" placeholder="Sarah Cohen" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label class="field__label" for="orgName">Organization name <span class="req">*</span></label>
+            <input class="field__input" type="text" id="orgName" name="orgName" placeholder="Chabad of Miami" required autocomplete="organization" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="email">Email <span class="req">*</span></label>
+          <input class="field__input" type="email" id="email" name="email" placeholder="director@yourorg.com" required autocomplete="email" />
+          <span class="field__hint">You'll use this to log in to your dashboard.</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label" for="phone">Mobile number</label>
+            <input class="field__input" type="tel" id="phone" name="phone" placeholder="+1 347 555 0100" autocomplete="tel" />
+            <span class="field__hint">For posting by text. US numbers only right now.</span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="timezone">Timezone <span class="req">*</span></label>
+            <select class="field__input" id="timezone" name="timezone" required>
+              {TIMEZONES.map(tz => <option value={tz.value}>{tz.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div id="infoError" class="form-error" aria-live="polite"></div>
+
+        <button type="submit" class="btn-submit" id="infoNext">
+          Continue: Connect your accounts
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8H13M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <!-- Step 2: Connect platforms -->
+    <div class="onboard__step" id="step-2" hidden>
+      <div class="onboard__header">
+        <div class="onboard__kicker">Step 2 of 2</div>
+        <h1 class="onboard__title">Connect your social accounts</h1>
+        <p class="onboard__sub">Connect the platforms you want us to post to. You can add more later.</p>
+      </div>
+
+      <div class="platform-grid" id="platformGrid">
+        {PLATFORMS.map(p => (
+          <button
+            class="platform-btn"
+            id={`btn-${p.id}`}
+            data-platform={p.id}
+            type="button"
+            aria-label={`Connect ${p.label}`}
+          >
+            <span class="platform-btn__icon" set:html={p.icon} />
+            <span class="platform-btn__label">{p.label}</span>
+            <span class="platform-btn__status" id={`status-${p.id}`} aria-live="polite"></span>
+          </button>
+        ))}
+      </div>
+
+      <p class="onboard__hint">Not all platforms are required. Connect at least one, then click Finish.</p>
+
+      <div id="connectError" class="form-error" aria-live="polite"></div>
+
+      <div class="onboard__actions">
+        <button type="button" class="btn-ghost" id="backBtn">Back</button>
+        <button type="button" class="btn-submit" id="finishBtn" disabled>
+          Finish setup
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8H13M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div class="onboard__step onboard__step--done" id="step-done" hidden>
+      <div class="done-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="56" height="56" fill="none">
+          <circle cx="24" cy="24" r="22" stroke="var(--ok)" stroke-width="2.5" fill="none"/>
+          <path d="M14 24l7 7 13-14" stroke="var(--ok)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="onboard__title">You're all set.</h1>
+      <p class="onboard__sub" id="doneMessage">Your accounts are connected and we're finishing setup. It takes about 2 minutes.</p>
+      <div class="done-next">
+        <div class="done-card">
+          <strong>Post your first clip</strong>
+          <p>Text a photo or video to <strong>+1 866-618-8109</strong> and we'll post it to your connected accounts.</p>
+        </div>
+        <div class="done-card">
+          <strong>Your dashboard</strong>
+          <p>Check <strong>dashboard.attentionearned.com</strong> in a few minutes to see your scheduled and published posts.</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</Base>
+
+<script>
+var SS_KEY = 'ae_onboard';
+function saveState(patch) {
+  var s = loadState();
+  try { sessionStorage.setItem(SS_KEY, JSON.stringify(Object.assign({}, s, patch))); } catch(e) {}
+}
+function loadState() {
+  try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+var step1 = document.getElementById('step-1');
+var step2 = document.getElementById('step-2');
+var stepDone = document.getElementById('step-done');
+var progressBar = document.getElementById('progress-bar');
+
+function setProgress(pct) { progressBar.style.width = pct + '%'; }
+function showStep(n) {
+  step1.hidden = n !== 1;
+  step2.hidden = n !== 2;
+  stepDone.hidden = n !== 3;
+  setProgress(n === 1 ? 20 : n === 2 ? 60 : 100);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+var saved = loadState();
+if (saved.name)     document.getElementById('name').value = saved.name;
+if (saved.orgName)  document.getElementById('orgName').value = saved.orgName;
+if (saved.email)    document.getElementById('email').value = saved.email;
+if (saved.phone)    document.getElementById('phone').value = saved.phone;
+if (saved.timezone) document.getElementById('timezone').value = saved.timezone;
+if (!saved.timezone) {
+  try {
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var sel = document.getElementById('timezone');
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === tz) { sel.selectedIndex = i; break; }
+    }
+  } catch(e) {}
+}
+
+var infoForm = document.getElementById('infoForm');
+var infoError = document.getElementById('infoError');
+infoForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  infoError.textContent = '';
+  var name    = document.getElementById('name').value.trim();
+  var orgName = document.getElementById('orgName').value.trim();
+  var email   = document.getElementById('email').value.trim();
+  var phone   = document.getElementById('phone').value.trim();
+  var timezone = document.getElementById('timezone').value;
+  if (!name || !orgName || !email) {
+    infoError.textContent = 'Name, organization, and email are required.';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    infoError.textContent = 'Enter a valid email address.';
+    return;
+  }
+  saveState({ name: name, orgName: orgName, email: email, phone: phone, timezone: timezone });
+  var btn = document.getElementById('infoNext');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  try {
+    var res = await fetch('/api/onboard/snapshot');
+    var data = await res.json();
+    saveState({ baseline: data.accountIds || [] });
+  } catch(err) {
+    saveState({ baseline: [] });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continue: Connect your accounts';
+  }
+  showStep(2);
+  restoreConnected();
+});
+
+var finishBtn    = document.getElementById('finishBtn');
+var connectError = document.getElementById('connectError');
+var PLATFORM_IDS = ['instagram', 'tiktok', 'youtube', 'linkedin', 'facebook'];
+
+function restoreConnected() {
+  var connected = new Set(loadState().connected || []);
+  for (var i = 0; i < PLATFORM_IDS.length; i++) {
+    var pid = PLATFORM_IDS[i];
+    var statusEl = document.getElementById('status-' + pid);
+    var btn = document.getElementById('btn-' + pid);
+    if (connected.has(pid)) {
+      btn.classList.add('platform-btn--connected');
+      if (statusEl) statusEl.textContent = '✓ Connected';
+    }
+  }
+  finishBtn.disabled = connected.size === 0;
+}
+
+var params = new URLSearchParams(location.search);
+var urlStep = params.get('step');
+var justConnected = params.get('connected');
+if (urlStep === '2') {
+  if (justConnected) {
+    var existing = loadState().connected || [];
+    if (!existing.includes(justConnected)) existing.push(justConnected);
+    saveState({ connected: existing });
+    history.replaceState({}, '', '/signup?step=2');
+  }
+  showStep(2);
+  restoreConnected();
+}
+
+PLATFORM_IDS.forEach(function(pid) {
+  var btn = document.getElementById('btn-' + pid);
+  if (!btn) return;
+  btn.addEventListener('click', async function() {
+    connectError.textContent = '';
+    btn.disabled = true;
+    var statusEl = document.getElementById('status-' + pid);
+    statusEl.textContent = 'Loading...';
+    try {
+      var res = await fetch('/api/onboard/connect-url?platform=' + pid);
+      var data = await res.json();
+      if (data.error) throw new Error(data.error);
+      window.location.href = data.connectUrl;
+    } catch(err) {
+      statusEl.textContent = '';
+      btn.disabled = false;
+      connectError.textContent = 'Could not start ' + pid + ' connection: ' + err.message;
+    }
+  });
+});
+
+var backBtn = document.getElementById('backBtn');
+if (backBtn) backBtn.addEventListener('click', function() { showStep(1); });
+
+finishBtn.addEventListener('click', async function() {
+  connectError.textContent = '';
+  finishBtn.disabled = true;
+  finishBtn.textContent = 'Finishing up...';
+  var state = loadState();
+  try {
+    var res = await fetch('/api/onboard/provision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: state.name, orgName: state.orgName, email: state.email,
+        phone: state.phone, timezone: state.timezone, baseline: state.baseline || []
+      })
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    var doneMsg = document.getElementById('doneMessage');
+    if (data.status === 'already_exists') {
+      doneMsg.textContent = 'You are already set up. Check your dashboard.';
+    } else if (data.status === 'pending_manual') {
+      doneMsg.textContent = 'We got your info and will finish setup shortly. We will text you when you are live.';
+    } else {
+      doneMsg.textContent = (state.orgName || 'Your org') + ' is live. Accounts will be active in about 2 minutes.';
+    }
+    try { sessionStorage.removeItem(SS_KEY); } catch(e) {}
+    showStep(3);
+  } catch(err) {
+    connectError.textContent = 'Setup failed: ' + err.message;
+    finishBtn.disabled = false;
+    finishBtn.textContent = 'Finish setup';
+  }
+});
+</script>
+</script>
+
+<style>
+.onboard {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 3rem 1rem 5rem;
+}
+
+.onboard__progress {
+  height: 3px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  margin-bottom: 2.5rem;
+  overflow: hidden;
+}
+
+.onboard__progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  width: 20%;
+  transition: width 0.4s ease;
+}
+
+.onboard__kicker {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.onboard__title {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+}
+
+.onboard__sub {
+  color: var(--text-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 2rem;
+}
+
+.onboard__header {
+  margin-bottom: 2rem;
+}
+
+/* ─── Form fields ─────────────────────────────────────────────────────────── */
+
+.oform {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.field-row {
+  display: flex;
+  gap: 1rem;
+}
+
+@media (max-width: 520px) {
+  .field-row { flex-direction: column; }
+}
+
+.field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-body);
+  letter-spacing: 0.01em;
+}
+
+.field__input {
+  background: var(--surface-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  color: var(--text-strong);
+  font-size: 1rem;
+  padding: 0.65rem 0.875rem;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-quiet);
+}
+
+.field__hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.req {
+  color: var(--accent);
+}
+
+.form-error {
+  color: var(--error);
+  font-size: 0.875rem;
+  min-height: 1.25rem;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  align-self: flex-start;
+}
+
+.btn-submit:hover:not(:disabled) { background: var(--accent-press); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  color: var(--text-body);
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-ghost:hover { border-color: var(--border-strong); color: var(--text-strong); }
+
+/* ─── Platform grid ───────────────────────────────────────────────────────── */
+
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.platform-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.1rem 0.75rem 0.9rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  color: var(--text-body);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.platform-btn:hover:not(:disabled):not(.platform-btn--connected) {
+  border-color: var(--border-strong);
+  color: var(--text-strong);
+  background: var(--surface-hover);
+}
+
+.platform-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.platform-btn--connected {
+  border-color: var(--ok);
+  background: rgba(79, 191, 139, 0.08);
+  color: var(--ok);
+  pointer-events: none;
+}
+
+.platform-btn__icon { line-height: 0; }
+.platform-btn__label { font-size: 0.875rem; font-weight: 600; }
+.platform-btn__status { font-size: 0.75rem; min-height: 1em; }
+
+.onboard__hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 1.5rem;
+}
+
+.onboard__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Done step ───────────────────────────────────────────────────────────── */
+
+.onboard__step--done {
+  text-align: center;
+  padding-top: 2rem;
+}
+
+.done-icon {
+  margin-bottom: 1.5rem;
+}
+
+.done-next {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  text-align: left;
+}
+
+@media (max-width: 520px) {
+  .done-next { grid-template-columns: 1fr; }
+}
+
+.done-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+
+.done-card strong {
+  display: block;
+  color: var(--text-strong);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+</style>
