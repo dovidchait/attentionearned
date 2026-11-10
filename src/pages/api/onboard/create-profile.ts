@@ -46,9 +46,9 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const profileId = data._id || data.id || data.profileId;
+  const profileId = data._id || data.id || data.profileId || data.profile?._id || data.profile?.id;
   if (!profileId) {
-    return new Response(JSON.stringify({ error: 'No profileId in response' }), {
+    return new Response(JSON.stringify({ error: 'No profileId in response', keys: Object.keys(data) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
