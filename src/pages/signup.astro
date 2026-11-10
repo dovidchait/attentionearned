@@ -208,7 +208,9 @@ infoForm.addEventListener('submit', async function(e) {
     infoError.textContent = 'Enter a valid email address.';
     return;
   }
-  saveState({ name: name, orgName: orgName, email: email, phone: phone, timezone: timezone });
+  var existingState = loadState();
+  var idempotencyKey = existingState.idempotencyKey || crypto.randomUUID();
+  saveState({ name: name, orgName: orgName, email: email, phone: phone, timezone: timezone, idempotencyKey: idempotencyKey });
   var btn = document.getElementById('infoNext');
   btn.disabled = true;
   btn.textContent = 'Setting up your profile...';
@@ -216,7 +218,7 @@ infoForm.addEventListener('submit', async function(e) {
     var res = await fetch('/api/onboard/create-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orgName: orgName, email: email }),
+      body: JSON.stringify({ orgName: orgName, email: email, idempotencyKey: idempotencyKey }),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);

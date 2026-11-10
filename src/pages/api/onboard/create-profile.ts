@@ -28,13 +28,17 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  const { idempotencyKey } = body;
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+
   const res = await fetch('https://zernio.com/api/v1/profiles', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': email.toLowerCase().trim(),
-    },
+    headers,
     body: JSON.stringify({ name: orgName, externalId: email.toLowerCase().trim() }),
   });
 
