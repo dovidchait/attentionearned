@@ -91,6 +91,14 @@ No AI video. User uploads their own footage.
 3. Client connects each platform via Zernio OAuth (full-page redirect, comes back to /signup?step=2&connected=PLATFORM)
 4. On Finish: POST /api/onboard/provision → finds new accounts (not in baseline) → commits users.json to GitHub → Fly deploy auto-triggers → welcome SMS sent
 
+## Later: transcription accuracy (Hebrew / Yiddish)
+Do after the posting flow is working.
+- [ ] Add `language` param to the OpenAI `whisper-1` call in `fly-service/lib/subtitles.js` (currently auto-detects; Hebrew/Yiddish should be set explicitly)
+- [ ] Build a test set: 5–10 real Hebrew and Yiddish clips with verified transcripts
+- [ ] Compare on that set: `whisper-1`, `ivrit-ai/whisper-large-v3`, `ivrit-ai/yi-whisper-large-v3` (set Yiddish language token explicitly), and AssemblyAI for Hebrew
+- [ ] Only if an ivrit-ai model wins: self-host it (faster-whisper / CTranslate2 `-ct2` builds) on a GPU machine behind a new backend in `subtitles.js`. Needs Python + ffmpeg in the image (current Dockerfile is `node:22-alpine`, no Python)
+- Refs: https://huggingface.co/ivrit-ai/whisper-large-v3-ct2 · https://huggingface.co/ivrit-ai/yi-whisper-large-v3
+
 ## Open questions
 - Pricing/billing for public lead gen tier (free trial? paid?)
 - Ideogram API key — need to get one
