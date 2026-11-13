@@ -46,9 +46,16 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const profileId = data._id || data.id || data.profileId;
+  // The create response shape isn't confirmed in our code. Accept the common
+  // wrappers, and if none match, return the top-level keys so the mismatch is visible.
+  const profileId =
+    data?._id || data?.id || data?.profileId ||
+    data?.profile?._id || data?.profile?.id ||
+    data?.data?._id || data?.data?.id;
   if (!profileId) {
-    return new Response(JSON.stringify({ error: 'No profileId in response' }), {
+    const keys = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
+    console.error('[create-profile] No profileId. Response keys:', keys);
+    return new Response(JSON.stringify({ error: `No profileId in response (keys: ${keys})` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
