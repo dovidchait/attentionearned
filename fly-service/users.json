@@ -21,12 +21,26 @@
           "shadow": false,
           "allCaps": true,
           "punctuation": false,
-          "landscape": { "size": 84, "marginV": 190, "maxWordsPerLine": 4 },
-          "portrait":  { "size": 92, "marginV": 430, "maxWordsPerLine": 3 }
+          "landscape": {
+            "size": 84,
+            "marginV": 190,
+            "maxWordsPerLine": 4
+          },
+          "portrait": {
+            "size": 92,
+            "marginV": 430,
+            "maxWordsPerLine": 3
+          }
         },
         "vocabulary": [
-          { "find": "Zernyo",  "replace": "Zernio" },
-          { "find": "zernia",  "replace": "Zernio" }
+          {
+            "find": "Zernyo",
+            "replace": "Zernio"
+          },
+          {
+            "find": "zernia",
+            "replace": "Zernio"
+          }
         ]
       },
       "accounts": [
@@ -75,6 +89,24 @@
           "disabled": "Reddit needs a subreddit for every post and Zernio has Reddit paused right now"
         }
       ]
+    },
+    {
+      "name": "david chait",
+      "orgName": "asdf",
+      "email": "doid@attentionearned.com",
+      "emails": [],
+      "timezone": "America/New_York",
+      "apiKeyEnv": "ZERNIO_API_KEY",
+      "zernioProfileId": "6af904614cc50cad2f2ea868",
+      "accounts": [
+        {
+          "accountId": "6af9073c41ed153496a29e2e",
+          "platform": "instagram",
+          "label": "instagram @attentionearned"
+        }
+      ],
+      "phone": "4439836367",
+      "whatsapp": "4439836367"
     }
   ]
 }
