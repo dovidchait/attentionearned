@@ -355,7 +355,13 @@ function makeClip(dir, { width, height, seconds = 3, rotate = null }) {
   // phones store portrait clips landscape + a rotation flag; set it on a remux
   const flat = path.join(dir, 'flat.mp4');
   execFileSync('ffmpeg', [...args, flat]);
-  execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', flat, '-c', 'copy', '-metadata:s:v:0', `rotate=${rotate}`, out]);
+  // ffmpeg 6+ ignores the old `rotate` tag on output and needs -display_rotation
+  // (writes a display matrix, like a real phone); older ffmpeg only knows the tag.
+  try {
+    execFileSync('ffmpeg', ['-y', '-v', 'error', '-display_rotation', String(rotate), '-i', flat, '-c', 'copy', out]);
+  } catch {
+    execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', flat, '-c', 'copy', '-metadata:s:v:0', `rotate=${rotate}`, out]);
+  }
   return out;
 }
 
