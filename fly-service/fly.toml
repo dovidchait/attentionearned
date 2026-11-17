@@ -14,7 +14,9 @@ primary_region = 'iad'
 [[vm]]
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 512
+  # 512 MB is too small for ffmpeg burning subtitles into a 1080p/4K phone
+  # clip while the video is also held in memory. 2 GB covers a 4K clip.
+  memory_mb = 2048
 
 # Keeps opt-outs (STOP) and WhatsApp last-message times across deploys.
 # Create the volume first, then uncomment (see README "Keep opt-outs"):
