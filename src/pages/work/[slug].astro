@@ -30,9 +30,83 @@ if (mdxEntry) {
   const rendered = await render(mdxEntry);
   Content = rendered.Content;
 }
+
+// --- SEO / structured data -------------------------------------------------
+const site = 'https://www.attentionearned.com';
+const pageUrl = `${site}/work/${entry.slug}`;
+const data = mdxEntry?.data;
+
+// Real one-line summary beats the old "Nonprofit video: X" template.
+const description =
+  data?.summary ??
+  `${entry.sector} video: ${entry.title}${entry.client ? ` for ${entry.client}` : ''}`;
+
+// Thumbnail: explicit poster in the MDX, else the YouTube still.
+const thumbnail =
+  data?.video?.poster ??
+  (entry.kind === 'youtube' ? `https://i.ytimg.com/vi/${entry.video}/hqdefault.jpg` : undefined);
+
+// "Label: Value" credit lines -> pairs; free-text lines are skipped.
+const creditPairs = (data?.credits ?? [])
+  .map(line => {
+    const [label, ...rest] = line.split(':');
+    return { label: label.trim().toLowerCase(), value: rest.join(':').trim() };
+  })
+  .filter(c => c.value);
+const directors = creditPairs.filter(c => /direct/.test(c.label)).map(c => ({ '@type': 'Person', name: c.value }));
+
+const org = { '@type': 'Organization', name: 'Attention Earned', url: site };
+const uploadDate = data?.date ? data.date.toISOString().slice(0, 10) : undefined;
+
+// Google needs name, description, thumbnailUrl and uploadDate for a valid VideoObject.
+const videoLd = thumbnail && uploadDate
+  ? {
+      '@type': 'VideoObject',
+      name: entry.title,
+      description,
+      thumbnailUrl: thumbnail,
+      uploadDate,
+      ...(media.type === 'iframe' ? { embedUrl: media.src } : {}),
+      ...(media.type === 'video' ? { contentUrl: media.src } : {}),
+      ...(directors.length ? { director: directors } : {}),
+      creator: org,
+    }
+  : null;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'CreativeWork',
+      '@id': `${pageUrl}#work`,
+      name: entry.title,
+      description,
+      url: pageUrl,
+      genre: entry.sector,
+      creator: org,
+      ...(entry.client ? { sourceOrganization: { '@type': 'Organization', name: entry.client } } : {}),
+      ...(uploadDate ? { dateCreated: uploadDate } : {}),
+      ...(videoLd ? { video: videoLd } : {}),
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Work', item: `${site}/work` },
+        { '@type': 'ListItem', position: 2, name: entry.title, item: pageUrl },
+      ],
+    },
+  ],
+};
 ---
 
-<Base title={entry.title} description={`${entry.sector} video: ${entry.title}${entry.client ? ` for ${entry.client}` : ''}`}>
+<Base
+  title={entry.title}
+  description={description}
+  ogImage={thumbnail}
+  ogImageWidth={thumbnail ? 480 : undefined}
+  ogImageHeight={thumbnail ? 360 : undefined}
+>
+  <script slot="head" is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <article class="work-detail container">
     <div class="work-detail__meta">
       <Badge tone="accent">{entry.sector}</Badge>
@@ -42,7 +116,7 @@ if (mdxEntry) {
 
     <div class="work-detail__media">
       {media.type === 'video' && (
-        <video controls src={media.src} class="work-detail__video" />
+        <video controls preload="metadata" src={media.src} poster={thumbnail} class="work-detail__video" />
       )}
       {media.type === 'iframe' && (
         <iframe
