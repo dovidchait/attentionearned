@@ -41,10 +41,12 @@ const description =
   data?.summary ??
   `${entry.sector} video: ${entry.title}${entry.client ? ` for ${entry.client}` : ''}`;
 
-// Thumbnail: explicit poster in the MDX, else the YouTube still.
-const thumbnail =
+// Thumbnail: poster in the MDX (frame stills live in /public/posters), else the YouTube still.
+const posterPath =
+  data?.poster ??
   data?.video?.poster ??
   (entry.kind === 'youtube' ? `https://i.ytimg.com/vi/${entry.video}/hqdefault.jpg` : undefined);
+const thumbnail = posterPath ? new URL(posterPath, site).href : undefined;
 
 // "Label: Value" credit lines -> pairs; free-text lines are skipped.
 const creditPairs = (data?.credits ?? [])
@@ -103,8 +105,6 @@ const jsonLd = {
   title={entry.title}
   description={description}
   ogImage={thumbnail}
-  ogImageWidth={thumbnail ? 480 : undefined}
-  ogImageHeight={thumbnail ? 360 : undefined}
 >
   <script slot="head" is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <article class="work-detail container">
@@ -116,7 +116,7 @@ const jsonLd = {
 
     <div class="work-detail__media">
       {media.type === 'video' && (
-        <video controls preload="metadata" src={media.src} poster={thumbnail} class="work-detail__video" />
+        <video controls preload="metadata" src={media.src} poster={posterPath} class="work-detail__video" />
       )}
       {media.type === 'iframe' && (
         <iframe

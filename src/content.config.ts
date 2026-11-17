@@ -23,6 +23,7 @@ const work = defineCollection({
       src: z.string(),
       poster: z.string().optional(),
     }).optional(),
+    poster: z.string().optional(),
     credits: z.array(z.string()).optional(),
     date: z.coerce.date().optional(),
     featured: z.boolean().default(false),

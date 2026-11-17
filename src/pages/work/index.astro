@@ -6,6 +6,7 @@ import { AE_WORK, AE_SECTORS, getYoutubeThumbnail, getPlatformLabel } from '../.
 const work = AE_WORK.map(w => ({
   ...w,
   isVideo: w.kind === 'dropbox-direct',
+  poster: w.kind === 'dropbox-direct' ? `/posters/${w.slug}.jpg` : undefined,
   thumb: getYoutubeThumbnail(w),
   platform: getPlatformLabel(w),
 }));
@@ -58,6 +59,7 @@ const work = AE_WORK.map(w => ({
           {w.isVideo && (
             <video
               src={w.video}
+              poster={w.poster}
               muted
               loop
               autoplay
