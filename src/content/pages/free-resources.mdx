@@ -1,0 +1,34 @@
+---
+title: "Free Resources"
+description: "Free tools we built for our own post-production workflow. Start with a Google Drive bulk downloader for Windows: no API keys, no zip-splitting, resumes where it left off."
+---
+
+Tools we built for our own workflow and use every week. Free, no email required.
+
+## Google Drive Bulk Downloader (Windows)
+
+Clients send footage in Google Drive folders. Downloading a big folder from the browser means Google zips it into 2 GB chunks, half of them fail, and you start over. This tool pulls the whole folder straight to your drive instead.
+
+- **Paste a folder link, pick a destination, click Start.** Subfolders included.
+- **Only grabs what you don't have yet.** It compares Drive against your local folder by filename, so you can re-run it as a client keeps uploading.
+- **Filter by type.** Type `*.mp4` to skip the proxies, PDFs and stills.
+- **Resumes.** Stop it or lose your connection; run it again and finished files are skipped.
+- **No setup.** No Google Cloud project or API keys. The first run asks you to sign in to Google once in your browser.
+
+[Download GDriveDownloader.exe &#8594;](/downloads/GDriveDownloader.exe)
+
+Windows 10 or 11, 64-bit.
+
+### Before you run it
+
+**Windows will warn you.** The exe isn't code-signed yet, so SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**. If you'd rather not, the [Python source](/downloads/gdrive_downloader.py) is one readable file; run it with `python gdrive_downloader.py`. The [SHA-256 checksum](/downloads/GDriveDownloader.exe.sha256) is published alongside.
+
+**What it accesses.** It asks Google for read-only access to your Drive, so it can't change or delete anything there. Your sign-in is saved only on your PC, in `%LOCALAPPDATA%\GDriveDownloader`. Nothing goes through our servers. Delete that folder to sign out completely.
+
+**How it works.** It's a front end for [rclone](https://rclone.org), the open-source sync tool, which it downloads from rclone.org on first run.
+
+**Limits.** It uses rclone's shared Google connection, so Google may throttle very large jobs (hundreds of GB in a day). If you hit that, wait and run it again; it picks up where it stopped.
+
+---
+
+Need the video made, not just the footage moved? [Talk to us &#8594;](/contact)
