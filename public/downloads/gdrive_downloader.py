@@ -263,6 +263,15 @@ class App(tk.Tk):
         if not transfers.isdigit() or not 1 <= int(transfers) <= 16:
             transfers = "4"
 
+        if re.search(r"photos\.google\.com|photos\.app\.goo\.gl", url, re.I):
+            messagebox.showerror(
+                "Google Photos link",
+                "This is a Google Photos link, not a Drive folder.\n\n"
+                "Google doesn't let any outside app download Photos albums.\n"
+                "Open the link in your browser and use the ⋮ menu → Download all,\n"
+                "or ask the sender to share the files in a Drive folder instead.",
+            )
+            return
         folder_id = extract_folder_id(url)
         if not folder_id:
             messagebox.showerror("Missing input", "Enter a valid Google Drive folder URL or ID.")
