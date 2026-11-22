@@ -93,9 +93,11 @@ export const GET: APIRoute = async ({ url }) => {
 
   const assemblyKey = import.meta.env.ASSEMBLYAI_API_KEY;
   const anthropicKey = url.searchParams.get('anthropicKey')?.trim() || import.meta.env.ANTHROPIC_API_KEY;
+  // captions=0 skips caption generation. The Studio writes its own captions, so it asks for transcripts only.
+  const wantCaptions = url.searchParams.get('captions') !== '0';
 
   if (!assemblyKey) return json({ error: 'ASSEMBLYAI_API_KEY not configured.' }, 500);
-  if (!anthropicKey) return json({ error: 'Anthropic API key is required. Add yours to the form.' }, 400);
+  if (wantCaptions && !anthropicKey) return json({ error: 'Anthropic API key is required. Add yours to the form.' }, 400);
 
   const res = await fetch(`https://api.assemblyai.com/v2/transcript/${jobId}`, {
     headers: { Authorization: assemblyKey },
@@ -115,15 +117,17 @@ export const GET: APIRoute = async ({ url }) => {
     .filter((w) => w.confidence < 0.4)
     .map((w) => ({ text: w.text, confidence: Math.round(w.confidence * 100) }));
 
-  let captions: Captions;
-  try {
-    captions = await generateCaptions(data.text ?? '', orgName, dayNumber, credits, anthropicKey);
-  } catch {
-    captions = {
-      instagram: `Day ${dayNumber}/30`,
-      linkedin: `Day ${dayNumber}/30`,
-      firstComment: 'Need people to know you? attentionearned.com',
-    };
+  let captions: Captions = { instagram: '', linkedin: '', firstComment: '' };
+  if (wantCaptions) {
+    try {
+      captions = await generateCaptions(data.text ?? '', orgName, dayNumber, credits, anthropicKey ?? '');
+    } catch {
+      captions = {
+        instagram: `Day ${dayNumber}/30`,
+        linkedin: `Day ${dayNumber}/30`,
+        firstComment: 'Need people to know you? attentionearned.com',
+      };
+    }
   }
 
   return json({

@@ -33,6 +33,13 @@ export default defineConfig({
         !page.includes('/proposals/'),
     }),
   ],
+  // Clerk's server build needs these two externals, normally set by @clerk/astro's integration.
+  // The integration itself is not used: it injects a Clerk runtime loader into every page,
+  // including the public marketing site.
+  vite: {
+    ssr: { external: ['node:async_hooks'] },
+    build: { rollupOptions: { external: ['cloudflare:workers'] } },
+  },
   adapter: vercel(),
   output: 'static',
 });

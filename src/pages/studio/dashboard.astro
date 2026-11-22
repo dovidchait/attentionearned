@@ -1,0 +1,238 @@
+---
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { isStudioPlatform, PLATFORM_LABELS, toCalendarPost, type CalendarPost } from '../../lib/studio/rules';
+import { getStudioContext } from '../../lib/studio/session';
+import { listZernioPosts } from '../../lib/studio/zernio';
+
+export const prerender = false;
+
+const studio = await getStudioContext(Astro);
+if (!studio) return Astro.redirect('/studio/login?redirect_url=/studio/dashboard');
+
+let posts: CalendarPost[] = [];
+let loadError = '';
+try {
+  posts = (await listZernioPosts(studio.profileId, 100))
+    .map((raw) => toCalendarPost(raw))
+    .filter((post): post is CalendarPost => post !== null);
+} catch (err) {
+  loadError = err instanceof Error ? err.message : 'Could not load your posts.';
+}
+
+const byWhen = (a: CalendarPost, b: CalendarPost) => (a.when ?? '').localeCompare(b.when ?? '');
+const upcoming = posts.filter((post) => post.upcoming).sort(byWhen);
+const recent = posts.filter((post) => !post.upcoming).sort((a, b) => byWhen(b, a));
+
+const preview = (content: string) => {
+  const text = content.trim() || 'No caption';
+  return text.length > 160 ? `${text.slice(0, 157)}...` : text;
+};
+const platformNames = (platforms: string[]) =>
+  platforms.map((p) => (isStudioPlatform(p) ? PLATFORM_LABELS[p] : p)).join(' · ') || 'No platforms';
+const chipTone = (status: string) => {
+  if (status === 'published') return 'ok';
+  if (status === 'failed' || status === 'error') return 'error';
+  if (status === 'scheduled' || status === 'queued') return 'info';
+  return 'muted';
+};
+---
+
+<StudioLayout title="Calendar" active="dashboard">
+  <header class="studio-page-head">
+    <div>
+      <h1 class="studio-h1">Calendar</h1>
+      <p class="studio-muted">Scheduled and published posts across your connected accounts.</p>
+    </div>
+    <a class="studio-btn studio-btn--primary" href="/studio/create">New post</a>
+  </header>
+
+  {loadError && <p class="studio-notice studio-notice--error" role="alert">{loadError}</p>}
+
+  <section class="studio-section" aria-labelledby="upcoming-title">
+    <h2 id="upcoming-title" class="studio-h2">Upcoming</h2>
+    {
+      upcoming.length === 0 ? (
+        <p class="studio-empty">
+          Nothing scheduled. <a href="/studio/create">Create a post</a>.
+        </p>
+      ) : (
+        <ul class="post-list">
+          {upcoming.map((post) => (
+            <li
+              class="post-card"
+              data-post-id={post.id}
+              data-content={post.content}
+              data-iso={post.when ?? ''}
+              data-editable={post.editable ? 'true' : 'false'}
+            >
+              <div class="post-card__top">
+                <time class="post-card__time" datetime={post.when ?? undefined} data-iso={post.when ?? undefined}>
+                  {post.when ? post.when : 'No date set'}
+                </time>
+                <span class={`studio-chip studio-chip--${chipTone(post.status)}`}>{post.status}</span>
+              </div>
+              <p class="post-card__text">{preview(post.content)}</p>
+              <p class="post-card__platforms">{platformNames(post.platforms)}</p>
+              <div class="post-card__actions">
+                {post.editable && (
+                  <button type="button" class="studio-btn studio-btn--ghost studio-btn--small" data-action="edit">
+                    Edit
+                  </button>
+                )}
+                <button type="button" class="studio-btn studio-btn--ghost studio-btn--small studio-btn--danger" data-action="delete">
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <section class="studio-section" aria-labelledby="recent-title">
+    <h2 id="recent-title" class="studio-h2">Recent</h2>
+    {
+      recent.length === 0 ? (
+        <p class="studio-empty">Nothing published yet.</p>
+      ) : (
+        <ul class="post-list">
+          {recent.map((post) => (
+            <li class="post-card">
+              <div class="post-card__top">
+                <time class="post-card__time" datetime={post.when ?? undefined} data-iso={post.when ?? undefined}>
+                  {post.when ? post.when : 'No date'}
+                </time>
+                <span class={`studio-chip studio-chip--${chipTone(post.status)}`}>{post.status}</span>
+              </div>
+              <p class="post-card__text">{preview(post.content)}</p>
+              <p class="post-card__platforms">{platformNames(post.platforms)}</p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <dialog id="edit-dialog" class="studio-dialog" aria-labelledby="edit-title">
+    <form id="edit-form">
+      <h2 id="edit-title" class="studio-h2">Edit post</h2>
+      <label class="studio-field">
+        <span class="studio-field__label">Caption</span>
+        <textarea id="edit-content" class="studio-textarea" rows="6" maxlength="2200" required></textarea>
+      </label>
+      <label class="studio-field">
+        <span class="studio-field__label">Post time (your local time)</span>
+        <input id="edit-when" class="studio-input" type="datetime-local" />
+        <span class="studio-hint">Change this to reschedule. Leave it alone to keep the current time.</span>
+      </label>
+      <p id="edit-error" class="studio-notice studio-notice--error" role="alert" hidden></p>
+      <div class="studio-dialog__actions">
+        <button type="button" class="studio-btn studio-btn--ghost" id="edit-cancel">Cancel</button>
+        <button type="submit" class="studio-btn studio-btn--primary" id="edit-save">Save</button>
+      </div>
+    </form>
+  </dialog>
+</StudioLayout>
+
+<script>
+  const timeFormat = new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  // Times arrive as UTC ISO strings. Show them in the viewer's own time zone.
+  document.querySelectorAll<HTMLTimeElement>('time[data-iso]').forEach((el) => {
+    const date = new Date(el.dateTime);
+    if (!Number.isNaN(date.getTime())) el.textContent = timeFormat.format(date);
+  });
+
+  const toLocalInput = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const dialog = document.getElementById('edit-dialog') as HTMLDialogElement;
+  const form = document.getElementById('edit-form') as HTMLFormElement;
+  const contentField = document.getElementById('edit-content') as HTMLTextAreaElement;
+  const whenField = document.getElementById('edit-when') as HTMLInputElement;
+  const errorBox = document.getElementById('edit-error') as HTMLParagraphElement;
+  const saveButton = document.getElementById('edit-save') as HTMLButtonElement;
+
+  let editingCard: HTMLElement | null = null;
+  let originalLocalTime = '';
+
+  async function request(method: 'PUT' | 'DELETE', url: string, body?: unknown): Promise<void> {
+    const res = await fetch(url, {
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? 'Something went wrong. Try again.');
+  }
+
+  function openEditor(card: HTMLElement) {
+    editingCard = card;
+    originalLocalTime = toLocalInput(card.dataset.iso ?? '');
+    contentField.value = card.dataset.content ?? '';
+    whenField.value = originalLocalTime;
+    errorBox.hidden = true;
+    dialog.showModal();
+  }
+
+  document.addEventListener('click', async (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');
+    if (!button) return;
+    const card = button.closest<HTMLElement>('[data-post-id]');
+    if (!card) return;
+    const id = card.dataset.postId ?? '';
+
+    if (button.dataset.action === 'edit') {
+      openEditor(card);
+      return;
+    }
+    if (button.dataset.action === 'delete') {
+      if (!confirm('Delete this scheduled post?')) return;
+      button.disabled = true;
+      try {
+        await request('DELETE', `/api/studio/posts/${encodeURIComponent(id)}`);
+        card.remove();
+      } catch (err) {
+        button.disabled = false;
+        alert(err instanceof Error ? err.message : 'Could not delete the post.');
+      }
+    }
+  });
+
+  document.getElementById('edit-cancel')?.addEventListener('click', () => dialog.close());
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!editingCard) return;
+    const id = editingCard.dataset.postId ?? '';
+
+    const body: Record<string, unknown> = { content: contentField.value.trim() };
+    if (whenField.value && whenField.value !== originalLocalTime) {
+      body.scheduledFor = new Date(whenField.value).toISOString();
+      body.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+
+    saveButton.disabled = true;
+    errorBox.hidden = true;
+    try {
+      await request('PUT', `/api/studio/posts/${encodeURIComponent(id)}`, body);
+      window.location.reload();
+    } catch (err) {
+      errorBox.textContent = err instanceof Error ? err.message : 'Could not save.';
+      errorBox.hidden = false;
+    } finally {
+      saveButton.disabled = false;
+    }
+  });
+</script>

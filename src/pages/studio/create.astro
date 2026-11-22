@@ -1,0 +1,654 @@
+---
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { getStudioContext } from '../../lib/studio/session';
+
+export const prerender = false;
+
+const studio = await getStudioContext(Astro);
+if (!studio) return Astro.redirect('/studio/login?redirect_url=/studio/create');
+
+const steps = ['Video', 'Transcript', 'Captions', 'Graphic', 'Schedule'];
+---
+
+<StudioLayout title="New post" active="create">
+  <header class="studio-page-head">
+    <div>
+      <h1 class="studio-h1">New post</h1>
+      <p class="studio-muted">Nothing posts until you confirm on the last step.</p>
+    </div>
+  </header>
+
+  <ol class="wizard-progress" aria-label="Progress">
+    {steps.map((label, index) => (
+      <li class="wizard-progress__item" data-progress={index + 1}>
+        <span class="wizard-progress__num">{index + 1}</span>
+        {label}
+      </li>
+    ))}
+  </ol>
+
+  <!-- Step 1: video -->
+  <section class="wizard-step studio-card" data-step="1" aria-labelledby="s1-title">
+    <h2 id="s1-title" class="studio-h2">Add your video</h2>
+    <div class="studio-tabs" role="radiogroup" aria-label="Where the video is">
+      <label class="studio-check">
+        <input type="radio" name="source" value="upload" checked /> Upload a file
+      </label>
+      <label class="studio-check">
+        <input type="radio" name="source" value="url" /> Paste a link
+      </label>
+    </div>
+
+    <div data-source="upload">
+      <label class="studio-field">
+        <span class="studio-field__label">Video file</span>
+        <input id="video-file" class="studio-input" type="file" accept="video/mp4,video/quicktime,video/webm" />
+      </label>
+      <div id="upload-progress" class="studio-progress" hidden>
+        <div id="upload-bar" class="studio-progress__bar"></div>
+      </div>
+      <p id="upload-status" class="studio-muted" aria-live="polite"></p>
+    </div>
+
+    <div data-source="url" hidden>
+      <label class="studio-field">
+        <span class="studio-field__label">Video link (https)</span>
+        <input id="video-url" class="studio-input" type="url" placeholder="https://example.org/clip.mp4" />
+      </label>
+      <p class="studio-hint">The link has to open the video file itself, not a web page that plays it.</p>
+    </div>
+
+    <p id="step1-error" class="studio-notice studio-notice--error" role="alert" hidden></p>
+    <div class="wizard-nav">
+      <span></span>
+      <button type="button" class="studio-btn studio-btn--primary" id="step1-next">Next</button>
+    </div>
+  </section>
+
+  <!-- Step 2: transcript -->
+  <section class="wizard-step studio-card" data-step="2" aria-labelledby="s2-title" hidden>
+    <h2 id="s2-title" class="studio-h2">Check the transcript</h2>
+    <p id="transcript-status" class="studio-muted" aria-live="polite"></p>
+    <p id="flagged" class="studio-notice" hidden></p>
+    <label class="studio-field">
+      <span class="studio-field__label">Transcript (fix any mistakes)</span>
+      <textarea id="transcript" class="studio-textarea" rows="10"></textarea>
+    </label>
+    <p id="step2-error" class="studio-notice studio-notice--error" role="alert" hidden></p>
+    <div class="wizard-nav">
+      <button type="button" class="studio-btn studio-btn--ghost" id="step2-back">Back</button>
+      <button type="button" class="studio-btn studio-btn--primary" id="step2-next" disabled>Next</button>
+    </div>
+  </section>
+
+  <!-- Step 3: captions -->
+  <section class="wizard-step studio-card" data-step="3" aria-labelledby="s3-title" hidden>
+    <h2 id="s3-title" class="studio-h2">Edit the captions</h2>
+    <p class="studio-muted">
+      Drafts from your transcript and the voice set in Settings. Each platform gets one of these.
+    </p>
+    <label class="studio-field">
+      <span class="studio-field__label">Instagram (also used for Facebook and YouTube)</span>
+      <textarea id="cap-instagram" class="studio-textarea" rows="6" maxlength="2200"></textarea>
+    </label>
+    <label class="studio-field">
+      <span class="studio-field__label">LinkedIn (also used for X)</span>
+      <textarea id="cap-linkedin" class="studio-textarea" rows="6" maxlength="2200"></textarea>
+    </label>
+    <label class="studio-field">
+      <span class="studio-field__label">TikTok</span>
+      <textarea id="cap-tiktok" class="studio-textarea" rows="4" maxlength="2200"></textarea>
+    </label>
+    <p id="step3-error" class="studio-notice studio-notice--error" role="alert" hidden></p>
+    <div class="wizard-nav">
+      <div class="studio-actions">
+        <button type="button" class="studio-btn studio-btn--ghost" id="step3-back">Back</button>
+        <button type="button" class="studio-btn studio-btn--ghost" id="regen-captions">Write new drafts</button>
+      </div>
+      <button type="button" class="studio-btn studio-btn--primary" id="step3-next">Next</button>
+    </div>
+  </section>
+
+  <!-- Step 4: graphic -->
+  <section class="wizard-step studio-card" data-step="4" aria-labelledby="s4-title" hidden>
+    <h2 id="s4-title" class="studio-h2">Make a graphic (optional)</h2>
+    <p class="studio-muted">Describe an image to go with the post. Pick one, or skip this step and post the video.</p>
+    <label class="studio-field">
+      <span class="studio-field__label">Describe the graphic</span>
+      <textarea id="gfx-prompt" class="studio-textarea" rows="3" maxlength="1000" placeholder="For example: a warm photo-style card with the words 'Thank you' over a sunrise"></textarea>
+    </label>
+    <label class="studio-field">
+      <span class="studio-field__label">Shape</span>
+      <select id="gfx-aspect" class="studio-input">
+        <option value="1x1">Square (1:1)</option>
+        <option value="4x5">Portrait (4:5)</option>
+        <option value="9x16">Vertical (9:16)</option>
+        <option value="16x9">Landscape (16:9)</option>
+      </select>
+    </label>
+    <div class="studio-actions">
+      <button type="button" class="studio-btn studio-btn--ghost" id="gfx-generate">Generate</button>
+    </div>
+    <div id="gfx-results" class="gfx-grid" role="radiogroup" aria-label="Generated graphics"></div>
+    <label class="studio-check">
+      <input type="checkbox" id="use-graphic" /> Post the selected graphic instead of the video
+    </label>
+    <p id="step4-error" class="studio-notice studio-notice--error" role="alert" hidden></p>
+    <div class="wizard-nav">
+      <button type="button" class="studio-btn studio-btn--ghost" id="step4-back">Back</button>
+      <div class="studio-actions">
+        <button type="button" class="studio-btn studio-btn--ghost" id="step4-skip">Skip</button>
+        <button type="button" class="studio-btn studio-btn--primary" id="step4-next">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 5: schedule -->
+  <section class="wizard-step studio-card" data-step="5" aria-labelledby="s5-title" hidden>
+    <h2 id="s5-title" class="studio-h2">Choose accounts and time</h2>
+    <fieldset class="studio-fieldset">
+      <legend>Accounts</legend>
+      <div id="accounts-list"></div>
+    </fieldset>
+
+    <fieldset class="studio-fieldset">
+      <legend>When</legend>
+      <label class="studio-check"><input type="radio" name="when" value="schedule" checked /> Schedule it</label>
+      <label class="studio-check"><input type="radio" name="when" value="now" /> Post now</label>
+      <label class="studio-field">
+        <span class="studio-field__label">Date and time (your local time)</span>
+        <input id="when-at" class="studio-input" type="datetime-local" />
+      </label>
+    </fieldset>
+
+    <div id="review" class="studio-card studio-review"></div>
+    <p id="step5-error" class="studio-notice studio-notice--error" role="alert" hidden></p>
+    <div id="results" aria-live="polite"></div>
+
+    <div class="wizard-nav">
+      <button type="button" class="studio-btn studio-btn--ghost" id="step5-back">Back</button>
+      <button type="button" class="studio-btn studio-btn--primary" id="submit-post">Confirm and post</button>
+    </div>
+  </section>
+</StudioLayout>
+
+<script>
+  import { captionKeyFor, isStudioPlatform, PLATFORM_LABELS, type CaptionKey, type MediaKind } from '../../lib/studio/rules';
+
+  type Account = { id: string; platform: string; label: string };
+  type Media = { url: string; type: MediaKind };
+  type Captions = Record<CaptionKey, string>;
+
+  const state = {
+    video: null as Media | null,
+    transcript: '',
+    transcriptFor: '',
+    transcribing: false,
+    captions: { instagram: '', linkedin: '', tiktok: '' } as Captions,
+    captionsFor: '',
+    graphics: [] as string[],
+    graphic: null as string | null,
+    accounts: [] as Account[],
+    submissionId: crypto.randomUUID(),
+  };
+
+  const byId = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  function fail(id: string, message: string) {
+    const el = byId(id);
+    el.textContent = message;
+    el.hidden = false;
+  }
+
+  function clear(id: string) {
+    const el = byId(id);
+    el.textContent = '';
+    el.hidden = true;
+  }
+
+  async function call<T>(method: 'GET' | 'POST', url: string, body?: unknown): Promise<T> {
+    const res = await fetch(url, {
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+    if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status}).`);
+    return data;
+  }
+
+  function putFile(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+      };
+      xhr.onload = () =>
+        xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status}).`));
+      xhr.onerror = () => reject(new Error('Upload failed. Check your connection and try again.'));
+      xhr.send(file);
+    });
+  }
+
+  const isNow = () => byId<HTMLInputElement>('when-at').disabled;
+  const useGraphic = () => byId<HTMLInputElement>('use-graphic').checked && state.graphic !== null;
+  const selectedAccountIds = () =>
+    [...document.querySelectorAll<HTMLInputElement>('input[name="account"]:checked')].map((input) => input.value);
+
+  function goTo(step: number) {
+    document.querySelectorAll<HTMLElement>('.wizard-step').forEach((section) => {
+      section.hidden = Number(section.dataset.step) !== step;
+    });
+    document.querySelectorAll<HTMLElement>('[data-progress]').forEach((item) => {
+      const n = Number(item.dataset.progress);
+      item.classList.toggle('is-current', n === step);
+      item.classList.toggle('is-done', n < step);
+    });
+    window.scrollTo({ top: 0 });
+    if (step === 2) void transcribe();
+    if (step === 3) void ensureCaptions();
+    if (step === 4) renderGraphics();
+    if (step === 5) void loadAccounts();
+  }
+
+  // ─── Step 1: video ────────────────────────────────────────────────────────
+
+  document.querySelectorAll<HTMLInputElement>('input[name="source"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      document.querySelectorAll<HTMLElement>('[data-source]').forEach((panel) => {
+        panel.hidden = panel.dataset.source !== radio.value;
+      });
+    });
+  });
+
+  byId<HTMLInputElement>('video-file').addEventListener('change', async (event) => {
+    const file = (event.currentTarget as HTMLInputElement).files?.[0];
+    if (!file) return;
+    clear('step1-error');
+    state.video = null;
+
+    const progress = byId('upload-progress');
+    const bar = byId('upload-bar');
+    const status = byId('upload-status');
+    if (!file.type.startsWith('video/')) {
+      status.textContent = '';
+      return fail('step1-error', 'That file is not a video Studio can read. Use MP4, MOV or WebM.');
+    }
+
+    progress.hidden = false;
+    bar.style.width = '0%';
+    status.textContent = 'Preparing upload…';
+    try {
+      const presigned = await call<{ uploadUrl: string; publicUrl: string }>('POST', '/api/studio/media/presign', {
+        filename: file.name,
+        contentType: file.type,
+        size: file.size,
+      });
+      await putFile(presigned.uploadUrl, file, (pct) => {
+        bar.style.width = `${pct}%`;
+        status.textContent = `Uploading… ${pct}%`;
+      });
+      state.video = { url: presigned.publicUrl, type: 'video' };
+      status.textContent = `Uploaded ${file.name}.`;
+    } catch (err) {
+      status.textContent = '';
+      fail('step1-error', err instanceof Error ? err.message : 'Upload failed.');
+    }
+  });
+
+  byId('step1-next').addEventListener('click', () => {
+    clear('step1-error');
+    const source = document.querySelector<HTMLInputElement>('input[name="source"]:checked')?.value;
+    if (source === 'url') {
+      const raw = byId<HTMLInputElement>('video-url').value.trim();
+      let parsed: URL | null = null;
+      try {
+        parsed = new URL(raw);
+      } catch {
+        parsed = null;
+      }
+      if (!parsed || parsed.protocol !== 'https:') return fail('step1-error', 'Paste a full https link to a video file.');
+      state.video = { url: parsed.toString(), type: 'video' };
+    }
+    if (!state.video) return fail('step1-error', 'Upload a video or paste a link first.');
+    goTo(2);
+  });
+
+  // ─── Step 2: transcript ───────────────────────────────────────────────────
+
+  function showFlagged(flagged: Array<{ text: string }>) {
+    const box = byId('flagged');
+    const words = [...new Set(flagged.map((word) => word.text.trim()).filter(Boolean))].slice(0, 40);
+    box.textContent = words.length ? `Low-confidence words to check: ${words.join(', ')}` : '';
+    box.hidden = words.length === 0;
+  }
+
+  async function transcribe() {
+    const video = state.video;
+    const next = byId<HTMLButtonElement>('step2-next');
+    const status = byId('transcript-status');
+    if (!video) return goTo(1);
+    if (state.transcriptFor === video.url && state.transcript) {
+      next.disabled = false;
+      return;
+    }
+    if (state.transcribing) return;
+
+    state.transcribing = true;
+    next.disabled = true;
+    clear('step2-error');
+    status.textContent = 'Starting transcription…';
+    try {
+      const started = await call<{ jobId: string }>('POST', '/api/content/start', { videoUrl: video.url });
+      const deadline = Date.now() + 15 * 60_000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+        const result = await call<{
+          status: string;
+          transcript?: string;
+          flagged?: Array<{ text: string }>;
+          error?: string;
+        }>('GET', `/api/content/result?jobId=${encodeURIComponent(started.jobId)}&captions=0`);
+
+        if (result.status === 'error') throw new Error(result.error ?? 'Transcription failed.');
+        if (result.status === 'completed') {
+          state.transcript = result.transcript ?? '';
+          state.transcriptFor = video.url;
+          byId<HTMLTextAreaElement>('transcript').value = state.transcript;
+          showFlagged(result.flagged ?? []);
+          status.textContent = state.transcript
+            ? 'Transcript ready. Check the flagged words.'
+            : 'No speech was detected in this video.';
+          next.disabled = !state.transcript.trim();
+          return;
+        }
+        status.textContent = 'Transcribing. Longer videos take a few minutes.';
+      }
+      throw new Error('Transcription is taking too long. Try again in a few minutes.');
+    } catch (err) {
+      status.textContent = '';
+      fail('step2-error', err instanceof Error ? err.message : 'Transcription failed.');
+    } finally {
+      state.transcribing = false;
+    }
+  }
+
+  byId<HTMLTextAreaElement>('transcript').addEventListener('input', (event) => {
+    state.transcript = (event.currentTarget as HTMLTextAreaElement).value;
+  });
+  byId('step2-back').addEventListener('click', () => goTo(1));
+  byId('step2-next').addEventListener('click', () => {
+    clear('step2-error');
+    if (!state.transcript.trim()) return fail('step2-error', 'The transcript is empty.');
+    goTo(3);
+  });
+
+  // ─── Step 3: captions ─────────────────────────────────────────────────────
+
+  const captionFields: Record<CaptionKey, HTMLTextAreaElement> = {
+    instagram: byId<HTMLTextAreaElement>('cap-instagram'),
+    linkedin: byId<HTMLTextAreaElement>('cap-linkedin'),
+    tiktok: byId<HTMLTextAreaElement>('cap-tiktok'),
+  };
+
+  (Object.keys(captionFields) as CaptionKey[]).forEach((key) => {
+    captionFields[key].addEventListener('input', () => {
+      state.captions[key] = captionFields[key].value;
+    });
+  });
+
+  function writeCaptions() {
+    (Object.keys(captionFields) as CaptionKey[]).forEach((key) => {
+      captionFields[key].value = state.captions[key];
+    });
+  }
+
+  async function ensureCaptions(force = false) {
+    if (!state.transcript.trim()) return goTo(2);
+    if (!force && state.captionsFor === state.transcript && Object.values(state.captions).some((c) => c.trim())) {
+      writeCaptions();
+      return;
+    }
+    const regen = byId<HTMLButtonElement>('regen-captions');
+    regen.disabled = true;
+    clear('step3-error');
+    try {
+      const drafted = await call<Captions>('POST', '/api/studio/captions', { transcript: state.transcript });
+      state.captions = { instagram: drafted.instagram, linkedin: drafted.linkedin, tiktok: drafted.tiktok };
+      state.captionsFor = state.transcript;
+      writeCaptions();
+    } catch (err) {
+      fail('step3-error', err instanceof Error ? err.message : 'Could not write drafts. Type the captions yourself.');
+    } finally {
+      regen.disabled = false;
+    }
+  }
+
+  byId('regen-captions').addEventListener('click', () => void ensureCaptions(true));
+  byId('step3-back').addEventListener('click', () => goTo(2));
+  byId('step3-next').addEventListener('click', () => {
+    clear('step3-error');
+    if (!Object.values(state.captions).some((c) => c.trim())) {
+      return fail('step3-error', 'Write at least one caption, or write new drafts.');
+    }
+    goTo(4);
+  });
+
+  // ─── Step 4: graphic ──────────────────────────────────────────────────────
+
+  function renderGraphics() {
+    const grid = byId('gfx-results');
+    grid.replaceChildren();
+    state.graphics.forEach((url, index) => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'gfx-option';
+      option.setAttribute('role', 'radio');
+      option.setAttribute('aria-checked', String(state.graphic === url));
+      option.setAttribute('aria-label', `Graphic ${index + 1}`);
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = `Generated graphic ${index + 1}`;
+      img.loading = 'lazy';
+      option.append(img);
+      option.addEventListener('click', () => {
+        state.graphic = url;
+        renderGraphics();
+        renderReview();
+      });
+      grid.append(option);
+    });
+  }
+
+  byId('gfx-generate').addEventListener('click', async () => {
+    clear('step4-error');
+    const prompt = byId<HTMLTextAreaElement>('gfx-prompt').value.trim();
+    if (prompt.length < 5) return fail('step4-error', 'Describe the graphic in a sentence or two.');
+
+    const button = byId<HTMLButtonElement>('gfx-generate');
+    button.disabled = true;
+    button.textContent = 'Generating…';
+    try {
+      const result = await call<{ images: Array<{ url: string }> }>('POST', '/api/studio/graphic', {
+        prompt,
+        aspectRatio: byId<HTMLSelectElement>('gfx-aspect').value,
+      });
+      state.graphics = result.images.map((image) => image.url);
+      state.graphic = null;
+      renderGraphics();
+    } catch (err) {
+      fail('step4-error', err instanceof Error ? err.message : 'Could not make graphics.');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Generate';
+    }
+  });
+
+  byId('step4-back').addEventListener('click', () => goTo(3));
+  byId('step4-skip').addEventListener('click', () => {
+    state.graphic = null;
+    byId<HTMLInputElement>('use-graphic').checked = false;
+    goTo(5);
+  });
+  byId('step4-next').addEventListener('click', () => {
+    clear('step4-error');
+    if (byId<HTMLInputElement>('use-graphic').checked && !state.graphic) {
+      return fail('step4-error', 'Pick a graphic, or untick the box to post the video.');
+    }
+    goTo(5);
+  });
+  byId<HTMLInputElement>('use-graphic').addEventListener('change', renderReview);
+
+  // ─── Step 5: accounts and time ────────────────────────────────────────────
+
+  function renderReview() {
+    const ids = selectedAccountIds();
+    const media = useGraphic() ? 'Graphic' : 'Video';
+    const when = isNow()
+      ? 'Post now'
+      : byId<HTMLInputElement>('when-at').value
+        ? `Scheduled for ${new Date(byId<HTMLInputElement>('when-at').value).toLocaleString()}`
+        : 'Pick a time';
+    byId('review').textContent = `${ids.length} account${ids.length === 1 ? '' : 's'} · ${media} · ${when}`;
+  }
+
+  async function loadAccounts() {
+    const box = byId('accounts-list');
+    box.textContent = 'Loading accounts…';
+    try {
+      const result = await call<{ accounts: Account[] }>('GET', '/api/studio/accounts');
+      state.accounts = result.accounts.filter((account) => isStudioPlatform(account.platform));
+      box.replaceChildren();
+
+      if (state.accounts.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'studio-empty';
+        empty.append('No accounts connected yet. ');
+        const link = document.createElement('a');
+        link.href = '/studio/accounts';
+        link.textContent = 'Connect one';
+        empty.append(link, '.');
+        box.append(empty);
+      }
+
+      for (const account of state.accounts) {
+        if (!isStudioPlatform(account.platform)) continue;
+        const label = document.createElement('label');
+        label.className = 'studio-check account-row';
+
+        const left = document.createElement('span');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'account';
+        input.value = account.id;
+        input.addEventListener('change', renderReview);
+        left.append(input, ` ${PLATFORM_LABELS[account.platform]} · ${account.label}`);
+
+        const captionName = captionKeyFor(account.platform);
+        const hint = document.createElement('span');
+        hint.className = 'account-row__caption';
+        hint.textContent = state.captions[captionName].trim()
+          ? `Uses the ${captionName === 'linkedin' ? 'LinkedIn' : captionName === 'tiktok' ? 'TikTok' : 'Instagram'} caption`
+          : 'No caption yet';
+
+        label.append(left, hint);
+        box.append(label);
+      }
+    } catch (err) {
+      box.textContent = '';
+      fail('step5-error', err instanceof Error ? err.message : 'Could not load accounts.');
+    }
+    renderReview();
+  }
+
+  document.querySelectorAll<HTMLInputElement>('input[name="when"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      byId<HTMLInputElement>('when-at').disabled = radio.value === 'now';
+      renderReview();
+    });
+  });
+  byId<HTMLInputElement>('when-at').addEventListener('input', renderReview);
+
+  // Default the picker to an hour from now, rounded to five minutes.
+  {
+    const when = byId<HTMLInputElement>('when-at');
+    const soon = new Date(Date.now() + 60 * 60_000);
+    soon.setMinutes(Math.ceil(soon.getMinutes() / 5) * 5, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    when.value = `${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())}T${pad(soon.getHours())}:${pad(soon.getMinutes())}`;
+    const now = new Date();
+    when.min = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+
+  byId('step5-back').addEventListener('click', () => goTo(4));
+
+  byId('submit-post').addEventListener('click', async () => {
+    clear('step5-error');
+    byId('results').replaceChildren();
+
+    const ids = selectedAccountIds();
+    if (ids.length === 0) return fail('step5-error', 'Pick at least one account.');
+
+    const graphicUrl = useGraphic() ? state.graphic : null;
+    const media: Media | null = graphicUrl ? { url: graphicUrl, type: 'image' } : state.video;
+    if (!media) return fail('step5-error', 'Add a video in step 1 first.');
+
+    const targets: Array<{ accountId: string; caption: string }> = [];
+    const missing: string[] = [];
+    for (const id of ids) {
+      const account = state.accounts.find((a) => a.id === id);
+      if (!account || !isStudioPlatform(account.platform)) continue;
+      const caption = state.captions[captionKeyFor(account.platform)].trim();
+      if (caption) targets.push({ accountId: id, caption });
+      else missing.push(PLATFORM_LABELS[account.platform]);
+    }
+    if (missing.length) {
+      return fail('step5-error', `Write a caption for ${missing.join(', ')} in step 3, or untick those accounts.`);
+    }
+
+    const now = isNow();
+    const whenValue = byId<HTMLInputElement>('when-at').value;
+    if (!now && !whenValue) return fail('step5-error', 'Pick a date and time, or choose Post now.');
+
+    const button = byId<HTMLButtonElement>('submit-post');
+    button.disabled = true;
+    try {
+      const result = await call<{ ok: boolean; postIds: string[]; errors: string[] }>('POST', '/api/studio/posts', {
+        submissionId: state.submissionId,
+        targets,
+        media,
+        publishNow: now,
+        ...(now ? {} : { scheduledFor: new Date(whenValue).toISOString() }),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+
+      const box = byId('results');
+      const message = document.createElement('p');
+      const count = result.postIds.length;
+      if (result.ok) {
+        message.className = 'studio-notice studio-notice--ok';
+        message.textContent = `${count} post${count === 1 ? '' : 's'} ${now ? 'sent' : 'scheduled'}.`;
+      } else {
+        message.className = 'studio-notice studio-notice--error';
+        message.textContent =
+          `${count ? `${count} went through. ` : ''}${result.errors.join(' ')} ` +
+          'Press the button again to retry. Posts that already went through will not be duplicated.';
+      }
+      box.append(message);
+
+      const link = document.createElement('a');
+      link.className = 'studio-btn studio-btn--ghost';
+      link.href = '/studio/dashboard';
+      link.textContent = 'Go to calendar';
+      box.append(link);
+    } catch (err) {
+      fail('step5-error', err instanceof Error ? err.message : 'Could not post. Try again.');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  goTo(1);
+</script>

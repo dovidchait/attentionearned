@@ -1,0 +1,85 @@
+---
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { getStudioContext } from '../../lib/studio/session';
+
+export const prerender = false;
+
+const studio = await getStudioContext(Astro);
+if (!studio) return Astro.redirect('/studio/login?redirect_url=/studio/settings');
+const s = studio.settings;
+---
+
+<StudioLayout title="Settings" active="settings">
+  <header class="studio-page-head">
+    <div>
+      <h1 class="studio-h1">Settings</h1>
+      <p class="studio-muted">These details shape every caption draft Studio writes for you.</p>
+    </div>
+  </header>
+
+  <form id="settings-form" class="studio-card" novalidate>
+    <div class="studio-grid-2">
+      <label class="studio-field">
+        <span class="studio-field__label">Organization name</span>
+        <input class="studio-input" name="orgName" maxlength="100" value={s.orgName} />
+      </label>
+      <label class="studio-field">
+        <span class="studio-field__label">Current campaign</span>
+        <input class="studio-input" name="currentCampaign" maxlength="150" value={s.currentCampaign} placeholder="For example: Spring appeal" />
+      </label>
+    </div>
+
+    <label class="studio-field">
+      <span class="studio-field__label">Campaign day (of 30)</span>
+      <input class="studio-input" name="campaignDay" type="number" min="1" max="30" step="1" value={s.campaignDay ?? ''} />
+      <span class="studio-hint">Leave blank when no campaign is running. When set, Instagram captions end with "Day N/30".</span>
+    </label>
+
+    <label class="studio-field">
+      <span class="studio-field__label">Voice and tone</span>
+      <textarea class="studio-textarea" name="voiceTone" rows="6" maxlength="1000" placeholder="How you sound: warm or direct, formal or casual. Words you always use, and words you never use.">{s.voiceTone}</textarea>
+    </label>
+
+    <p id="settings-message" class="studio-notice" role="status" hidden></p>
+    <div class="studio-actions">
+      <button class="studio-btn studio-btn--primary" type="submit" id="settings-save">Save settings</button>
+    </div>
+  </form>
+</StudioLayout>
+
+<script>
+  const form = document.getElementById('settings-form') as HTMLFormElement;
+  const message = document.getElementById('settings-message') as HTMLParagraphElement;
+  const save = document.getElementById('settings-save') as HTMLButtonElement;
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const body = {
+      orgName: String(data.get('orgName') ?? ''),
+      currentCampaign: String(data.get('currentCampaign') ?? ''),
+      campaignDay: String(data.get('campaignDay') ?? '') || null,
+      voiceTone: String(data.get('voiceTone') ?? ''),
+    };
+
+    save.disabled = true;
+    message.hidden = true;
+    try {
+      const res = await fetch('/api/studio/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error ?? 'Could not save.');
+      message.className = 'studio-notice studio-notice--ok';
+      message.textContent = 'Saved. New caption drafts will use these details.';
+    } catch (err) {
+      message.className = 'studio-notice studio-notice--error';
+      message.textContent = err instanceof Error ? err.message : 'Could not save.';
+    } finally {
+      message.hidden = false;
+      save.disabled = false;
+    }
+  });
+</script>

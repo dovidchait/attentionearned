@@ -1,0 +1,50 @@
+---
+import Base from '../../layouts/Base.astro';
+import ClerkConfig from '../../components/studio/ClerkConfig.astro';
+import { clerkConfigured } from '../../lib/studio/env';
+import '../../styles/studio.css';
+
+export const prerender = false;
+
+const configured = clerkConfigured();
+---
+
+<Base title="Create an account" noindex={true} noNav={true} noFooter={true}>
+  <section class="studio-auth">
+    <ClerkConfig />
+    {
+      configured ? (
+        <div id="clerk-sign-up">
+          <p class="studio-muted">Loading sign-up…</p>
+        </div>
+      ) : (
+        <p class="studio-auth__notice">Studio sign-up is not configured yet. The site owner needs to add the Clerk keys.</p>
+      )
+    }
+  </section>
+</Base>
+
+<script>
+  import { loadClerk } from '../../lib/studio/clerk-client';
+
+  const mount = document.getElementById('clerk-sign-up');
+
+  if (mount) {
+    loadClerk()
+      .then((clerk) => {
+        if (clerk.user) {
+          window.location.replace('/studio/dashboard');
+          return;
+        }
+        clerk.mountSignUp(mount, {
+          routing: 'path',
+          path: '/studio/signup',
+          signInUrl: '/studio/login',
+          fallbackRedirectUrl: '/studio/dashboard',
+        });
+      })
+      .catch((err: unknown) => {
+        mount.textContent = err instanceof Error ? err.message : 'Sign-up could not load.';
+      });
+  }
+</script>

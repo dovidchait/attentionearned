@@ -9,12 +9,14 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "node --test src/lib/studio/rules.test.ts"
   },
   "dependencies": {
     "@astrojs/mdx": "^6.0.3",
     "@astrojs/sitemap": "^3.7.3",
     "@astrojs/vercel": "^10.0.8",
+    "@clerk/astro": "^4.1.30",
     "astro": "^6.4.7",
     "googleapis": "^176.0.0",
     "twilio": "^6.1.0"

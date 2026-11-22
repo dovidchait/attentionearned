@@ -1,0 +1,78 @@
+---
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { PLATFORM_LABELS, STUDIO_PLATFORMS, isStudioPlatform } from '../../lib/studio/rules';
+import { getStudioContext } from '../../lib/studio/session';
+import { listZernioAccounts, type StudioAccount } from '../../lib/studio/zernio';
+
+export const prerender = false;
+
+const studio = await getStudioContext(Astro);
+if (!studio) return Astro.redirect('/studio/login?redirect_url=/studio/accounts');
+
+let accounts: StudioAccount[] = [];
+let loadError = '';
+try {
+  accounts = await listZernioAccounts(studio.profileId);
+} catch (err) {
+  loadError = err instanceof Error ? err.message : 'Could not load your accounts.';
+}
+
+const connected = Astro.url.searchParams.get('connected');
+const problem = Astro.url.searchParams.get('error');
+const platformName = (platform: string) => (isStudioPlatform(platform) ? PLATFORM_LABELS[platform] : platform);
+---
+
+<StudioLayout title="Accounts" active="accounts">
+  <header class="studio-page-head">
+    <div>
+      <h1 class="studio-h1">Accounts</h1>
+      <p class="studio-muted">The social accounts Studio can post to.</p>
+    </div>
+  </header>
+
+  {
+    connected && isStudioPlatform(connected) && (
+      <p class="studio-notice studio-notice--ok" role="status">{PLATFORM_LABELS[connected]} is connected.</p>
+    )
+  }
+  {problem && <p class="studio-notice studio-notice--error" role="alert">{problem}</p>}
+  {loadError && <p class="studio-notice studio-notice--error" role="alert">{loadError}</p>}
+
+  <section class="studio-section" aria-labelledby="connected-title">
+    <h2 id="connected-title" class="studio-h2">Connected</h2>
+    {
+      accounts.length === 0 ? (
+        <p class="studio-empty">No accounts yet. Connect one below.</p>
+      ) : (
+        <ul class="post-list">
+          {accounts.map((account) => (
+            <li class="post-card account-row">
+              <span>
+                {platformName(account.platform)} · {account.label}
+              </span>
+              <span class={`studio-chip studio-chip--${account.active ? 'ok' : 'error'}`}>
+                {account.active ? 'Active' : 'Needs reconnect'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <section class="studio-section" aria-labelledby="connect-title">
+    <h2 id="connect-title" class="studio-h2">Connect an account</h2>
+    <div class="studio-actions">
+      {
+        STUDIO_PLATFORMS.map((platform) => (
+          <a class="studio-btn studio-btn--ghost" href={`/api/studio/connect/start/${platform}`}>
+            {PLATFORM_LABELS[platform]}
+          </a>
+        ))
+      }
+    </div>
+    <p class="studio-hint">
+      You will leave Studio to sign in on the platform. You come straight back here when it is done.
+    </p>
+  </section>
+</StudioLayout>

@@ -1,0 +1,44 @@
+---
+import Base from '../../layouts/Base.astro';
+import '../../styles/studio.css';
+---
+
+<Base
+  title="Studio: post your own footage"
+  description="Upload a video you shot. Studio transcribes it, drafts captions in your organization's voice, and schedules the post to your accounts."
+>
+  <section class="studio-landing">
+    <p class="studio-landing__kicker">Studio</p>
+    <h1 class="studio-landing__title">Your footage. Your words. Every platform.</h1>
+    <p class="studio-landing__lede">
+      Upload a video you shot yourself. Studio transcribes it, drafts captions in your organization's voice, can make a
+      graphic to go with it, and schedules the post to the accounts you connect.
+    </p>
+
+    <div class="studio-landing__actions">
+      <a class="studio-btn studio-btn--primary" href="/studio/signup">Create an account</a>
+      <a class="studio-btn studio-btn--ghost" href="/studio/login">Log in</a>
+    </div>
+
+    <ol class="studio-steps">
+      <li>
+        <h2>Add your video</h2>
+        <p>Upload a file, or paste a link to a video you already host.</p>
+      </li>
+      <li>
+        <h2>Check the words</h2>
+        <p>Get a transcript. Fix the lines the transcription was unsure about before anything is written.</p>
+      </li>
+      <li>
+        <h2>Edit the captions</h2>
+        <p>Three drafts, one for each platform style. Change any of them before they go out.</p>
+      </li>
+      <li>
+        <h2>Schedule it</h2>
+        <p>Pick the accounts and the time. Every upcoming and recent post shows up on one calendar.</p>
+      </li>
+    </ol>
+
+    <p class="studio-landing__note">You upload your own footage. Studio does not generate video.</p>
+  </section>
+</Base>

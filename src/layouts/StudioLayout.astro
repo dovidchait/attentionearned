@@ -1,0 +1,57 @@
+---
+import Base from './Base.astro';
+import ClerkConfig from '../components/studio/ClerkConfig.astro';
+import '../styles/studio.css';
+
+interface Props {
+  title: string;
+  active?: 'dashboard' | 'create' | 'accounts' | 'settings';
+}
+
+const { title, active } = Astro.props;
+
+const links = [
+  { key: 'dashboard', href: '/studio/dashboard', label: 'Calendar' },
+  { key: 'create', href: '/studio/create', label: 'New post' },
+  { key: 'accounts', href: '/studio/accounts', label: 'Accounts' },
+  { key: 'settings', href: '/studio/settings', label: 'Settings' },
+];
+---
+
+<Base title={title} noindex={true} noNav={true} noFooter={true}>
+  <div class="studio">
+    <ClerkConfig />
+    <header class="studio-header">
+      <a class="studio-header__brand" href="/studio/dashboard">Studio</a>
+      <nav class="studio-header__nav" aria-label="Studio">
+        {
+          links.map((link) => (
+            <a href={link.href} aria-current={active === link.key ? 'page' : undefined}>
+              {link.label}
+            </a>
+          ))
+        }
+      </nav>
+      <button type="button" class="studio-header__signout" id="studio-signout">Sign out</button>
+    </header>
+    <div class="studio-main">
+      <slot />
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { loadClerk } from '../lib/studio/clerk-client';
+
+  const button = document.getElementById('studio-signout') as HTMLButtonElement | null;
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const clerk = await loadClerk();
+      await clerk.signOut({ redirectUrl: '/studio/login' });
+    } catch {
+      button.disabled = false;
+      alert('Could not sign out. Refresh the page and try again.');
+    }
+  });
+</script>

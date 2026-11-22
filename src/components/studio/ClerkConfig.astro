@@ -1,0 +1,10 @@
+---
+import { clerkConfigured, clerkJsUrl, clerkPublishableKey } from '../../lib/studio/env';
+
+// Public values only: the publishable key and the clerk-js URL. The secret key never reaches the page.
+const configured = clerkConfigured();
+const publishableKey = configured ? clerkPublishableKey() : null;
+const scriptUrl = configured ? clerkJsUrl() : null;
+---
+
+<div id="studio-clerk-config" hidden data-publishable-key={publishableKey ?? undefined} data-clerk-js={scriptUrl ?? undefined}></div>

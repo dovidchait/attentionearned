@@ -1,0 +1,54 @@
+---
+import Base from '../../layouts/Base.astro';
+import ClerkConfig from '../../components/studio/ClerkConfig.astro';
+import { clerkConfigured } from '../../lib/studio/env';
+import { safeStudioPath } from '../../lib/studio/rules';
+import '../../styles/studio.css';
+
+export const prerender = false;
+
+const configured = clerkConfigured();
+const destination = safeStudioPath(Astro.url.searchParams.get('redirect_url'), '/studio/dashboard');
+---
+
+<Base title="Log in" noindex={true} noNav={true} noFooter={true}>
+  <section class="studio-auth" data-destination={destination}>
+    <ClerkConfig />
+    {
+      configured ? (
+        <div id="clerk-sign-in">
+          <p class="studio-muted">Loading sign-in…</p>
+        </div>
+      ) : (
+        <p class="studio-auth__notice">Studio sign-in is not configured yet. The site owner needs to add the Clerk keys.</p>
+      )
+    }
+  </section>
+</Base>
+
+<script>
+  import { loadClerk } from '../../lib/studio/clerk-client';
+
+  const section = document.querySelector<HTMLElement>('.studio-auth');
+  const mount = document.getElementById('clerk-sign-in');
+  const destination = section?.dataset.destination ?? '/studio/dashboard';
+
+  if (mount) {
+    loadClerk()
+      .then((clerk) => {
+        if (clerk.user) {
+          window.location.replace(destination);
+          return;
+        }
+        clerk.mountSignIn(mount, {
+          routing: 'path',
+          path: '/studio/login',
+          signUpUrl: '/studio/signup',
+          fallbackRedirectUrl: destination,
+        });
+      })
+      .catch((err: unknown) => {
+        mount.textContent = err instanceof Error ? err.message : 'Sign-in could not load.';
+      });
+  }
+</script>
