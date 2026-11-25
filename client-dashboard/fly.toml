@@ -19,7 +19,7 @@ primary_region = "iad"
   # Change to https://dashboard.attentionearned.com once that domain points here.
   DASHBOARD_URL = "https://text-to-attention-dashboard.fly.dev"
 
-[[http_service]]
+[http_service]
   internal_port = 4000
   force_https = true
   auto_stop_machines = "stop"
