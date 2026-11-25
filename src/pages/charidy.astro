@@ -1,0 +1,928 @@
+---
+import Base from '../layouts/Base.astro';
+import Kicker from '../components/Kicker.astro';
+
+const FORMSPREE = 'https://formspree.io/f/xrbnvoqj';
+
+const PHONE_DISPLAY = '347-361-0822';
+const PHONE_E164 = '+13473610822';
+const PREFILL = "Hi, we have a Charidy campaign coming up and I'd like to talk about the messaging and video.";
+const WA_HREF = `https://wa.me/${PHONE_E164.replace('+', '')}?text=${encodeURIComponent(PREFILL)}`;
+// "?&body=" is the form that works on both iOS and Android.
+const SMS_HREF = `sms:${PHONE_E164}?&body=${encodeURIComponent(PREFILL)}`;
+
+const work = [
+  {
+    title: 'Same School, Different Goal',
+    client: 'Meoros Girls High School',
+    note: 'Second campaign, $400,000 goal. Last year explained why the school exists. This year the job was getting people to raise, so the girls made the video and we built the rollout around how this crowd shares: vertical cuts, WhatsApp status sizes, subtitles on everything.',
+    video: 'https://dl.dropboxusercontent.com/scl/fi/3xql5x9bvzwo8ibfwj8d2/MEO-Fundraiser-v04.4-2026-10-21-1-am-dc-Lower-volume.mov?rlkey=ey1vf603c4b84ui59fw3eqedm&st=yaaltxjz',
+    href: '/work/meoros-2026',
+  },
+  {
+    title: 'Meoros Girls High School Orlando',
+    client: 'Meoros Orlando',
+    note: 'Their first public fundraiser. A first impression with years of future funding riding on it, so we told the story of why they started and set the narrative for good.',
+    video: 'https://dl.dropboxusercontent.com/scl/fi/s64kwfqv7706armqhdueh/Meoros-Orlando-how-far-we-come-v5-5-pm-10.27-dc.mov?rlkey=2h4o0nn1ghea5lako05atgecm',
+    href: '/work/meoros-orlando',
+  },
+  {
+    title: 'Creating Buy In',
+    client: 'Orlando Community Kollel',
+    note: 'The goal was more people invested, not just more dollars. 40 headshots and interviews showing the breadth of support, and telling every participant: this is yours too.',
+    video: 'https://dl.dropboxusercontent.com/scl/fi/6w1aiym31b18bm0luruxl/v4.8-orlando-Kollel-Causematch-2.10-1050-am-dc-with-subs.mov?rlkey=9bmwip04wcxld47a42cwn0im3',
+    href: '/work/orlando-kollel-buy-in',
+  },
+  {
+    title: 'Imagine the Future',
+    client: 'Yeshiva Day School Las Vegas',
+    note: 'Building campaign where donors didn’t know what they were giving to. We showed what’s there now, what will be, and why it should be. Ten days from first call to final cut.',
+    video: 'https://dl.dropboxusercontent.com/s/tw9ss2ncet1asva/7.1%20for%20aproval%201055%20am%20.mov',
+    href: '/work/imagine-the-future',
+  },
+  {
+    title: 'Tag of Queens Campaign',
+    client: 'Tag of Queens',
+    note: 'A new org with no marketing plan. We used a community event to build their list, then repurposed the footage so they launched their Charidy campaign looking relevant and needed from day one.',
+    video: 'https://dl.dropboxusercontent.com/scl/fi/bx2h5lolwxdztib6ppab3/Tag-Chardy-v2.3-for-website.mov?rlkey=tevb463i3a96mxnehz114d1im',
+    href: '/work/tag-of-queens',
+  },
+  {
+    title: 'Building Campaign',
+    client: 'Chabad Cheder',
+    note: 'Building campaign film, edited by us. Donors said they felt it, not just saw it.',
+    video: 'https://dl.dropboxusercontent.com/scl/fi/7ye355lunjmt4v3yovmqb/cv-4.6-1.27-pm-6.5.25-dc.mov?rlkey=7fzsmdnfxdcul4tb2cgtncmq7',
+    href: '/work/chabad-cheder-building',
+  },
+];
+
+const deliverables = [
+  {
+    num: '01',
+    title: 'Positioning',
+    body: 'What makes your organization unique and critical, said so a stranger gets it. This is the reason to give that works on people who aren’t parents, alumni or members.',
+  },
+  {
+    num: '02',
+    title: 'Messaging',
+    body: 'The lines your ambassadors actually send. Scripts for WhatsApp, text and email, so every pitch says "here’s why this matters to you," not "do me a favor."',
+  },
+  {
+    num: '03',
+    title: 'All the media',
+    body: 'The campaign film, teasers, vertical cuts, WhatsApp status sizes and subtitles on everything. Made for how your crowd actually passes things around.',
+  },
+  {
+    num: '04',
+    title: 'All the copy',
+    body: 'Campaign page, launch emails, countdown pushes, matcher announcements and the final-hours ask, written to match the film.',
+  },
+];
+---
+
+<Base
+  title="Charidy Campaigns"
+  description="Positioning, messaging, video and copy for your Charidy campaign, plus a plan to stay in front of your donors all year. Turn ambassador pitches into supporters."
+  noNav
+  noFooter
+>
+  <div class="ch-wrap">
+
+    <header class="ch-nav">
+      <div class="ch-nav__inner">
+        <a href="/" aria-label="Attention Earned home">
+          <img src="/wordmark-white.svg" alt="Attention Earned" height="20" width="164" />
+        </a>
+        <nav class="ch-nav__links" aria-label="Page sections">
+          <a href="#problem">The problem</a>
+          <a href="#offer">What we do</a>
+          <a href="#work">Work</a>
+        </nav>
+        <a href={WA_HREF} class="ch-nav__cta" target="_blank" rel="noopener">WhatsApp us</a>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="ch-hero">
+      <div class="ch-hero__inner ae-reveal">
+        <Kicker>For Charidy &amp; matching campaigns</Kicker>
+        <h1 class="ch-hero__h1">
+          Everybody and their brother is asking your donors <span class="ch-accent">for money.</span>
+        </h1>
+        <p class="ch-hero__sub">
+          Your ambassadors are about to pitch their friends and family. Without
+          a reason that lands, it sounds like one more ask from one more
+          nonprofit. We make sure it doesn&rsquo;t.
+        </p>
+        <div class="ch-actions">
+          <a href={WA_HREF} class="btn-primary btn-lg" target="_blank" rel="noopener">WhatsApp us now</a>
+          <a href={SMS_HREF} class="btn-secondary btn-lg">Text {PHONE_DISPLAY}</a>
+        </div>
+        <a href="#form" class="ch-hero__form-link">Prefer a form? Leave your details &darr;</a>
+      </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section class="ch-problem" id="problem">
+      <div class="ch-section">
+        <Kicker>The problem</Kicker>
+        <h2 class="ch-h2">It&rsquo;s not their kid. It&rsquo;s not their school. It&rsquo;s not their community.</h2>
+        <p class="ch-lead">
+          Your ambassadors go out and pitch people who don&rsquo;t share their
+          connection. To that friend, your campaign is a generic nonprofit, or
+          worse, a generic nonprofit that means nothing to them. Same ambassador,
+          same friend. Two ways the pitch can go:
+        </p>
+
+        <div class="ch-pitches">
+          <div class="ch-pitch">
+            <span class="ch-pitch__label">Pitch A</span>
+            <p class="ch-pitch__quote">&ldquo;Hey, can you give? It&rsquo;s for my kid&rsquo;s school.&rdquo;</p>
+            <div class="ch-pitch__result">
+              <span class="ch-pitch__result-label">Result</span>
+              <span class="ch-pitch__result-value">A couple of bucks, as a favor.</span>
+            </div>
+          </div>
+          <div class="ch-pitch ch-pitch--win">
+            <span class="ch-pitch__label">Pitch B</span>
+            <p class="ch-pitch__quote">&ldquo;Don&rsquo;t give because I&rsquo;m your friend. Give because this place is unique, it&rsquo;s critical, and it means something to you, even three steps removed.&rdquo;</p>
+            <div class="ch-pitch__result">
+              <span class="ch-pitch__result-label">Result</span>
+              <span class="ch-pitch__result-value">A true supporter. Maybe forever.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATEMENT -->
+    <section class="ch-statement">
+      <div class="ch-section ch-statement__inner">
+        <p class="ch-statement__line">
+          Go from <span class="ch-strike">extortion</span> to a
+          <span class="ch-accent">meaningful contribution.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- OFFER -->
+    <section class="ch-offer" id="offer">
+      <div class="ch-section">
+        <Kicker>What we do</Kicker>
+        <h2 class="ch-h2">We build Pitch B for every ambassador.</h2>
+        <p class="ch-lead">
+          The positioning, the messaging, and all the media and copy for your
+          campaign, so the people furthest from your cause still have a reason
+          to care.
+        </p>
+
+        <div class="ch-grid">
+          {deliverables.map(d => (
+            <div class="ch-card">
+              <span class="ch-card__num">{d.num}</span>
+              <h3 class="ch-card__title">{d.title}</h3>
+              <p class="ch-card__body">{d.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="ch-year">
+          <div class="ch-year__text">
+            <span class="ch-card__num ch-card__num--accent">05</span>
+            <h3 class="ch-year__title">Then we keep them.</h3>
+            <p class="ch-card__body">
+              A campaign brings in hundreds of new donors, and most of them
+              hear nothing until next year&rsquo;s ask. We work with you on a
+              plan to stay in front of your donor base all year: what to send,
+              to whom, and when, so next campaign starts with supporters
+              instead of strangers.
+            </p>
+          </div>
+          <ul class="ch-year__list">
+            <li><span>Launch</span>Positioning, film, scripts, page copy</li>
+            <li><span>Campaign</span>Teasers, countdowns, matcher pushes, final hours</li>
+            <li><span>After</span>Thank-yous and what their gift did</li>
+            <li><span>All year</span>Updates that keep them close until the next ask</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK -->
+    <section class="ch-work" id="work">
+      <div class="ch-section">
+        <Kicker>Campaign work</Kicker>
+        <h2 class="ch-h2">Made for people who weren&rsquo;t already sold.</h2>
+
+        <div class="ch-work__grid">
+          {work.map(w => (
+            <article class="ch-work__item">
+              <div class="ch-work__media">
+                <video
+                  src={`${w.video}#t=0.5`}
+                  controls
+                  playsinline
+                  preload="metadata"
+                  class="ch-work__vid"
+                ></video>
+              </div>
+              <div class="ch-work__meta">
+                <span class="ch-work__client">{w.client}</span>
+                <h3 class="ch-work__title">{w.title}</h3>
+                <p class="ch-work__note">{w.note}</p>
+                <a href={w.href} class="ch-work__case">Case study &rarr;</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="ch-cta" id="contact">
+      <div class="ch-section ch-cta__inner">
+        <Kicker>Campaign coming up?</Kicker>
+        <h2 class="ch-cta__heading">
+          Give your ambassadors something <span class="ch-accent">worth sending.</span>
+        </h2>
+        <p class="ch-lead ch-lead--center">
+          Text or WhatsApp us your campaign date and goal. You&rsquo;ll hear back
+          from a real person within 24 hours.
+        </p>
+        <div class="ch-actions">
+          <a href={WA_HREF} class="btn-primary btn-lg" target="_blank" rel="noopener">WhatsApp us now</a>
+          <a href={SMS_HREF} class="btn-secondary btn-lg">Text us</a>
+        </div>
+        <a href={`tel:${PHONE_E164}`} class="ch-phone">{PHONE_DISPLAY}</a>
+      </div>
+
+      <div class="ch-section ch-form-wrap" id="form">
+        <p class="ch-form__intro">Or leave your details and we&rsquo;ll reach out.</p>
+        <form class="ch-form" action={FORMSPREE} method="POST">
+          <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
+          <input type="hidden" name="_next" value="https://attentionearned.com/charidy?sent=true#form" />
+          <input type="hidden" name="_subject" value="Charidy lander inquiry" />
+          <input type="hidden" name="source" value="charidy-lander" />
+
+          <div class="ch-form__grid">
+            <div class="field">
+              <label for="ch-name" class="field__label">Name</label>
+              <input id="ch-name" type="text" name="name" class="field__input" required autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="ch-org" class="field__label">Organization</label>
+              <input id="ch-org" type="text" name="company" class="field__input" required autocomplete="organization" />
+            </div>
+            <div class="field">
+              <label for="ch-phone" class="field__label">Phone</label>
+              <input id="ch-phone" type="tel" name="phone" class="field__input" required autocomplete="tel" inputmode="tel" />
+            </div>
+            <div class="field">
+              <label for="ch-email" class="field__label">Email <span class="field__opt">(optional)</span></label>
+              <input id="ch-email" type="email" name="email" class="field__input" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="ch-date" class="field__label">Campaign date</label>
+              <input id="ch-date" type="text" name="timeline" class="field__input" placeholder="e.g. March 2027" />
+            </div>
+            <div class="field">
+              <label for="ch-goal" class="field__label">Goal</label>
+              <input id="ch-goal" type="text" name="goal" class="field__input" placeholder="e.g. $500,000" />
+            </div>
+            <div class="field field--full">
+              <button type="submit" class="btn-primary btn-lg ch-form__submit">Send</button>
+            </div>
+          </div>
+        </form>
+        <p class="ch-form__success" id="ch-success" aria-live="polite" hidden>
+          Got it. We&rsquo;ll be in touch shortly.
+        </p>
+      </div>
+    </section>
+
+    <footer class="ch-foot">
+      <span>&copy; Attention Earned</span>
+      <a href="/">attentionearned.com</a>
+    </footer>
+
+    <!-- Mobile sticky action bar -->
+    <div class="ch-sticky" aria-label="Contact">
+      <a href={WA_HREF} class="ch-sticky__btn ch-sticky__btn--wa" target="_blank" rel="noopener">WhatsApp us</a>
+      <a href={SMS_HREF} class="ch-sticky__btn">Text us</a>
+    </div>
+  </div>
+</Base>
+
+<script>
+  if (new URLSearchParams(window.location.search).get('sent') === 'true') {
+    const msg = document.getElementById('ch-success');
+    if (msg) msg.hidden = false;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('sent');
+    window.history.replaceState({}, '', url);
+  }
+</script>
+
+<style>
+  .ch-wrap {
+    min-height: 100vh;
+    background: var(--ink-900);
+    color: var(--text-body);
+  }
+
+  .ch-section {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 96px var(--gutter);
+  }
+
+  .ch-accent { color: var(--ae-coral); }
+
+  .ch-h2 {
+    font-size: var(--fs-display-lg);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin: 0.875rem 0 1.25rem;
+    max-width: 820px;
+    text-wrap: balance;
+  }
+
+  .ch-lead {
+    font-size: var(--fs-body-lg);
+    line-height: 1.55;
+    color: var(--stone-200);
+    max-width: 640px;
+    margin: 0 0 2.75rem;
+  }
+
+  .ch-lead--center { margin-inline: auto; text-align: center; margin-bottom: 0; }
+
+  /* NAV */
+  .ch-nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(14,14,12,0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .ch-nav__inner {
+    max-width: var(--container);
+    margin-inline: auto;
+    padding: 16px var(--gutter);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .ch-nav__inner img { height: 20px; width: auto; display: block; }
+
+  .ch-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 1.875rem;
+    margin-left: auto;
+  }
+
+  .ch-nav__links a {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-300);
+    text-decoration: none;
+    transition: color var(--dur-fast);
+  }
+
+  .ch-nav__links a:hover { color: var(--text-strong); }
+
+  @media (max-width: 820px) { .ch-nav__links { display: none; } }
+  /* The sticky bottom bar carries the CTA on phones. */
+  @media (max-width: 760px) { .ch-nav__cta { display: none; } }
+
+  .ch-nav__cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    color: var(--text-on-accent);
+    background: var(--grad-cta);
+    border-radius: var(--radius-pill);
+    text-decoration: none;
+    box-shadow: var(--glow-cta);
+    white-space: nowrap;
+  }
+
+  /* HERO */
+  .ch-hero {
+    background-image: var(--grad-hero);
+    padding: 112px var(--gutter) 96px;
+    text-align: center;
+  }
+
+  .ch-hero__inner {
+    max-width: 980px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
+  }
+
+  .ch-hero__h1 {
+    font-size: var(--fs-display-xl);
+    line-height: var(--lh-display);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .ch-hero__sub {
+    max-width: 600px;
+    font-size: var(--fs-body-lg);
+    line-height: 1.5;
+    color: var(--stone-200);
+    font-weight: var(--fw-medium);
+    margin: 0;
+  }
+
+  .ch-hero__form-link {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-300);
+    text-decoration: none;
+  }
+
+  .ch-hero__form-link:hover { color: var(--accent-soft); }
+
+  .ch-actions {
+    display: flex;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 520px) {
+    .ch-actions { flex-direction: column; align-self: stretch; }
+    .ch-actions .btn-lg { justify-content: center; }
+  }
+
+  /* PROBLEM */
+  .ch-problem {
+    background: var(--surface-raised);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .ch-pitches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  @media (max-width: 760px) { .ch-pitches { grid-template-columns: 1fr; } }
+
+  .ch-pitch {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 2rem;
+    border-radius: var(--radius-card);
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .ch-pitch--win {
+    border-color: rgba(252,44,48,0.4);
+    background: linear-gradient(160deg, rgba(252,44,48,0.10) 0%, var(--surface-card) 60%);
+  }
+
+  .ch-pitch__label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--stone-300);
+  }
+
+  .ch-pitch--win .ch-pitch__label { color: var(--accent-soft); }
+
+  .ch-pitch__quote {
+    font-size: 1.35rem;
+    line-height: 1.35;
+    font-weight: var(--fw-bold);
+    color: var(--text-strong);
+    margin: 0;
+    flex: 1;
+  }
+
+  .ch-pitch:not(.ch-pitch--win) .ch-pitch__quote { color: var(--stone-200); }
+
+  .ch-pitch__result {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ch-pitch__result-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .ch-pitch__result-value { font-weight: var(--fw-bold); color: var(--text-body); }
+  .ch-pitch--win .ch-pitch__result-value { color: var(--ae-coral); }
+
+  /* STATEMENT */
+  .ch-statement__inner { padding-block: 112px; text-align: center; }
+
+  .ch-statement__line {
+    font-size: var(--fs-display-xl);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--tracking-display);
+    font-weight: var(--fw-black);
+    color: var(--text-strong);
+    margin: 0 auto;
+    max-width: 980px;
+    text-wrap: balance;
+  }
+
+  .ch-strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--ae-red);
+    text-decoration-thickness: 0.08em;
+    color: var(--stone-300);
+  }
+
+  /* OFFER */
+  .ch-offer {
+    background: var(--surface-raised);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .ch-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+
+  @media (max-width: 1000px) { .ch-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .ch-grid { grid-template-columns: 1fr; } }
+
+  .ch-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.75rem;
+    border-radius: var(--radius-card);
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .ch-card__num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--stone-400);
+  }
+
+  .ch-card__num--accent { color: var(--accent-soft); }
+
+  .ch-card__title {
+    font-size: var(--fs-h3);
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .ch-card__body {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--stone-200);
+    margin: 0;
+  }
+
+  .ch-year {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 2.5rem;
+    padding: 2.25rem;
+    border-radius: var(--radius-card);
+    border: 1px solid rgba(252,44,48,0.4);
+    background: linear-gradient(140deg, rgba(252,44,48,0.10) 0%, var(--surface-card) 55%);
+  }
+
+  @media (max-width: 860px) { .ch-year { grid-template-columns: 1fr; gap: 1.75rem; padding: 1.75rem; } }
+
+  .ch-year__text { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .ch-year__title {
+    font-size: var(--fs-h2);
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .ch-year__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ch-year__list li {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-body);
+    line-height: 1.45;
+  }
+
+  .ch-year__list li:last-child { border-bottom: none; }
+
+  .ch-year__list span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    padding-top: 0.2rem;
+  }
+
+  /* WORK */
+  .ch-work__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.25rem 22px;
+    margin-top: 2.5rem;
+  }
+
+  @media (max-width: 960px) { .ch-work__grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .ch-work__grid { grid-template-columns: 1fr; } }
+
+  .ch-work__item { display: flex; flex-direction: column; gap: 1rem; }
+
+  .ch-work__media {
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    background: radial-gradient(120% 120% at 30% 20%, hsl(16 50% 18%) 0%, hsl(16 40% 10%) 45%, #0B0A09 100%);
+  }
+
+  .ch-work__vid { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+
+  .ch-work__meta { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .ch-work__client {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-300);
+  }
+
+  .ch-work__title {
+    font-size: 1.2rem;
+    color: var(--text-strong);
+    margin: 0;
+  }
+
+  .ch-work__note {
+    font-size: var(--fs-sm);
+    line-height: 1.55;
+    color: var(--stone-200);
+    margin: 0.2rem 0 0.25rem;
+  }
+
+  .ch-work__case {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    text-decoration: none;
+  }
+
+  /* CTA */
+  .ch-cta {
+    background-image: var(--grad-hero);
+    background-color: var(--surface-raised);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ch-cta__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+    padding-bottom: 48px;
+  }
+
+  .ch-cta__heading {
+    font-size: var(--fs-display-lg);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--tracking-display);
+    color: var(--text-strong);
+    margin: 0;
+    max-width: 760px;
+    text-wrap: balance;
+  }
+
+  .ch-phone {
+    font-size: 1.6rem;
+    font-weight: var(--fw-black);
+    letter-spacing: 0.02em;
+    color: var(--text-strong);
+    text-decoration: none;
+    margin-top: 0.25rem;
+  }
+
+  .ch-phone:hover { color: var(--accent-soft); }
+
+  .ch-form-wrap {
+    max-width: 760px;
+    padding-top: 32px;
+  }
+
+  .ch-form__intro {
+    text-align: center;
+    color: var(--stone-300);
+    margin: 0 0 1.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ch-form__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.1rem;
+  }
+
+  @media (max-width: 560px) { .ch-form__grid { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field--full { grid-column: 1 / -1; }
+
+  .field__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .field__opt { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-faint); }
+
+  .field__input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    color: var(--text-body);
+    background: var(--surface-card);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    outline: none;
+    appearance: none;
+    box-sizing: border-box;
+  }
+
+  .field__input::placeholder { color: var(--text-faint); }
+
+  .field__input:focus {
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 3px rgba(252, 106, 106, 0.15);
+  }
+
+  .ch-form__submit { justify-content: center; }
+
+  .ch-form__success {
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    background: rgba(79, 191, 139, 0.1);
+    border: 1px solid rgba(79, 191, 139, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--ok);
+    font-size: var(--fs-sm);
+    text-align: center;
+  }
+
+  .ch-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 28px var(--gutter);
+    font-size: var(--fs-sm);
+    color: var(--text-faint);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ch-foot a { color: var(--stone-300); text-decoration: none; }
+
+  /* Sticky mobile bar */
+  .ch-sticky { display: none; }
+
+  @media (max-width: 760px) {
+    .ch-section { padding-block: 72px; }
+    .ch-hero { padding-top: 72px; padding-bottom: 72px; }
+    .ch-statement__inner { padding-block: 80px; }
+    .ch-wrap { padding-bottom: 76px; }
+
+    .ch-sticky {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 10px;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(14,14,12,0.9);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .ch-sticky__btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      border-radius: var(--radius-pill);
+      font-weight: var(--fw-bold);
+      text-decoration: none;
+      color: var(--text-strong);
+      border: 1px solid var(--border-strong);
+    }
+
+    .ch-sticky__btn--wa {
+      background: var(--grad-cta);
+      color: var(--text-on-accent);
+      border: none;
+      box-shadow: var(--glow-cta);
+    }
+  }
+
+  /* Buttons (same as /lp) */
+  .btn-primary, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+
+  .btn-lg { font-size: var(--fs-body); padding: 0.85rem 1.8rem; letter-spacing: 0.04em; }
+
+  .btn-primary {
+    background: var(--grad-cta);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-cta);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 50px -8px rgba(252,44,48,.7), 0 0 0 1px rgba(252,44,48,.4);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-strong);
+    border: 1px solid var(--border-strong);
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent-soft); transform: translateY(-1px); }
+</style>
