@@ -43,6 +43,11 @@ const sorted = allServices.sort((a, b) => a.data.order - b.data.order);
           );
         })}
       </div>
+      <p class="npo-callout">
+        Nonprofit with a campaign coming up?
+        <a href="/npo">See our nonprofit offers</a> or go straight to
+        <a href="/npo/charidy">Charidy &amp; matching campaigns →</a>
+      </p>
     </div>
   </section>
 
@@ -98,6 +103,22 @@ const sorted = allServices.sort((a, b) => a.data.order - b.data.order);
   /* Services list */
   .services-section {
     padding-bottom: 5rem;
+  }
+
+  .npo-callout {
+    margin: 2rem 0 0;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .npo-callout a {
+    color: var(--accent-soft);
+    font-weight: var(--fw-bold);
+    text-decoration: none;
+  }
+
+  .npo-callout a:hover {
+    color: var(--text-strong);
   }
 
   .services-list {

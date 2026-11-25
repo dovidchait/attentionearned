@@ -45,6 +45,7 @@ const services = defineCollection({
     heroLabel: z.string().optional(),
     beta: z.boolean().default(false),
     order: z.number().default(0),
+    links: z.array(z.object({ label: z.string(), href: z.string() })).default([]),
   }),
 });
 

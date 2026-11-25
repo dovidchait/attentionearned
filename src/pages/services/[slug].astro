@@ -14,7 +14,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 const { entry, num } = Astro.props;
-const { title, summary, problem, note, produces, specialties, sectors, heroType, heroSrc, heroLabel, beta } = entry.data;
+const { title, summary, problem, note, produces, specialties, sectors, heroType, heroSrc, heroLabel, beta, links } = entry.data;
 const numStr = String(num).padStart(2, '0');
 
 const allServices = await getCollection('services');
@@ -78,6 +78,11 @@ const ctaLabel = beta ? 'Ask about the beta' : 'Start the conversation';
           <p class="problem-text">{problem}</p>
           {note && (
             <p class="note-text">{note}</p>
+          )}
+          {links.length > 0 && (
+            <div class="svc-links">
+              {links.map(l => <a href={l.href} class="svc-link">{l.label}</a>)}
+            </div>
           )}
           <div class="section-label" style="margin-top: 2rem;">Specialties inside this</div>
           <div class="specialties-row">
@@ -328,6 +333,23 @@ const ctaLabel = beta ? 'Ask about the beta' : 'Start the conversation';
     font-weight: var(--fw-medium);
     letter-spacing: -0.01em;
     text-wrap: pretty;
+  }
+
+  .svc-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0 0 30px;
+  }
+
+  .svc-link {
+    font-weight: var(--fw-bold);
+    color: var(--accent-soft);
+    text-decoration: none;
+  }
+
+  .svc-link:hover {
+    color: var(--text-strong);
   }
 
   .note-text {

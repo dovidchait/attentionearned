@@ -4,6 +4,7 @@
   "framework": "astro",
   "redirects": [
 { "source": "/linkedin", "destination": "/", "permanent": true },
+    { "source": "/charidy", "destination": "/npo/charidy", "permanent": true },
     { "source": "/devorahs-hope", "destination": "/work/devorahs-hope", "permanent": true },
     { "source": "/imagine-the-future", "destination": "/work/imagine-the-future", "permanent": true },
     { "source": "/why-i-do-this", "destination": "/work/why-i-do-this", "permanent": true },

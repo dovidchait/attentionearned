@@ -1,6 +1,6 @@
 ---
-import Base from '../layouts/Base.astro';
-import Kicker from '../components/Kicker.astro';
+import Base from '../../layouts/Base.astro';
+import Kicker from '../../components/Kicker.astro';
 
 const FORMSPREE = 'https://formspree.io/f/xrbnvoqj';
 
@@ -105,6 +105,11 @@ const deliverables = [
     <!-- HERO -->
     <section class="ch-hero">
       <div class="ch-hero__inner ae-reveal">
+        <nav class="ch-crumbs" aria-label="Breadcrumb">
+          <a href="/npo">Nonprofits</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Charidy campaigns</span>
+        </nav>
         <Kicker>For Charidy &amp; matching campaigns</Kicker>
         <h1 class="ch-hero__h1">
           Everybody and their brother is asking your donors <span class="ch-accent">for money.</span>
@@ -260,7 +265,7 @@ const deliverables = [
         <p class="ch-form__intro">Or leave your details and we&rsquo;ll reach out.</p>
         <form class="ch-form" action={FORMSPREE} method="POST">
           <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
-          <input type="hidden" name="_next" value="https://attentionearned.com/charidy?sent=true#form" />
+          <input type="hidden" name="_next" value="https://attentionearned.com/npo/charidy?sent=true#form" />
           <input type="hidden" name="_subject" value="Charidy lander inquiry" />
           <input type="hidden" name="source" value="charidy-lander" />
 
@@ -337,6 +342,20 @@ const deliverables = [
   }
 
   .ch-accent { color: var(--ae-coral); }
+
+  .ch-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .ch-crumbs a { color: inherit; text-decoration: none; }
+  .ch-crumbs a:hover { color: var(--text-strong); }
 
   .ch-h2 {
     font-size: var(--fs-display-lg);

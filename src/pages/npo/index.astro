@@ -1,6 +1,6 @@
 ---
-import Base from '../layouts/Base.astro';
-import CtaBand from '../components/CtaBand.astro';
+import Base from '../../layouts/Base.astro';
+import CtaBand from '../../components/CtaBand.astro';
 ---
 
 <Base
@@ -60,6 +60,9 @@ import CtaBand from '../components/CtaBand.astro';
           </p>
           <p class="offer-card__proof">
             <a href="/work/meoros-2026" class="proof-link">See how this worked for a $400K campaign →</a>
+          </p>
+          <p class="offer-card__proof">
+            <a href="/npo/charidy" class="proof-link">Running a Charidy or matching campaign? Start here →</a>
           </p>
           <div class="offer-card__footer">
             <a href="/contact?ref=campaign-rollout" class="ae-btn ae-btn--primary ae-btn--md">Tell us about your campaign</a>
@@ -231,6 +234,10 @@ import CtaBand from '../components/CtaBand.astro';
 
   .offer-card__proof {
     margin: 0;
+  }
+
+  .offer-card__proof + .offer-card__proof {
+    margin-top: 0.5rem;
   }
 
   .proof-link {
